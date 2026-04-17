@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagram B — The Serving Path</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    background: #f8f9fb;
+    color: #1a202c;
+    padding: 44px 52px 64px;
+  }
+
+  /* ── header ── */
+  .header { text-align: center; margin-bottom: 10px; }
+  .header h1 { font-size: 21px; font-weight: 700; color: #111827; letter-spacing: -0.01em; }
+  .header .sub {
+    font-size: 11px; color: #9ca3af; margin-top: 5px;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    font-family: 'SF Mono', monospace;
+  }
+
+  /* ── path legend ── */
+  .path-legend {
+    display: flex; justify-content: center; gap: 28px;
+    margin: 16px 0 36px;
+  }
+  .pl-item { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #374151; }
+  .pl-swatch { width: 32px; height: 10px; border-radius: 3px; }
+
+  /* ── content ── */
+  .content { max-width: 900px; margin: 0 auto; }
+
+  /* ── path block ── */
+  .path-section {
+    border-radius: 12px;
+    border: 2px solid;
+    padding: 22px 26px 24px;
+    margin-bottom: 32px;
+    position: relative;
+  }
+  .ps-green  { background: #f0fdf4; border-color: #86efac; }
+  .ps-amber  { background: #fffbeb; border-color: #fcd34d; }
+  .ps-blue   { background: #eff6ff; border-color: #93c5fd; }
+  .ps-purple { background: #f5f3ff; border-color: #c4b5fd; }
+
+  .path-tag {
+    position: absolute; top: -13px; left: 18px;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 11px; border-radius: 5px; color: #fff;
+  }
+  .pt-green  { background: #16a34a; }
+  .pt-amber  { background: #d97706; }
+  .pt-blue   { background: #2563eb; }
+  .pt-purple { background: #7c3aed; }
+
+  .path-title {
+    font-size: 15px; font-weight: 700; color: #111827;
+    margin-bottom: 6px;
+  }
+  .path-subtitle {
+    font-size: 12px; color: #6b7280; margin-bottom: 18px; line-height: 1.5;
+  }
+
+  /* ── step list ── */
+  .steps { list-style: none; padding: 0; }
+  .step  {
+    display: flex; gap: 14px; align-items: flex-start;
+    margin-bottom: 16px;
+  }
+  .step:last-child { margin-bottom: 0; }
+
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11.5px; font-weight: 700; color: #fff;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .sn-green  { background: #16a34a; }
+  .sn-amber  { background: #d97706; }
+  .sn-blue   { background: #2563eb; }
+  .sn-purple { background: #7c3aed; }
+  .sn-gray   { background: #6b7280; }
+  .sn-red    { background: #dc2626; }
+
+  .step-body { flex: 1; font-size: 13px; line-height: 1.75; color: #374151; }
+  .step-body strong { color: #111827; }
+  .step-body em { color: #6b7280; font-style: italic; }
+  .step-body code {
+    font-size: 11.5px; background: #f1f5f9; padding: 1px 5px;
+    border-radius: 3px; color: #0369a1; font-family: 'SF Mono', monospace;
+  }
+  .step-body ul {
+    padding-left: 18px; margin-top: 6px;
+  }
+  .step-body li { margin-bottom: 4px; }
+
+  /* ── sub-step connector ── */
+  .sub-connector {
+    display: flex; align-items: center; gap: 8px;
+    margin: 4px 0 4px 40px;
+    font-size: 12px; font-weight: 500; color: #111827; font-style: italic;
+  }
+  .sub-connector span { color: #9ca3af; font-size: 16px; }
+
+  /* ── decision box ── */
+  .decision {
+    background: #fff;
+    border: 2px dashed #94a3b8;
+    border-radius: 8px;
+    padding: 11px 16px;
+    margin: 14px 0 14px 40px;
+    font-size: 12.5px;
+    color: #374151;
+    line-height: 1.6;
+  }
+  .decision strong { color: #111827; }
+  .dec-yes { color: #16a34a; font-weight: 700; }
+  .dec-no  { color: #dc2626; font-weight: 700; }
+
+  /* ── outcome box ── */
+  .outcome {
+    background: #fff;
+    border: 1.5px solid;
+    border-radius: 7px;
+    padding: 10px 14px;
+    margin: 10px 0 0 40px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #374151;
+  }
+  .out-green  { border-color: #86efac; }
+  .out-amber  { border-color: #fcd34d; }
+  .out-blue   { border-color: #93c5fd; }
+  .out-purple { border-color: #c4b5fd; }
+  .out-label  { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+
+  /* ── note callout ── */
+  .callout {
+    border-radius: 7px;
+    padding: 11px 15px;
+    margin: 14px 0 0 0;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #374151;
+  }
+  .callout strong { color: #111827; }
+  .co-blue   { background: #eff6ff; border: 1.5px solid #93c5fd; }
+  .co-amber  { background: #fffbeb; border: 1.5px solid #fcd34d; }
+  .co-green  { background: #f0fdf4; border: 1.5px solid #86efac; }
+  .co-purple { background: #f5f3ff; border: 1.5px solid #c4b5fd; }
+  .co-gray   { background: #f8fafc; border: 1.5px solid #cbd5e1; }
+
+  /* ── section divider ── */
+  .divider {
+    display: flex; align-items: center; gap: 10px;
+    margin: 8px 0 20px;
+  }
+  .divider hr { flex: 1; border: none; border-top: 1.5px dashed #e5e7eb; }
+  .divider span {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: #9ca3af; white-space: nowrap;
+  }
+
+  /* ── comparison table ── */
+  .compare-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px; margin-top: 8px;
+    border-radius: 8px; overflow: hidden;
+  }
+  .compare-table th {
+    background: #f1f5f9; color: #374151;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; padding: 9px 13px; text-align: left;
+    border-bottom: 1.5px solid #e2e8f0;
+  }
+  .compare-table td {
+    padding: 9px 13px; border-bottom: 1px solid #f1f5f9;
+    color: #374151; line-height: 1.55; vertical-align: top;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:nth-child(even) td { background: #fafafa; }
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Diagram B — The Serving Path</h1>
+  <div class="sub">server/rest.go · server/server.go · worker/pipeline.go · fashion-recommend/api/</div>
+</div>
+
+<div class="path-legend">
+  <div class="pl-item"><div class="pl-swatch" style="background:#16a34a;"></div>Path A — Warm User, Cache Hit</div>
+  <div class="pl-item"><div class="pl-swatch" style="background:#d97706;"></div>Path B — Warm User, Cache Miss</div>
+  <div class="pl-item"><div class="pl-swatch" style="background:#2563eb;"></div>Path C — Cold / Anonymous User</div>
+  <div class="pl-item"><div class="pl-swatch" style="background:#7c3aed;"></div>Path D — Health &amp; Admin</div>
+</div>
+
+<div class="content">
+
+  <!-- ══════════════════════════════════════
+       PATH A — Warm User, Cache Hit
+  ══════════════════════════════════════ -->
+  <div class="path-section ps-green">
+    <div class="path-tag pt-green">Path A — Warm User · Cache Hit · Most Common</div>
+    <div class="path-title">Personalized Recommendation Request — Served from Cache</div>
+    <div class="path-subtitle">
+      The user has prior interaction history. The Worker already generated and cached their ranked recommendation list. This is the hot path — the Server does zero computation.
+    </div>
+
+    <ul class="steps">
+
+      <li class="step">
+        <div class="step-num sn-green">1</div>
+        <div class="step-body">
+          <strong>Client sends a recommendation request.</strong> The fashion-recommend frontend (or any API consumer) calls <code>GET /recommend/{userId}</code> on the Gorse Server, optionally with a <code>category</code> filter and an <code>n</code> (number of results) parameter.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-green">2</div>
+        <div class="step-body">
+          <strong>Server validates the request and resolves the user.</strong> It checks that the <code>userId</code> exists, reads any active category filter, and determines the maximum result count. No model is loaded — the Server holds no trained artifacts in memory.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-green">3</div>
+        <div class="step-body">
+          <strong>Server reads the pre-computed ranked list from CacheClient.</strong> It looks up the key <code>Recommend/{userId}</code> (and optionally <code>Recommend/{userId}/{category}</code>) in the cache store (Redis). This list was written by the Worker during the last offline recommendation generation cycle.
+        </div>
+      </li>
+
+      <div class="decision">
+        <strong>Decision point — is the cache populated?</strong><br>
+        <span class="dec-yes">YES →</span> Cached list exists and has not expired (TTL set by <code>Config.Recommend.CacheExpire</code>) — continue on Path A<br>
+        <span class="dec-no">NO →</span> Cache is empty or expired — divert to <strong>Path B (Cache Miss fallback)</strong>
+      </div>
+
+      <li class="step">
+        <div class="step-num sn-green">4</div>
+        <div class="step-body">
+          <strong>Server filters out items the user has already seen.</strong> Reads the user's feedback history from DataClient. Any item the user has already interacted with (based on <code>Config.Recommend.Read.Exclude</code> feedback types) is stripped from the result list before returning.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-green">5</div>
+        <div class="step-body">
+          <strong>Server applies the category filter (if provided).</strong> If the request specified a category, only items matching that category are kept. The pre-computed list already contains category metadata per item so this is a simple in-memory filter pass.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-green">6</div>
+        <div class="step-body">
+          <strong>Server returns the top-N items as a JSON response.</strong> Each item includes its ID, score, categories, and timestamp. The response is the direct output of the offline Worker pipeline — shaped by whatever ranker (FM, LLM, or pass-through) was active when the Worker last ran.
+        </div>
+      </li>
+
+    </ul>
+
+    <div class="outcome out-green">
+      <div class="out-label" style="color:#16a34a;">Latency profile</div>
+      One cache read + one feedback read + in-memory filtering. Sub-millisecond to low-millisecond. No model inference, no external API calls, no database scans.
+    </div>
+
+    <div class="callout co-green" style="margin-top:12px;">
+      <strong>Why this path exists:</strong> The entire architecture is built to make this path as fast as possible. The Worker does all the expensive work offline, asynchronously, for every user on a schedule. The Server's job is simply to be a fast read-through layer on top of the cache. In a healthy, warm system, nearly all recommendation requests take this path.
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       PATH B — Warm User, Cache Miss
+  ══════════════════════════════════════ -->
+  <div class="path-section ps-amber">
+    <div class="path-tag pt-amber">Path B — Warm User · Cache Miss · Fallback</div>
+    <div class="path-title">Personalized Recommendation Request — Real-Time CF Fallback</div>
+    <div class="path-subtitle">
+      The user exists and has history, but their recommendation cache is empty or expired. The Server falls back to a direct collaborative filtering lookup — bypassing the full offline pipeline.
+    </div>
+
+    <ul class="steps">
+
+      <li class="step">
+        <div class="step-num sn-amber">1</div>
+        <div class="step-body">
+          <strong>Cache miss is detected.</strong> The Server queries CacheClient for <code>Recommend/{userId}</code> and gets an empty result — either the user is new to the cache, their TTL has expired, or the Worker hasn't run yet for this user's shard.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-amber">2</div>
+        <div class="step-body">
+          <strong>Server falls back to Collaborative Filtering scores.</strong> It reads from the <code>CollaborativeFiltering/{userId}</code> cache key — a separate cache entry written directly by the Worker's CF update step (not the full ranked pipeline). These scores represent raw CF dot-product similarities without the full recall + rank pipeline.
+        </div>
+      </li>
+
+      <div class="decision">
+        <strong>Decision point — do CF scores exist in cache?</strong><br>
+        <span class="dec-yes">YES →</span> Use CF scores as the recommendation list — no ranking applied<br>
+        <span class="dec-no">NO →</span> User is truly cold (no CF embedding exists) — return empty or fall through to non-personalized
+      </div>
+
+      <li class="step">
+        <div class="step-num sn-amber">3</div>
+        <div class="step-body">
+          <strong>Server applies the same post-processing as Path A.</strong> Filters out already-seen items, applies category filter if present, truncates to top-N. The result is less refined than Path A — it reflects CF ordering only, with no CTR re-ranking or LLM reranking on top.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-amber">4</div>
+        <div class="step-body">
+          <strong>Server returns the CF-ordered result.</strong> The response shape is identical to Path A — same JSON structure, same fields. The client cannot distinguish a cache hit from a fallback response.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-gray">※</div>
+        <div class="step-body">
+          <strong>Cache miss does not trigger a Worker run.</strong> The Server has no mechanism to kick off a recommendation generation job. The Worker will naturally pick up this user on its next scheduled cycle. The cache miss is self-healing — it resolves automatically.
+        </div>
+      </li>
+
+    </ul>
+
+    <div class="outcome out-amber">
+      <div class="out-label" style="color:#d97706;">When this occurs</div>
+      New deployments (cold cache), users who haven't been active in a while (TTL expired), or users who just registered before the first Worker cycle ran. Also affects users whose Worker shard is temporarily offline.
+    </div>
+
+    <div class="callout co-amber" style="margin-top:12px;">
+      <strong>The tradeoff:</strong> Path B is intentionally degraded — it serves CF-only results instead of the full recall + rank output. This is an explicit architectural choice: the Server stays stateless and computation-free. A full real-time re-run of the Worker pipeline on the request path would be too slow and too expensive to do synchronously per request.
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       PATH C — Cold / Anonymous User
+  ══════════════════════════════════════ -->
+  <div class="path-section ps-blue">
+    <div class="path-tag pt-blue">Path C — Session-Based · No User ID · Fully Online</div>
+    <div class="path-title">Session Recommendation — Real-Time Item-to-Item on the Request Path</div>
+    <div class="path-subtitle">
+      No userId is known — an anonymous visitor or a new user in their first session. The client provides a list of items the user has interacted with in this session, and the Server computes recommendations on-the-fly using item-to-item similarity. This is the only fully online path in the system.
+    </div>
+
+    <ul class="steps">
+
+      <li class="step">
+        <div class="step-num sn-blue">1</div>
+        <div class="step-body">
+          <strong>Client sends a session recommendation request.</strong> Calls <code>POST /session/recommend</code> with a request body containing:
+          <ul>
+            <li>A list of <strong>feedback items</strong> — items the user has interacted with in this session, each tagged with a feedback type (view, like, etc.)</li>
+            <li>An optional <strong>category filter</strong></li>
+            <li>An optional <strong>n</strong> (number of results)</li>
+          </ul>
+          No <code>userId</code> is required or stored. The session is stateless.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-blue">2</div>
+        <div class="step-body">
+          <strong>Server classifies the session feedback by type.</strong> Splits the provided items into positive interactions (e.g., liked, purchased) and weaker signals (e.g., viewed). Positive interactions carry more weight when driving similarity lookups.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-blue">3</div>
+        <div class="step-body">
+          <strong>Server performs item-to-item similarity lookups for each session item.</strong> For every item the user interacted with, it reads the pre-computed item-to-item similarity scores from CacheClient. This is the key difference from Path A and B — instead of looking up a user's pre-ranked list, it aggregates similarity vectors anchored to the session items.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-blue">4</div>
+        <div class="step-body">
+          <strong>Server merges and deduplicates the similarity results.</strong> Items that appear as similar to multiple session items have their scores <strong>summed</strong>. This means items that are similar to several things the user engaged with rank higher — a simple but effective form of session-aware scoring.
+          <ul>
+            <li>Items already in the session feedback list are excluded from results</li>
+            <li>Scores are sorted descending after aggregation</li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-blue">5</div>
+        <div class="step-body">
+          <strong>Server applies category filter and truncates to top-N.</strong> Same post-processing as Paths A and B — category filter applied, result capped at requested count.
+        </div>
+      </li>
+
+      <li class="step">
+        <div class="step-num sn-blue">6</div>
+        <div class="step-body">
+          <strong>Server returns the session-based result immediately.</strong> No caching of this result — it's ephemeral and tied to this specific session context. The next session request with different items will produce a different result.
+        </div>
+      </li>
+
+    </ul>
+
+    <div class="outcome out-blue">
+      <div class="out-label" style="color:#2563eb;">Latency profile</div>
+      N cache reads (one per session item) + in-memory score aggregation + sort. Latency scales with the number of session items provided but remains fast since all item-to-item scores are pre-computed by the Master.
+    </div>
+
+    <div class="callout co-blue" style="margin-top:12px;">
+      <strong>Why this path is architecturally distinct:</strong> Paths A and B are fundamentally <em>user-centric</em> — they look up a pre-computed list tied to a known user. Path C is <em>item-centric</em> — it treats the session as a query and the item-to-item index as the retrieval mechanism. No user model, no CF, no CTR model is involved. It's the closest analog to a pure RAG retrieval in the entire system — session items are the query, item-to-item similarity scores are the index.
+    </div>
+
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       COMPARISON TABLE
+  ══════════════════════════════════════ -->
+  <div class="divider"><hr><span>Path Comparison</span><hr></div>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th style="color:#16a34a;">Path A — Cache Hit</th>
+        <th style="color:#d97706;">Path B — Cache Miss</th>
+        <th style="color:#2563eb;">Path C — Session</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Trigger</strong></td>
+        <td><code>GET /recommend/{userId}</code></td>
+        <td><code>GET /recommend/{userId}</code> when cache empty</td>
+        <td><code>POST /session/recommend</code></td>
+      </tr>
+      <tr>
+        <td><strong>Requires userId</strong></td>
+        <td>Yes</td>
+        <td>Yes</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td><strong>Computation on request path</strong></td>
+        <td>None — pure cache read</td>
+        <td>Minimal — CF cache read + filter</td>
+        <td>Moderate — N similarity lookups + score merge</td>
+      </tr>
+      <tr>
+        <td><strong>Uses trained models</strong></td>
+        <td>Indirectly — results were produced by models offline</td>
+        <td>Indirectly — CF scores pre-computed offline</td>
+        <td>No — uses pre-computed similarity index only</td>
+      </tr>
+      <tr>
+        <td><strong>Ranking quality</strong></td>
+        <td>Highest — full recall + ranker pipeline</td>
+        <td>Medium — CF order only, no re-ranking</td>
+        <td>Session-relative — good for cold start, no personal history</td>
+      </tr>
+      <tr>
+        <td><strong>Result caching</strong></td>
+        <td>Reads from cache</td>
+        <td>Reads from CF cache (different key)</td>
+        <td>Not cached — ephemeral per request</td>
+      </tr>
+      <tr>
+        <td><strong>Typical user</strong></td>
+        <td>Active, returning user with history</td>
+        <td>Active user with stale / expired cache</td>
+        <td>Anonymous visitor or brand-new user</td>
+      </tr>
+      <tr>
+        <td><strong>Self-healing</strong></td>
+        <td>N/A — cache is fresh</td>
+        <td>Yes — Worker will populate cache on next cycle</td>
+        <td>N/A — stateless per request</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout co-gray" style="margin-top:20px;">
+    <strong>The architectural principle behind all three paths:</strong> The Server is deliberately kept stateless and computation-free. It holds no models, runs no training, and generates no recommendations. Every path either reads from a pre-populated cache (Paths A and B) or reads from a pre-computed index (Path C). This means the Server can scale horizontally without any shared state — adding more Server instances requires no coordination, because all state lives in the shared CacheClient and DataClient that all nodes read from.
+  </div>
+
+</div><!-- /content -->
+</body>
+</html>

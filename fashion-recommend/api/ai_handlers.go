@@ -66,6 +66,7 @@ func (s *Server) aiChat(c *gin.Context) {
 	}
 
 	// 3. 调用 AI 服务
+	//	systemPrompt := "你是一个时尚品牌推荐系统的 AI 助手，名字叫「时尚小助手」。你可以帮助用户了解时尚趋势、推荐商品、提供穿搭建议。请用友好、专业的语气回答用户的问题。"
 	response, err := s.aiService.ChatWithAssistant(c.Request.Context(), req.Message, req.History)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

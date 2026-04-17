@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagram A — The Learning Cycle</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    background: #f8f9fb;
+    color: #1a202c;
+    padding: 40px 44px 60px;
+  }
+
+  /* ── header ── */
+  .header {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  .header h1 { font-size: 21px; font-weight: 700; color: #111827; letter-spacing: -0.01em; }
+  .header .sub {
+    font-size: 11px; color: #9ca3af; margin-top: 5px;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    font-family: 'SF Mono', monospace;
+  }
+
+  /* ── ownership strip ── */
+  .own-strip {
+    display: flex; justify-content: center; gap: 22px;
+    margin: 14px 0 28px;
+  }
+  .own-item { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; color: #374151; }
+  .own-swatch { width: 26px; height: 10px; border-radius: 3px; }
+
+  /* ── diagram wrapper ── */
+  .diagram {
+    max-width: 1100px;
+    margin: 0 auto 56px;
+    position: relative;
+  }
+
+  /* ── loop arrow label (right side) ── */
+  .loop-label {
+    position: absolute;
+    right: -38px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #9ca3af;
+    white-space: nowrap;
+  }
+
+  /* ── stage rows ── */
+  .stage-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 160px;
+    gap: 0;
+    align-items: center;
+    margin-bottom: 0;
+  }
+  .stage-left  { padding-right: 14px; }
+  .stage-right { padding-left: 14px; }
+  .stage-center { }
+
+  /* ── zone wrappers ── */
+  .zone {
+    border-radius: 10px;
+    border: 2px solid;
+    padding: 13px 14px 11px;
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .zone-fashion { background: #fffbeb; border-color: #fcd34d; }
+  .zone-master  { background: #eff6ff; border-color: #93c5fd; }
+  .zone-worker  { background: #ecfdf5; border-color: #6ee7b7; }
+  .zone-storage { background: #f8fafc; border-color: #cbd5e1; }
+  .zone-shared  { background: #f5f3ff; border-color: #c4b5fd; }
+
+  .zone-tag {
+    position: absolute; top: -11px; left: 14px;
+    font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 1px 8px; border-radius: 4px; color: #fff;
+  }
+  .zt-fashion { background: #f59e0b; }
+  .zt-master  { background: #3b82f6; }
+  .zt-worker  { background: #10b981; }
+  .zt-storage { background: #6b7280; }
+  .zt-shared  { background: #8b5cf6; }
+
+  /* ── blocks ── */
+  .block {
+    background: #fff;
+    border: 1.5px solid;
+    border-radius: 7px;
+    padding: 10px 13px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .b-amber   { border-color: #fcd34d; }
+  .b-blue    { border-color: #93c5fd; }
+  .b-green   { border-color: #6ee7b7; }
+  .b-slate   { border-color: #cbd5e1; }
+  .b-purple  { border-color: #c4b5fd; }
+  .b-sky     { border-color: #7dd3fc; }
+  .b-indigo  { border-color: #a5b4fc; }
+  .b-red     { border-color: #fca5a5; }
+
+  .block-title {
+    font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: 5px;
+  }
+  .block-body { color: #374151; }
+  .block-note { font-size: 9.5px; color: #9ca3af; margin-top: 5px; }
+
+  /* ── training grid ── */
+  .train-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .train-cell {
+    background: #fff;
+    border: 1.5px solid;
+    border-radius: 6px;
+    padding: 9px 10px;
+    font-size: 10.5px;
+    line-height: 1.5;
+  }
+  .tc-blue   { border-color: #93c5fd; }
+  .tc-red    { border-color: #fca5a5; }
+  .tc-sky    { border-color: #7dd3fc; }
+  .tc-green  { border-color: #6ee7b7; }
+  .tc-amber  { border-color: #fcd34d; }
+  .tc-title  { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+  .tc-body   { color: #374151; }
+  .tc-out    { font-size: 9px; color: #6b7280; margin-top: 4px; }
+  .tc-badge  {
+    display: inline-block; font-size: 8.5px; font-weight: 700;
+    padding: 1px 5px; border-radius: 3px; margin-top: 5px;
+  }
+  .tb-blob   { background: #dbeafe; color: #1e40af; }
+  .tb-cache  { background: #d1fae5; color: #065f46; }
+  .tb-meta   { background: #ede9fe; color: #5b21b6; }
+
+  /* ── storage layer ── */
+  .store-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .store-cell {
+    background: #fff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 9px 10px;
+    text-align: center;
+    font-size: 10.5px;
+  }
+  .sc-title { font-weight: 700; font-size: 10px; color: #374151; margin-bottom: 3px; }
+  .sc-body  { color: #6b7280; font-size: 9.5px; line-height: 1.5; }
+  .sc-icon  { font-size: 16px; margin-bottom: 3px; }
+
+  /* ── arrows ── */
+  .arrow { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 4px 0; color: #9ca3af; }
+  .arrow-line { font-size: 20px; line-height: 1; }
+  .arrow-text { font-size: 12px; color: #111827; font-style: italic; font-weight: 500; }
+
+  .arrow-split {
+    display: flex; justify-content: center; gap: 40px;
+    margin: 3px 0; color: #9ca3af; font-size: 14px;
+  }
+
+  /* ── divider ── */
+  .divider {
+    display: flex; align-items: center; gap: 8px; margin: 8px 0 10px;
+  }
+  .divider hr { flex: 1; border: none; border-top: 1px dashed #e5e7eb; }
+  .divider span { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; white-space: nowrap; }
+
+  /* ── side notes ── */
+  .snote {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-left: 3px solid;
+    border-radius: 5px;
+    padding: 9px 11px;
+    font-size: 10.5px;
+    line-height: 1.6;
+    color: #374151;
+    margin-bottom: 10px;
+  }
+  .sn-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .snote ul { padding-left: 13px; }
+  .snote li { margin-bottom: 2px; }
+  .snote code {
+    font-size: 9.5px; background: #f1f5f9; padding: 1px 4px;
+    border-radius: 2px; color: #0369a1; font-family: 'SF Mono', monospace;
+  }
+  .sn-blue   { border-left-color: #3b82f6; }
+  .sn-green  { border-left-color: #10b981; }
+  .sn-yellow { border-left-color: #f59e0b; }
+  .sn-gray   { border-left-color: #6b7280; }
+  .sn-purple { border-left-color: #8b5cf6; }
+  .sn-red    { border-left-color: #ef4444; }
+  .sn-sky    { border-left-color: #0ea5e9; }
+
+  /* ── chips ── */
+  .chip {
+    display: inline-block; font-size: 8.5px; font-weight: 700;
+    padding: 1px 6px; border-radius: 3px; letter-spacing: 0.04em;
+    text-transform: uppercase; margin-right: 3px;
+  }
+  .ch-blue   { background: #dbeafe; color: #1d4ed8; }
+  .ch-amber  { background: #fef3c7; color: #92400e; }
+  .ch-green  { background: #d1fae5; color: #065f46; }
+  .ch-gray   { background: #f1f5f9; color: #475569; }
+  .ch-purple { background: #ede9fe; color: #5b21b6; }
+
+  /* ── loop return arrow ── */
+  .loop-return {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; margin: 6px 0;
+    padding: 7px 16px;
+    background: #fff7ed;
+    border: 1.5px dashed #fb923c;
+    border-radius: 7px;
+    font-size: 10.5px; color: #9a3412;
+    font-weight: 600;
+  }
+
+  /* ═══════════════════════════════════════
+     WRITTEN SECTION
+  ═══════════════════════════════════════ */
+  .written-section {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-top: 10px;
+    border-top: 2px solid #e5e7eb;
+  }
+  .ws-header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .ws-header h2 { font-size: 18px; font-weight: 700; color: #111827; }
+  .ws-header p  { font-size: 12px; color: #6b7280; margin-top: 5px; line-height: 1.6; }
+
+  .phase {
+    margin-bottom: 28px;
+  }
+  .phase-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .phase-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+  }
+  .pn-amber  { background: #f59e0b; }
+  .pn-blue   { background: #3b82f6; }
+  .pn-gray   { background: #6b7280; }
+  .pn-green  { background: #10b981; }
+  .pn-orange { background: #f97316; }
+
+  .phase-title { font-size: 14px; font-weight: 700; color: #111827; }
+  .phase-owner {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; padding: 2px 8px; border-radius: 4px; margin-left: 4px;
+  }
+  .po-fashion { background: #fef3c7; color: #92400e; }
+  .po-master  { background: #dbeafe; color: #1e40af; }
+  .po-storage { background: #f1f5f9; color: #475569; }
+  .po-worker  { background: #d1fae5; color: #065f46; }
+  .po-shared  { background: #ede9fe; color: #5b21b6; }
+
+  .phase-body { font-size: 12.5px; line-height: 1.75; color: #374151; padding-left: 38px; }
+  .phase-body p { margin-bottom: 8px; }
+  .phase-body ul { padding-left: 18px; margin-bottom: 8px; }
+  .phase-body li { margin-bottom: 5px; }
+  .phase-body strong { color: #111827; }
+  .phase-body em { color: #6b7280; font-style: italic; }
+  .phase-body code {
+    font-size: 11px; background: #f1f5f9; padding: 1px 5px;
+    border-radius: 2px; color: #0369a1; font-family: 'SF Mono', monospace;
+  }
+
+  .insight-box {
+    background: #fffbeb;
+    border: 1.5px solid #fcd34d;
+    border-radius: 7px;
+    padding: 12px 16px;
+    margin: 10px 0;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #374151;
+  }
+  .insight-box strong { color: #92400e; }
+
+  .key-point {
+    background: #eff6ff;
+    border-left: 3px solid #3b82f6;
+    padding: 8px 13px;
+    border-radius: 0 5px 5px 0;
+    font-size: 11.5px;
+    color: #374151;
+    margin: 8px 0;
+    line-height: 1.6;
+  }
+
+  .phase-connector {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 0 20px 38px; color: #111827; font-size: 12px; font-style: italic; font-weight: 500;
+  }
+  .pc-arrow { font-size: 18px; color: #d1d5db; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     DIAGRAM
+════════════════════════════════════════════════════════ -->
+
+<div class="header">
+  <h1>Diagram A — The Learning Cycle</h1>
+  <div class="sub">User Feedback → Master Trains → Worker Updates → Better Recommendations → More Feedback</div>
+</div>
+
+<div class="own-strip">
+  <div class="own-item"><div class="own-swatch" style="background:#f59e0b;"></div>fashion-recommend</div>
+  <div class="own-item"><div class="own-swatch" style="background:#3b82f6;"></div>Gorse — Master</div>
+  <div class="own-item"><div class="own-swatch" style="background:#6b7280;"></div>Shared Storage</div>
+  <div class="own-item"><div class="own-swatch" style="background:#10b981;"></div>Gorse — Worker</div>
+</div>
+
+<div class="diagram">
+
+  <!-- ── Stage 1: User actions ── -->
+  <div class="zone zone-fashion">
+    <div class="zone-tag zt-fashion">fashion-recommend — User Action</div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;">
+      <div class="block b-amber">
+        <div class="block-title" style="color:#92400e;">Like / Purchase</div>
+        <div class="block-body">User taps like or completes a purchase on a fashion item</div>
+        <div class="block-note">→ positive feedback signal</div>
+      </div>
+      <div class="block b-amber">
+        <div class="block-title" style="color:#92400e;">Comment</div>
+        <div class="block-body">User leaves a text comment — LLM extracts style traits from it</div>
+        <div class="block-note">→ user.Labels updated in Gorse</div>
+      </div>
+      <div class="block b-amber">
+        <div class="block-title" style="color:#92400e;">View / Browse</div>
+        <div class="block-body">User views an item without engaging further</div>
+        <div class="block-note">→ weak / negative signal</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">↓</div>
+    <div class="arrow-text">fashion-recommend API writes to shared data store</div>
+  </div>
+
+  <!-- ── Stage 2: Storage ingestion ── -->
+  <div class="zone zone-storage">
+    <div class="zone-tag zt-storage">Shared Storage Layer</div>
+    <div class="store-grid">
+      <div class="store-cell">
+        <div class="sc-icon">🗄</div>
+        <div class="sc-title">DataClient (PostgreSQL)</div>
+        <div class="sc-body">Stores feedback events, user records with labels, item records with attributes</div>
+      </div>
+      <div class="store-cell">
+        <div class="sc-icon">⚡</div>
+        <div class="sc-title">CacheClient (Redis)</div>
+        <div class="sc-body">Holds current recommendations, similarity scores, non-personalized lists</div>
+      </div>
+      <div class="store-cell">
+        <div class="sc-icon">📦</div>
+        <div class="sc-title">BlobStore</div>
+        <div class="sc-body">Holds serialized trained model binaries — keyed by Unix timestamp version ID</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">↓</div>
+    <div class="arrow-text">Master's periodic task loop fires (timer or manual trigger from dashboard)</div>
+  </div>
+
+  <!-- ── Stage 3: Master — Load dataset ── -->
+  <div class="zone zone-master">
+    <div class="zone-tag zt-master">Gorse Master — Data Loading</div>
+    <div class="block b-blue">
+      <div class="block-title" style="color:#1d4ed8;">Load Full Dataset from DataClient</div>
+      <div class="block-body">
+        Master reads <strong>all users</strong> (with their labels), <strong>all items</strong> (with categories and attributes),
+        and <strong>all feedback events</strong> in streaming batches. It classifies each feedback event as
+        <em>positive</em> (liked, purchased) or <em>negative</em> (viewed but not engaged), builds a unified
+        feature index, and splits into 80% training / 20% test sets.
+      </div>
+      <div class="block-note">Skips retraining if dataset size is unchanged since last run — cheap guard against wasted compute</div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">↓</div>
+    <div class="arrow-text">sequential training tasks — one at a time, shared dataset</div>
+  </div>
+
+  <!-- ── Stage 4: Training tasks ── -->
+  <div class="zone zone-master">
+    <div class="zone-tag zt-master">Gorse Master — Model Training &amp; Index Building</div>
+
+    <div class="divider"><hr><span>Model Training</span><hr></div>
+    <div class="train-grid">
+
+      <div class="train-cell tc-blue">
+        <div class="tc-title" style="color:#1d4ed8;">Collaborative Filtering</div>
+        <div class="tc-body">
+          Learns <strong>latent factor vectors</strong> for every user and item from interaction history.
+          Users who liked similar items get similar vectors. Items liked by similar users get similar vectors.
+        </div>
+        <div class="tc-out">Algorithm: matrix factorization (BPR or ALS)</div>
+        <div><span class="tc-badge tb-blob">→ blobStore</span><span class="tc-badge tb-meta">→ metaStore ID</span></div>
+      </div>
+
+      <div class="train-cell tc-red">
+        <div class="tc-title" style="color:#991b1b;">CTR Prediction (AFM)</div>
+        <div class="tc-body">
+          Learns to predict <strong>click probability</strong> from structured features: user style labels,
+          item category labels, and their latent embeddings. Minimizes binary cross-entropy loss.
+        </div>
+        <div class="tc-out">Algorithm: Attentional Factorization Machine (AFM)</div>
+        <div><span class="tc-badge tb-blob">→ blobStore</span><span class="tc-badge tb-meta">→ metaStore ID</span></div>
+      </div>
+
+    </div>
+
+    <div class="divider" style="margin-top:12px;"><hr><span>Index Building (no model training, score computation)</span><hr></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:2px;">
+
+      <div class="train-cell tc-sky">
+        <div class="tc-title" style="color:#0369a1;">Item-to-Item Similarity</div>
+        <div class="tc-body">Computes pairwise similarity between items using tag overlap, embedding distance, or LLM-generated descriptions</div>
+        <div><span class="tc-badge tb-cache">→ CacheClient</span></div>
+      </div>
+
+      <div class="train-cell tc-green">
+        <div class="tc-title" style="color:#065f46;">User-to-User Similarity</div>
+        <div class="tc-body">Finds users with overlapping interaction histories using IDF-weighted Jaccard on item sets</div>
+        <div><span class="tc-badge tb-cache">→ CacheClient</span></div>
+      </div>
+
+      <div class="train-cell tc-amber">
+        <div class="tc-title" style="color:#92400e;">Non-Personalized Scores</div>
+        <div class="tc-body">Evaluates trending, popular, and new-arrival items using configurable scoring expressions</div>
+        <div><span class="tc-badge tb-cache">→ CacheClient</span></div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:10px; padding:7px 12px; background:#fffbeb; border:1px solid #fcd34d; border-radius:5px; font-size:9.5px; color:#92400e;">
+      <strong>fashion-recommend input:</strong> user.Labels (style traits extracted from comments by LLM) and item.Labels (categories, attributes) flow into CTR features and similarity scoring. The master reads them from DataClient — no fashion-specific code runs here.
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">↓</div>
+    <div class="arrow-text">model IDs written to metaStore — Worker discovers on next poll</div>
+  </div>
+
+  <!-- ── Stage 5: Storage update ── -->
+  <div class="zone zone-storage">
+    <div class="zone-tag zt-storage">Shared Storage — Updated State</div>
+    <div class="store-grid">
+      <div class="store-cell" style="border-color:#93c5fd;">
+        <div class="sc-icon">📦</div>
+        <div class="sc-title" style="color:#1d4ed8;">BlobStore</div>
+        <div class="sc-body">New CF model + CTR model written. Old models GC'd after new ones are confirmed active.</div>
+      </div>
+      <div class="store-cell" style="border-color:#6ee7b7;">
+        <div class="sc-icon">⚡</div>
+        <div class="sc-title" style="color:#065f46;">CacheClient</div>
+        <div class="sc-body">Item similarity scores, user similarity scores, non-personalized lists updated.</div>
+      </div>
+      <div class="store-cell" style="border-color:#c4b5fd;">
+        <div class="sc-icon">🗂</div>
+        <div class="sc-title" style="color:#5b21b6;">MetaStore (SQLite)</div>
+        <div class="sc-body">New model IDs (Unix timestamp), scores (AUC, precision), and params recorded.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">↓</div>
+    <div class="arrow-text">Worker polls master via GetMeta() RPC every MetaTimeout interval</div>
+  </div>
+
+  <!-- ── Stage 6: Worker model sync ── -->
+  <div class="zone zone-worker">
+    <div class="zone-tag zt-worker">Gorse Worker — Model Sync</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:9px;">
+      <div class="block b-green">
+        <div class="block-title" style="color:#065f46;">Detect New Model Version</div>
+        <div class="block-body">
+          Worker compares the model ID returned by master against the version it currently holds.
+          If the ID is newer, it signals an internal channel to trigger a download.
+        </div>
+        <div class="block-note">Model ID = Unix timestamp → monotonic comparison, no locking needed</div>
+      </div>
+      <div class="block b-green">
+        <div class="block-title" style="color:#065f46;">Pull &amp; Load New Model</div>
+        <div class="block-body">
+          Downloads the serialized CF and CTR model binaries from blobStore.
+          Atomically replaces the in-memory models used for recommendation scoring.
+        </div>
+        <div class="block-note">Triggers an immediate recommendation re-run — doesn't wait for next timer tick</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">↓</div>
+    <div class="arrow-text">recommendation pipeline runs for all assigned users (consistent hash shard)</div>
+  </div>
+
+  <!-- ── Stage 7: Recommendation generation ── -->
+  <div class="zone zone-worker">
+    <div class="zone-tag zt-worker">Gorse Worker — Recommendation Generation</div>
+    <div class="block b-green">
+      <div class="block-title" style="color:#065f46;">Generate &amp; Cache New Recommendations</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:7px;" class="block-body">
+        <div>
+          <strong>Recall</strong><br>
+          Assembles candidates from 5 sources: CF similarity search, item-to-item, user-to-user, non-personalized, and latest items
+        </div>
+        <div>
+          <strong>Rank</strong><br>
+          Reorders candidates using AFM (click probability) or LLM reranker, or passes through recall order
+        </div>
+        <div>
+          <strong>Cache</strong><br>
+          Writes final ranked list to CacheClient keyed by userId — Server reads this on every GET request
+        </div>
+      </div>
+      <div class="block-note" style="margin-top:8px;">User shard is determined by consistent hash — each worker independently covers its assigned users in parallel</div>
+    </div>
+  </div>
+
+  <div class="arrow">
+    <div class="arrow-line">↓</div>
+    <div class="arrow-text">Server reads from CacheClient — updated recommendations served immediately</div>
+  </div>
+
+  <!-- ── Loop return ── -->
+  <div class="loop-return">
+    ↺ &nbsp; User sees fresher, more personalized recommendations &nbsp;→&nbsp; engages more &nbsp;→&nbsp; generates new feedback &nbsp;→&nbsp; <strong>cycle repeats</strong>
+  </div>
+
+</div><!-- /diagram -->
+
+
+<!-- ════════════════════════════════════════════════════════
+     WRITTEN USE CASE FLOW
+════════════════════════════════════════════════════════ -->
+
+<div class="written-section">
+
+  <div class="ws-header">
+    <h2>Use Case Flow — The Learning Cycle in Plain Words</h2>
+    <p>How a single user action eventually results in a better recommendation list for every user</p>
+  </div>
+
+  <!-- Phase 1 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num pn-amber">1</div>
+      <div class="phase-title">A user does something</div>
+      <span class="phase-owner po-fashion">fashion-recommend</span>
+    </div>
+    <div class="phase-body">
+      <p>Everything starts with a <strong>user action</strong> — a like, a purchase, a comment, or even just a view. The fashion-recommend API layer receives it.</p>
+      <ul>
+        <li>A <strong>like or purchase</strong> is recorded as a <strong>positive feedback event</strong>. It tells the system "this user found this item relevant."</li>
+        <li>A <strong>comment</strong> does double duty: it's recorded as feedback, and the <strong>LLM extracts structured style traits</strong> from the text ("casual," "minimalist," "earth tones") and writes them back to the user's label set in Gorse. These labels will later feed directly into CTR model features.</li>
+        <li>A <strong>view without engagement</strong> is a weak signal — recorded as a negative or neutral event that the CTR model will learn to down-weight.</li>
+      </ul>
+      <div class="insight-box">
+        <strong>Why this matters:</strong> The user doesn't fill out a style quiz. Every natural interaction passively teaches the system what this person likes — and the LLM-powered trait extraction turns unstructured comments into structured signals the ranking model can act on.
+      </div>
+    </div>
+  </div>
+
+  <div class="phase-connector"><div class="pc-arrow">↓</div>All feedback is written to the shared PostgreSQL data store</div>
+
+  <!-- Phase 2 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num pn-blue">2</div>
+      <div class="phase-title">Master wakes up and reads everything</div>
+      <span class="phase-owner po-master">Gorse Master</span>
+    </div>
+    <div class="phase-body">
+      <p>On a configurable schedule (e.g., every 60 minutes), the <strong>Master node's task loop fires</strong>. It can also be triggered manually from the admin dashboard.</p>
+      <ul>
+        <li>It streams <strong>all users, all items, and all feedback events</strong> from the database in batches.</li>
+        <li>It checks whether the dataset has actually changed since the last run. <strong>If nothing new arrived, it skips the entire training cycle</strong> — no wasted compute.</li>
+        <li>Each feedback event is classified: <strong>positive</strong> (the user engaged meaningfully) or <strong>negative</strong> (they saw it but didn't engage).</li>
+        <li>The data is split: <strong>80% for training, 20% for testing</strong> model quality.</li>
+      </ul>
+      <div class="key-point">The Master is the only node that reads raw training data. Server and Worker never touch the feedback history directly.</div>
+    </div>
+  </div>
+
+  <div class="phase-connector"><div class="pc-arrow">↓</div>Training tasks run one at a time — they share the same loaded dataset</div>
+
+  <!-- Phase 3 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num pn-blue">3</div>
+      <div class="phase-title">Master trains two models and builds three indexes</div>
+      <span class="phase-owner po-master">Gorse Master</span>
+    </div>
+    <div class="phase-body">
+      <p>Five tasks run sequentially. Each one produces outputs that downstream nodes will consume:</p>
+      <ul>
+        <li>
+          <strong>Collaborative Filtering model</strong> — learns a latent vector for every user and every item purely from who liked what. Users with similar taste end up with similar vectors. The output is stored as a binary in the blob store.
+        </li>
+        <li>
+          <strong>CTR Prediction model (AFM)</strong> — learns to estimate how likely a specific user is to click on a specific item, using structured features: the user's style labels (written by the LLM trait extractor), the item's category and attribute labels, and the latent embeddings from CF. The output is also stored in the blob store.
+        </li>
+        <li>
+          <strong>Item-to-Item similarity index</strong> — computes how similar every pair of items is, using tag overlap, embedding distance, or LLM-generated descriptions. Stored in the cache so workers can do fast similarity lookups.
+        </li>
+        <li>
+          <strong>User-to-User similarity index</strong> — finds users with overlapping engagement histories. Stored in cache.
+        </li>
+        <li>
+          <strong>Non-personalized scores</strong> — evaluates every item for trending, popularity, and recency using configurable expressions. Also stored in cache for fallback recall.
+        </li>
+      </ul>
+      <div class="insight-box">
+        <strong>The fashion-recommend connection:</strong> The Master doesn't call any fashion-specific code. But the data it trains on — specifically <strong>user.Labels</strong> (style traits) and <strong>item.Labels</strong> (categories, colors, occasions) — was written by the fashion layer. The CTR model implicitly learns "users with 'minimalist' label tend to click items with 'monochrome' and 'clean-cut' labels."
+      </div>
+    </div>
+  </div>
+
+  <div class="phase-connector"><div class="pc-arrow">↓</div>New model IDs written to the meta store — a monotonically increasing Unix timestamp</div>
+
+  <!-- Phase 4 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num pn-gray">4</div>
+      <div class="phase-title">Trained artifacts land in shared storage</div>
+      <span class="phase-owner po-storage">Shared Storage</span>
+    </div>
+    <div class="phase-body">
+      <p>Three storage systems get updated simultaneously:</p>
+      <ul>
+        <li><strong>Blob store</strong> receives the serialized CF and CTR model binaries. Each is keyed by its Unix timestamp ID. Old models are garbage-collected once the new ones are confirmed active.</li>
+        <li><strong>Cache store</strong> receives updated similarity scores (item-to-item, user-to-user) and non-personalized lists. Workers can now do faster and more accurate recall lookups immediately.</li>
+        <li><strong>Meta store</strong> records the new model IDs, their evaluation scores (AUC, precision, recall), and the hyperparameters used. This is what Worker nodes poll to detect an update.</li>
+      </ul>
+      <div class="key-point">The model ID being a Unix timestamp is an elegant design choice — any node can detect "this is newer than what I have" with a single integer comparison. No distributed lock or version negotiation needed.</div>
+    </div>
+  </div>
+
+  <div class="phase-connector"><div class="pc-arrow">↓</div>Worker polls master every few seconds — sees the new model ID</div>
+
+  <!-- Phase 5 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num pn-green">5</div>
+      <div class="phase-title">Worker detects the update and pulls the new models</div>
+      <span class="phase-owner po-worker">Gorse Worker</span>
+    </div>
+    <div class="phase-body">
+      <p>Each Worker runs a continuous background loop that asks the Master: "what's the current model version?"</p>
+      <ul>
+        <li>When the Worker sees a <strong>model ID higher than what it currently holds</strong>, it signals its internal pull loop.</li>
+        <li>The pull loop <strong>downloads the new CF and CTR model binaries</strong> from the blob store and deserializes them into memory.</li>
+        <li>Once loaded, it <strong>immediately triggers a fresh recommendation run</strong> — it doesn't wait for the next scheduled tick. This means recommendations are refreshed as soon as a new model is available.</li>
+        <li>Multiple workers operate <strong>independently on different user shards</strong> (consistent hashing). They all converge to the same model version within one poll interval.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase-connector"><div class="pc-arrow">↓</div>Recommendation pipeline runs for all users in this worker's shard</div>
+
+  <!-- Phase 6 -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num pn-green">6</div>
+      <div class="phase-title">New recommendations are generated and cached</div>
+      <span class="phase-owner po-worker">Gorse Worker</span>
+    </div>
+    <div class="phase-body">
+      <p>For each active user with a stale recommendation cache, the Worker runs the full pipeline:</p>
+      <ul>
+        <li><strong>Recall</strong> — assembles a candidate pool from five sources using the now-updated CF model, item-to-item similarity scores, and non-personalized lists.</li>
+        <li><strong>Rank</strong> — reorders candidates using the updated CTR model (or LLM reranker if configured). Because the CTR model was just retrained on the latest feedback — including the style traits written by the LLM extractor — it reflects the user's most recent interactions.</li>
+        <li><strong>Cache write</strong> — the final ranked list is written to the cache store, keyed by user ID.</li>
+      </ul>
+      <p>The Server reads from this cache on every <code>GET /recommend/{userId}</code> request. From the Server's perspective, it just reads a pre-computed list — it has no idea a model was just retrained.</p>
+    </div>
+  </div>
+
+  <div class="phase-connector"><div class="pc-arrow">↓</div>Next request to /recommend returns the fresh list</div>
+
+  <!-- Phase 7 — loop close -->
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num pn-orange">↺</div>
+      <div class="phase-title">The user sees better recommendations — and the cycle repeats</div>
+      <span class="phase-owner po-shared">Closed Loop</span>
+    </div>
+    <div class="phase-body">
+      <p>The user now sees a recommendation list shaped by their own past behavior and the behavior of similar users. If the recommendations are better, they engage more — which generates more feedback, which improves the next model, which further improves recommendations.</p>
+      <div class="insight-box">
+        <strong>The key insight of the learning cycle:</strong> there is no human in the loop. A comment left by a user at 9 AM gets processed by the LLM trait extractor, written as structured labels to the database, picked up by the Master on its next training run, baked into a new CTR model, downloaded by Workers, and reflected in that user's recommendation list — all <strong>automatically, within the next training interval</strong>. The system closes the feedback loop without any manual curation.
+      </div>
+      <div class="key-point">The learning cycle is also the system's primary mechanism for handling <strong>cold-start users</strong>: even if a new user has no interaction history, their first comment produces LLM-extracted style labels that immediately feed into CTR features, giving the ranker something to work with before CF has enough data.</div>
+    </div>
+  </div>
+
+</div><!-- /written-section -->
+
+</body>
+</html>

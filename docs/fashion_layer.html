@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagram C — The fashion-recommend Layer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    background: #f8f9fb;
+    color: #1a202c;
+    padding: 40px 48px 64px;
+  }
+
+  /* ── header ── */
+  .header { text-align: center; margin-bottom: 10px; }
+  .header h1 { font-size: 22px; font-weight: 700; color: #111827; }
+  .header .sub { font-size: 11px; color: #9ca3af; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.07em; font-family: 'SF Mono', monospace; }
+
+  /* ── strips ── */
+  .own-strip { display: flex; justify-content: center; gap: 24px; margin: 14px 0 14px; flex-wrap: wrap; }
+  .own-item  { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #374151; }
+  .own-swatch { width: 26px; height: 10px; border-radius: 3px; }
+  .path-strip { display: flex; justify-content: center; gap: 24px; margin-bottom: 30px; }
+  .path-item  { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #374151; }
+  .path-dot   { width: 13px; height: 13px; border-radius: 50%; }
+
+  /* ══ CANVAS ══ */
+  .canvas {
+    display: grid;
+    grid-template-columns: 185px 1fr 185px;
+    gap: 0;
+    max-width: 1260px;
+    margin: 0 auto;
+  }
+  .left-col  { padding-right: 14px; }
+  .right-col { padding-left:  14px; }
+
+  /* ── zones ── */
+  .zone {
+    border-radius: 10px; border: 2px solid;
+    padding: 14px 14px 12px;
+    margin-bottom: 10px; position: relative;
+  }
+  .z-fashion { background: #fffbeb; border-color: #fcd34d; }
+  .z-gorse   { background: #eff6ff; border-color: #93c5fd; }
+  .z-storage { background: #f8fafc; border-color: #cbd5e1; }
+  .z-worker  { background: #f0fdf4; border-color: #86efac; }
+  .z-purple  { background: #f5f3ff; border-color: #c4b5fd; }
+  .z-rose    { background: #fff1f2; border-color: #fda4af; }
+
+  .zone-tag {
+    position: absolute; top: -11px; left: 14px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 1px 8px; border-radius: 4px; color: #fff;
+  }
+  .zt-fashion { background: #f59e0b; }
+  .zt-gorse   { background: #3b82f6; }
+  .zt-storage { background: #6b7280; }
+  .zt-worker  { background: #10b981; }
+  .zt-purple  { background: #8b5cf6; }
+  .zt-rose    { background: #e11d48; }
+
+  /* ── actor blocks ── */
+  .actor {
+    background: #fff; border: 2px solid;
+    border-radius: 8px; padding: 11px 13px;
+    font-size: 11.5px; line-height: 1.6; color: #374151; width: 100%;
+  }
+  .actor-icon  { font-size: 22px; margin-bottom: 4px; }
+  .actor-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .actor-body  { color: #374151; line-height: 1.6; }
+  .actor-note  { font-size: 10px; color: #9ca3af; margin-top: 5px; font-style: italic; }
+
+  .a-amber  { border-color: #fcd34d; }
+  .a-blue   { border-color: #93c5fd; }
+  .a-green  { border-color: #86efac; }
+  .a-slate  { border-color: #cbd5e1; }
+  .a-purple { border-color: #c4b5fd; }
+  .a-indigo { border-color: #a5b4fc; }
+  .a-rose   { border-color: #fda4af; }
+  .a-sky    { border-color: #7dd3fc; }
+  .a-orange { border-color: #fdba74; }
+
+  /* ── service call pills ── */
+  .svc {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px; font-family: 'SF Mono', monospace; margin-top: 4px;
+  }
+  .sv-get    { background: #dbeafe; color: #1e40af; }
+  .sv-post   { background: #d1fae5; color: #065f46; }
+  .sv-cache  { background: #f5f3ff; color: #5b21b6; }
+  .sv-db     { background: #fef3c7; color: #92400e; }
+  .sv-rpc    { background: #fee2e2; color: #991b1b; }
+  .sv-llm    { background: #fdf4ff; color: #7e22ce; }
+  .sv-patch  { background: #ecfdf5; color: #065f46; }
+
+  /* ── ownership badges ── */
+  .ob {
+    display: inline-block; font-size: 8px; font-weight: 700;
+    padding: 1px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 5px;
+  }
+  .ob-gorse   { background: #dbeafe; color: #1e40af; }
+  .ob-fashion { background: #fef3c7; color: #92400e; }
+
+  /* ── arrows ── */
+  .arrow { display: flex; flex-direction: column; align-items: center; margin: 3px 0; }
+  .arrow-icon  { font-size: 20px; line-height: 1; color: #9ca3af; }
+  .arrow-label { font-size: 12.5px; font-weight: 500; color: #111827; text-align: center; line-height: 1.4; margin-top: 1px; }
+
+  /* ── decision diamond ── */
+  .decision-wrap { display: flex; flex-direction: column; align-items: center; margin: 4px 0; width: 100%; }
+  .diamond {
+    width: 148px; height: 70px; background: #fff; border: 2px solid #94a3b8;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 10.5px; font-weight: 700; color: #111827;
+    line-height: 1.3; padding: 0 28px;
+  }
+  .d-amber  { background: #fefce8; border-color: #fde047; }
+  .d-green  { background: #f0fdf4; border-color: #86efac; }
+  .d-purple { background: #f5f3ff; border-color: #c4b5fd; }
+  .d-slate  { background: #f8fafc; border-color: #cbd5e1; }
+  .d-labels { display: flex; justify-content: space-between; width: 178px; margin-top: 3px; }
+  .d-yes { font-size: 11px; font-weight: 700; color: #16a34a; }
+  .d-no  { font-size: 11px; font-weight: 700; color: #dc2626; }
+
+  /* ── two-column split ── */
+  .split-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* ── three-column split ── */
+  .split-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  /* ── path column ── */
+  .path-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .path-header { width: 100%; border-radius: 7px 7px 0 0; padding: 9px 11px 8px; border: 2px solid; border-bottom: none; text-align: center; }
+  .ph-green  { background: #dcfce7; border-color: #86efac; }
+  .ph-amber  { background: #fef9c3; border-color: #fde047; }
+  .ph-purple { background: #ede9fe; border-color: #c4b5fd; }
+  .ph-tag    { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+  .ph-title  { font-size: 12px; font-weight: 700; color: #111827; margin-top: 2px; line-height: 1.3; }
+  .ph-sub    { font-size: 10px; color: #6b7280; margin-top: 2px; }
+
+  .path-body { width: 100%; border: 2px solid; border-top: none; border-radius: 0 0 7px 7px; padding: 10px 9px 12px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .pb-green  { border-color: #86efac; background: #f9fefb; }
+  .pb-amber  { border-color: #fde047; background: #fefff5; }
+  .pb-purple { border-color: #c4b5fd; background: #fbf9ff; }
+
+  .step-node { width: 100%; background: #fff; border: 1.5px solid; border-radius: 6px; padding: 9px 10px; font-size: 10.5px; line-height: 1.55; color: #374151; }
+  .step-node .sn-t { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+  .sn-g  { border-color: #86efac; }
+  .sn-a  { border-color: #fde047; }
+  .sn-p  { border-color: #c4b5fd; }
+  .sn-sl { border-color: #cbd5e1; background: #f8fafc; }
+
+  .snum { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 9.5px; font-weight: 700; color: #fff; margin-right: 4px; vertical-align: middle; }
+  .sg { background: #16a34a; }
+  .sa { background: #d97706; }
+  .sp { background: #7c3aed; }
+
+  .col-arrow { font-size: 16px; color: #9ca3af; text-align: center; line-height: 1; }
+
+  .outcome { width: 100%; border-radius: 7px; border: 2px solid; padding: 9px 11px; text-align: center; font-size: 11.5px; font-weight: 700; line-height: 1.5; }
+  .oc-g { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+  .oc-a { background: #fffbeb; border-color: #fde047; color: #92400e; }
+  .oc-p { background: #f5f3ff; border-color: #c4b5fd; color: #6d28d9; }
+
+  /* ── info rows ── */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+  .info-cell { background: #fff; border: 1.5px solid #e5e7eb; border-radius: 6px; padding: 9px 11px; font-size: 10.5px; color: #374151; text-align: center; }
+  .ic-title  { font-weight: 700; font-size: 10px; text-transform: uppercase; color: #374151; margin-bottom: 3px; }
+
+  /* ── side notes ── */
+  .note { background: #fff; border: 1px solid #e5e7eb; border-left: 3px solid; border-radius: 5px; padding: 9px 11px; font-size: 10.5px; line-height: 1.65; color: #374151; margin-bottom: 10px; }
+  .note-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .note ul { padding-left: 13px; }
+  .note li { margin-bottom: 2px; }
+  .note code { font-size: 9.5px; background: #f1f5f9; padding: 1px 4px; border-radius: 2px; color: #0369a1; font-family: 'SF Mono', monospace; }
+  .n-amber  { border-left-color: #f59e0b; }
+  .n-green  { border-left-color: #16a34a; }
+  .n-purple { border-left-color: #8b5cf6; }
+  .n-blue   { border-left-color: #2563eb; }
+  .n-gray   { border-left-color: #6b7280; }
+  .n-red    { border-left-color: #e11d48; }
+  .n-sky    { border-left-color: #0ea5e9; }
+
+  /* ── divider ── */
+  .divider { display: flex; align-items: center; gap: 8px; margin: 6px 0 8px; }
+  .divider hr { flex: 1; border: none; border-top: 1px dashed #e5e7eb; }
+  .divider span { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; white-space: nowrap; }
+
+  /* ── callout ── */
+  .callout { max-width: 1260px; margin: 16px auto 0; background: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 8px; padding: 13px 18px; font-size: 12.5px; line-height: 1.7; color: #374151; }
+  .callout strong { color: #111827; }
+
+  code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 10.5px; background: #f1f5f9; padding: 1px 4px; border-radius: 2px; color: #0369a1; }
+  strong { color: #111827; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="header">
+  <h1>Diagram C — The fashion-recommend Layer</h1>
+  <div class="sub">fashion-recommend/api/ · traits/extractor.go · ai/service.go · Gorse Server · LLM (Aliyun DashScope qwen-plus)</div>
+</div>
+
+<!-- ── Ownership strip ── -->
+<div class="own-strip">
+  <div class="own-item"><div class="own-swatch" style="background:#f59e0b;"></div>fashion-recommend</div>
+  <div class="own-item"><div class="own-swatch" style="background:#3b82f6;"></div>Gorse Core</div>
+  <div class="own-item"><div class="own-swatch" style="background:#6b7280;"></div>Shared Storage</div>
+  <div class="own-item"><div class="own-swatch" style="background:#7c3aed;"></div>LLM / External API</div>
+</div>
+
+<!-- ── Path legend ── -->
+<div class="path-strip">
+  <div class="path-item"><div class="path-dot" style="background:#16a34a;"></div>Path A — User Action → Trait Extraction → Gorse Labels</div>
+  <div class="path-item"><div class="path-dot" style="background:#d97706;"></div>Path B — Recommendation Request + LLM Explanation</div>
+  <div class="path-item"><div class="path-dot" style="background:#7c3aed;"></div>Path C — AI Chat / Style Advice</div>
+</div>
+
+<!-- ═══════════════ CANVAS ═══════════════ -->
+<div class="canvas">
+
+  <!-- ══ LEFT NOTES ══ -->
+  <div class="left-col">
+
+    <div class="note n-amber">
+      <div class="note-title" style="color:#92400e;">What Diagram C Shows</div>
+      The fashion-specific additions built on top of Gorse. Gorse handles the recommendation engine — fashion-recommend adds:
+      <ul style="margin-top:4px;">
+        <li>LLM trait extraction from user text</li>
+        <li>Recommendation explanations</li>
+        <li>AI style chat</li>
+        <li>Auth, likes, comments</li>
+      </ul>
+    </div>
+
+    <div style="height:40px;"></div>
+
+    <div class="note n-amber">
+      <div class="note-title" style="color:#92400e;">fashion-recommend API</div>
+      A Gin-based HTTP layer that sits in front of Gorse. It adds social features (likes, comments), session auth, and LLM capabilities. Gorse knows nothing about these — they are purely fashion-recommend concerns.
+    </div>
+
+    <div style="height:44px;"></div>
+
+    <div class="note n-green">
+      <div class="note-title" style="color:#15803d;">Path A — The Key Bridge</div>
+      This is how the fashion layer feeds intelligence into Gorse. User text → LLM → structured labels → written to <code>user.Labels</code> in Gorse. The CTR model then uses these labels as features. No fashion code runs inside Gorse — it just reads labels.
+    </div>
+
+    <div style="height:54px;"></div>
+
+    <div class="note n-green">
+      <div class="note-title" style="color:#15803d;">Trait Extraction</div>
+      <code>traits/extractor.go</code> maps free Chinese/English text to structured English Gorse labels:
+      <ul style="margin-top:4px;">
+        <li>"极简风" → <code>minimalist</code></li>
+        <li>"大地色" → <code>earth_tones</code></li>
+        <li>"日常穿搭" → <code>casual</code></li>
+      </ul>
+      Labels are normalized to English so Gorse's index is consistent.
+    </div>
+
+    <div style="height:44px;"></div>
+
+    <div class="note n-amber">
+      <div class="note-title" style="color:#d97706;">Path B — Explanation Layer</div>
+      Gorse returns a ranked list. fashion-recommend optionally calls the LLM to generate a human-readable explanation: "We picked these because you like minimalist earth-tone styles." Gorse is unaware this explanation was generated.
+    </div>
+
+    <div style="height:40px;"></div>
+
+    <div class="note n-purple">
+      <div class="note-title" style="color:#6d28d9;">Path C — Fully Isolated</div>
+      AI chat is entirely within fashion-recommend. It never calls Gorse. It maintains a conversation history in PostgreSQL and calls the LLM directly. It can optionally pull item data from Gorse to ground responses.
+    </div>
+
+  </div>
+
+  <!-- ══ CENTER FLOW ══ -->
+  <div class="mid-col">
+
+    <!-- ① USER (single actor, two interaction types) -->
+    <div class="zone z-fashion">
+      <div class="zone-tag zt-fashion">fashion-recommend — User</div>
+      <div class="actor a-amber" style="text-align:center;">
+        <div class="actor-icon">👗</div>
+        <div class="actor-title" style="color:#92400e;">Fashion App User</div>
+        <div class="actor-body">
+          Interacts through the React / TypeScript frontend<br>
+          (<code>fashion-recommend/frontend/</code>)
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:9px; text-align:center;">
+          <div style="background:#fffbeb; border:1.5px solid #fcd34d; border-radius:6px; padding:7px 6px; font-size:10.5px;">
+            <strong>Like / Comment</strong><br>
+            <span style="color:#6b7280; font-size:9.5px;">Social interaction with items</span>
+          </div>
+          <div style="background:#fffbeb; border:1.5px solid #fcd34d; border-radius:6px; padding:7px 6px; font-size:10.5px;">
+            <strong>Browse feed</strong><br>
+            <span style="color:#6b7280; font-size:9.5px;">Request personalized items</span>
+          </div>
+          <div style="background:#fffbeb; border:1.5px solid #fcd34d; border-radius:6px; padding:7px 6px; font-size:10.5px;">
+            <strong>Ask AI</strong><br>
+            <span style="color:#6b7280; font-size:9.5px;">Style question or advice</span>
+          </div>
+        </div>
+        <div style="margin-top:5px;"><span class="ob ob-fashion">fashion-recommend frontend</span></div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">All requests enter the fashion-recommend API server</div>
+    </div>
+
+    <!-- ② FASHION-RECOMMEND API -->
+    <div class="zone z-fashion">
+      <div class="zone-tag zt-fashion">fashion-recommend — api/server.go</div>
+      <div class="actor a-amber" style="text-align:center;">
+        <div class="actor-icon">🌐</div>
+        <div class="actor-title" style="color:#92400e;">fashion-recommend API (Gin)</div>
+        <div class="actor-body">
+          Session-based auth · Like &amp; comment handlers · Recommendation proxy · AI chat router<br>
+          Sits <strong>in front of</strong> Gorse — adds social features Gorse doesn't have
+        </div>
+        <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+          <span class="svc sv-post">POST /api/like</span>
+          <span class="svc sv-post">POST /api/comment</span>
+          <span class="svc sv-get">GET /api/recommend</span>
+          <span class="svc sv-post">POST /api/chat</span>
+        </div>
+        <div><span class="ob ob-fashion">fashion-recommend</span></div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">Routes to one of three paths based on action type</div>
+    </div>
+
+    <!-- ③ ROUTING DECISION -->
+    <div class="zone z-storage" style="padding:12px 14px;">
+      <div class="zone-tag zt-storage">Routing Decision</div>
+      <div class="decision-wrap">
+        <div class="diamond d-slate" style="font-size:10px; width:160px; height:72px;">What type<br>of action?</div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px; text-align:center; font-size:11px; font-weight:600;">
+        <div style="color:#16a34a;">Like / comment<br>with text</div>
+        <div style="color:#d97706;">Request<br>recommendations</div>
+        <div style="color:#7c3aed;">Ask AI /<br>style chat</div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">three independent paths</div>
+    </div>
+
+    <!-- ④ THREE PATH COLUMNS -->
+    <div class="split-3">
+
+      <!-- PATH A -->
+      <div class="path-col">
+        <div class="path-header ph-green">
+          <div class="ph-tag" style="color:#15803d;">Path A · The Bridge</div>
+          <div class="ph-title">Trait Extraction → Gorse Labels</div>
+          <div class="ph-sub">Fashion intelligence → Gorse features</div>
+        </div>
+        <div class="path-body pb-green">
+
+          <div class="step-node sn-g">
+            <div class="sn-t" style="color:#15803d;"><span class="snum sg">1</span>Record social action</div>
+            Like or comment written to PostgreSQL.<br>
+            <span class="svc sv-db">DataClient.InsertFeedback()</span><br>
+            <span class="svc sv-post">POST /feedback → Gorse</span>
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="decision-wrap" style="margin:0;">
+            <div class="diamond d-green" style="width:116px; height:56px; font-size:10px;">Has text<br>content?</div>
+            <div class="d-labels" style="width:146px;"><span class="d-yes">✓ YES</span><span class="d-no">✗ skip</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-g">
+            <div class="sn-t" style="color:#15803d;"><span class="snum sg">2</span>LLM Trait Extraction</div>
+            Send comment text to LLM. Extract structured style, color, and occasion labels from free text.<br>
+            <span class="svc sv-llm">LLM API (qwen-plus)</span><br>
+            <code>traits/extractor.go</code>
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-g">
+            <div class="sn-t" style="color:#15803d;"><span class="snum sg">3</span>Normalize to Gorse labels</div>
+            Map extracted keywords to English Gorse label schema. Merge with existing user labels (additive — never replace).
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-g">
+            <div class="sn-t" style="color:#15803d;"><span class="snum sg">4</span>Write labels to Gorse</div>
+            Patch user record in Gorse with updated <code>user.Labels</code>.<br>
+            <span class="svc sv-patch">PATCH /user/{userId} → Gorse</span>
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-sl" style="text-align:center;">
+            <div class="sn-t" style="color:#475569;">Next Master training cycle</div>
+            <span style="font-size:9.5px; color:#6b7280;">Master reads new labels → trains CTR model → Worker uses updated features → recommendations improve</span>
+            <div><span class="ob ob-gorse">Gorse Core (async)</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="outcome oc-g">
+            ✓ Style traits active<br>
+            <span style="font-size:10px; font-weight:400;">CTR model now uses user's<br>extracted style preferences</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PATH B -->
+      <div class="path-col">
+        <div class="path-header ph-amber">
+          <div class="ph-tag" style="color:#d97706;">Path B · Proxy + Explain</div>
+          <div class="ph-title">Recommendations + LLM Explanation</div>
+          <div class="ph-sub">Gorse result + fashion context</div>
+        </div>
+        <div class="path-body pb-amber">
+
+          <div class="step-node sn-a">
+            <div class="sn-t" style="color:#d97706;"><span class="snum sa">1</span>Proxy to Gorse Server</div>
+            Forward recommendation request to Gorse. Gorse returns pre-ranked item list from cache (Diagram B paths apply here).<br>
+            <span class="svc sv-get">GET /recommend/{userId} → Gorse</span>
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-a">
+            <div class="sn-t" style="color:#d97706;"><span class="snum sa">2</span>Enrich with item details</div>
+            Fetch full item metadata (images, descriptions, prices) from fashion-recommend's PostgreSQL for each returned item ID.
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="decision-wrap" style="margin:0;">
+            <div class="diamond d-amber" style="width:116px; height:56px; font-size:10px;">Explanation<br>requested?</div>
+            <div class="d-labels" style="width:146px;"><span class="d-yes">✓ YES</span><span class="d-no">✗ return</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-a">
+            <div class="sn-t" style="color:#d97706;"><span class="snum sa">3</span>Generate LLM explanation</div>
+            Send user profile + item list to LLM. Request a style-aware explanation of why these items were recommended.<br>
+            <span class="svc sv-llm">LLM API (qwen-plus)</span><br>
+            <code>ai/service.go</code>
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-a">
+            <div class="sn-t" style="color:#d97706;"><span class="snum sa">4</span>Attach explanation to response</div>
+            Append LLM-generated explanation text to the recommendation response. Gorse's ranked order is preserved exactly.
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="outcome oc-a">
+            ✓ Items + explanation<br>
+            <span style="font-size:10px; font-weight:400;">Gorse ranking + fashion-<br>recommend context layer</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PATH C -->
+      <div class="path-col">
+        <div class="path-header ph-purple">
+          <div class="ph-tag" style="color:#6d28d9;">Path C · Fully Isolated</div>
+          <div class="ph-title">AI Style Chat</div>
+          <div class="ph-sub">No Gorse involvement</div>
+        </div>
+        <div class="path-body pb-purple">
+
+          <div class="step-node sn-p">
+            <div class="sn-t" style="color:#6d28d9;"><span class="snum sp">1</span>Load conversation history</div>
+            Read prior messages for this user's session from PostgreSQL.<br>
+            <span class="svc sv-db">conversations + messages tables</span><br>
+            <code>database/conversation.go</code>
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-p">
+            <div class="sn-t" style="color:#6d28d9;"><span class="snum sp">2</span>Build system prompt</div>
+            Construct prompt with: user's style traits (from <code>user.Labels</code>), conversation context, and optional item grounding data.
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-p">
+            <div class="sn-t" style="color:#6d28d9;"><span class="snum sp">3</span>Call LLM (chat completion)</div>
+            Send full conversation + system prompt to LLM. Stream or collect response.<br>
+            <span class="svc sv-llm">LLM API (qwen-plus)</span><br>
+            <code>ai/service.go</code>
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-p">
+            <div class="sn-t" style="color:#6d28d9;"><span class="snum sp">4</span>Persist &amp; return response</div>
+            Save assistant message to PostgreSQL. Return response to frontend. Update conversation context for next turn.
+            <div><span class="ob ob-fashion">fashion-recommend</span></div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="outcome oc-p">
+            ↺ Style advice returned<br>
+            <span style="font-size:10px; font-weight:400;">Conversational, context-aware<br>No Gorse involvement</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /split-3 -->
+
+    <div class="arrow" style="margin-top:14px;">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">Paths A and B write data that feeds back into Gorse over time</div>
+    </div>
+
+    <!-- ⑤ STORAGE LAYER -->
+    <div class="zone z-storage">
+      <div class="zone-tag zt-storage">Shared Storage — fashion-recommend reads &amp; writes</div>
+      <div class="split-3" style="margin-top:4px;">
+
+        <div class="info-cell" style="border-color:#fcd34d;">
+          <div class="ic-title">🗄 PostgreSQL</div>
+          <code>users</code> · <code>likes</code><br>
+          <code>comments</code> · <code>conversations</code><br>
+          <code>messages</code> · <code>items</code><br>
+          <span style="font-size:9.5px; color:#6b7280;">fashion-recommend only<br>Gorse does not read this</span>
+        </div>
+
+        <div class="info-cell" style="border-color:#93c5fd;">
+          <div class="ic-title">🖥 Gorse Server</div>
+          User labels via<br>
+          <span class="svc sv-patch" style="font-size:9.5px;">PATCH /user</span><br>
+          Feedback via<br>
+          <span class="svc sv-post" style="font-size:9.5px;">POST /feedback</span><br>
+          <span style="font-size:9.5px; color:#6b7280;">Written by fashion-recommend<br>Read by Gorse training</span>
+        </div>
+
+        <div class="info-cell" style="border-color:#c4b5fd;">
+          <div class="ic-title">🤖 LLM API</div>
+          Aliyun DashScope<br>
+          Model: <code>qwen-plus</code><br>
+          Used for: trait extraction,<br>explanation, style chat<br>
+          <span style="font-size:9.5px; color:#6b7280;">fashion-recommend only</span>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="divider"><hr><span>How fashion-recommend feeds Gorse over time</span><hr></div>
+
+    <!-- ⑥ FEEDBACK LOOP back to Gorse -->
+    <div class="zone z-worker">
+      <div class="zone-tag zt-worker">Gorse Core — downstream effect of Path A</div>
+      <div class="actor a-green" style="text-align:center;">
+        <div class="actor-icon">⚙️</div>
+        <div class="actor-title" style="color:#065f46;">Gorse Training Pipeline (async)</div>
+        <div class="actor-body">
+          On next Master training cycle: reads updated <code>user.Labels</code> → trains CTR model with new style features → Worker pulls new model → recommendations reflect extracted traits
+        </div>
+        <div style="margin-top:7px; font-size:10.5px; color:#374151; background:#f0fdf4; border:1px solid #86efac; border-radius:5px; padding:6px 10px;">
+          This is the <strong>only channel</strong> through which fashion-recommend influences Gorse recommendations. No fashion code runs inside Gorse — it only sees the labels and feedback written by the fashion layer.
+        </div>
+        <div style="margin-top:5px;"><span class="ob ob-gorse">Gorse Core</span></div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">Better recommendations returned to fashion-recommend → shown to user</div>
+    </div>
+
+    <!-- ⑦ RESPONSE BACK TO USER -->
+    <div class="zone z-fashion">
+      <div class="zone-tag zt-fashion">fashion-recommend — Response to User</div>
+      <div class="split-3" style="margin-top:4px;">
+        <div class="info-cell" style="border-color:#86efac; background:#f9fefb;">
+          <div class="ic-title" style="color:#15803d;">Path A Output</div>
+          Feedback confirmed<br>Traits extracted &amp; saved<br>
+          <span style="font-size:9.5px; color:#6b7280;">Next recommendation cycle<br>reflects new labels</span>
+        </div>
+        <div class="info-cell" style="border-color:#fde047; background:#fefff5;">
+          <div class="ic-title" style="color:#d97706;">Path B Output</div>
+          Ranked items + metadata<br>+ optional LLM explanation<br>
+          <span style="font-size:9.5px; color:#6b7280;">Gorse ranking preserved<br>Fashion context added</span>
+        </div>
+        <div class="info-cell" style="border-color:#c4b5fd; background:#fbf9ff;">
+          <div class="ic-title" style="color:#6d28d9;">Path C Output</div>
+          Style advice message<br>+ conversation history<br>
+          <span style="font-size:9.5px; color:#6b7280;">Stateful across turns<br>Gorse not involved</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /mid-col -->
+
+  <!-- ══ RIGHT NOTES ══ -->
+  <div class="right-col">
+
+    <div class="note n-amber">
+      <div class="note-title" style="color:#92400e;">Auth Layer</div>
+      fashion-recommend adds session-based auth that Gorse doesn't have. <code>auth/</code> package manages sessions. All API routes require a valid session cookie before proxying to Gorse.
+    </div>
+
+    <div style="height:44px;"></div>
+
+    <div class="note n-amber">
+      <div class="note-title" style="color:#92400e;">Gin Router Structure</div>
+      <code>api/server.go:96</code> mounts:
+      <ul style="margin-top:4px;">
+        <li><code>/api/*</code> → Gorse proxy</li>
+        <li><code>/api/chat</code> → AI service</li>
+        <li><code>/api/like</code> → social handler</li>
+        <li><code>/images</code> → static files</li>
+      </ul>
+    </div>
+
+    <div style="height:56px;"></div>
+
+    <div class="note n-green">
+      <div class="note-title" style="color:#15803d;">Label Schema</div>
+      Labels written to Gorse must match the schema the CTR model was trained on. fashion-recommend normalizes all extracted traits to English before writing — Chinese text stays in PostgreSQL comments only.
+    </div>
+
+    <div style="height:48px;"></div>
+
+    <div class="note n-green">
+      <div class="note-title" style="color:#15803d;">Additive Labels</div>
+      Trait extraction is <strong>additive</strong> — new labels merge with existing ones. A user who comments "I love streetwear" on Monday and "prefer neutral tones" on Friday accumulates both traits. Labels are never reset automatically.
+    </div>
+
+    <div style="height:56px;"></div>
+
+    <div class="note n-amber">
+      <div class="note-title" style="color:#d97706;">Explanation is Optional</div>
+      LLM explanation in Path B only fires if the client requests it (via a flag in the request). It adds 100–500ms latency. When disabled, Path B is as fast as Diagram B's Path A.
+    </div>
+
+    <div style="height:44px;"></div>
+
+    <div class="note n-purple">
+      <div class="note-title" style="color:#6d28d9;">Chat is Fully Isolated</div>
+      Path C never touches Gorse. It reads <code>user.Labels</code> from PostgreSQL (written by Path A) to ground the LLM prompt, but the conversation itself is entirely managed by fashion-recommend's <code>database/</code> package.
+    </div>
+
+    <div style="height:32px;"></div>
+
+    <div class="note n-sky">
+      <div class="note-title" style="color:#0369a1;">The Key Insight</div>
+      fashion-recommend and Gorse communicate through <strong>data, not code</strong>. No fashion-specific code runs inside Gorse. The entire integration is: fashion writes labels + feedback → Gorse reads them. This is a clean separation of concerns.
+    </div>
+
+  </div>
+
+</div><!-- /canvas -->
+
+<!-- ── Bottom callout ── -->
+<div class="callout">
+  <strong>The architectural principle of the fashion-recommend layer:</strong> fashion-recommend does not modify or extend Gorse — it <em>feeds</em> it. Every piece of intelligence the fashion layer generates (extracted style traits, feedback events, item labels) is written to Gorse's standard data interfaces. Gorse remains a generic recommendation engine that happens to be getting unusually rich, LLM-structured inputs. The two systems are decoupled by design: you could replace either one without touching the other, as long as the label and feedback schemas remain consistent.
+</div>
+
+</body>
+</html>

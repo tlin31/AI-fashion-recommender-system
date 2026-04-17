@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offline Recommendation Generation — Worker Pipeline</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    background: #f8f9fb;
+    color: #1a202c;
+    padding: 40px 36px;
+    min-height: 100vh;
+  }
+
+  /* ── header ── */
+  .slide-header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .slide-header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+    letter-spacing: -0.01em;
+  }
+  .slide-header .subtitle {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* ── ownership legend ── */
+  .ownership-bar {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  .own-tag {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #374151;
+  }
+  .own-swatch {
+    width: 28px;
+    height: 10px;
+    border-radius: 3px;
+  }
+  .swatch-gorse    { background: #3b82f6; }
+  .swatch-fashion  { background: #f59e0b; }
+  .swatch-shared   { background: #8b5cf6; }
+
+  /* ── outer layout ── */
+  .canvas {
+    display: grid;
+    grid-template-columns: 190px 1fr 190px;
+    gap: 0;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .left-notes  { padding-right: 14px; }
+  .right-notes { padding-left:  14px; }
+
+  /* ── ownership zones ── */
+  .zone {
+    border-radius: 10px;
+    border: 2px solid;
+    padding: 14px 14px 10px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .zone-gorse {
+    background: #eff6ff;
+    border-color: #93c5fd;
+  }
+  .zone-fashion {
+    background: #fffbeb;
+    border-color: #fcd34d;
+  }
+  .zone-shared {
+    background: #f5f3ff;
+    border-color: #c4b5fd;
+  }
+
+  .zone-label {
+    position: absolute;
+    top: -11px;
+    left: 14px;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 1px 8px;
+    border-radius: 4px;
+  }
+  .zlabel-gorse   { background: #3b82f6; color: #fff; }
+  .zlabel-fashion { background: #f59e0b; color: #fff; }
+  .zlabel-shared  { background: #8b5cf6; color: #fff; }
+
+  /* ── blocks ── */
+  .block {
+    border-radius: 7px;
+    border: 1.5px solid;
+    padding: 10px 13px;
+    font-size: 11.5px;
+    line-height: 1.55;
+    background: #fff;
+  }
+
+  .b-blue   { border-color: #93c5fd; background: #eff6ff; }
+  .b-green  { border-color: #6ee7b7; background: #ecfdf5; }
+  .b-yellow { border-color: #fcd34d; background: #fffbeb; }
+  .b-indigo { border-color: #a5b4fc; background: #eef2ff; }
+  .b-sky    { border-color: #7dd3fc; background: #f0f9ff; }
+  .b-purple { border-color: #c4b5fd; background: #f5f3ff; }
+  .b-red    { border-color: #fca5a5; background: #fff1f2; }
+  .b-amber  { border-color: #fcd34d; background: #fffbeb; }
+  .b-emerald{ border-color: #6ee7b7; background: #ecfdf5; }
+  .b-slate  { border-color: #cbd5e1; background: #f8fafc; }
+
+  .block-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+  }
+  .block-body { color: #374151; font-size: 11px; line-height: 1.6; }
+  .block-ref  { font-size: 9.5px; color: #9ca3af; margin-top: 5px; font-family: 'SF Mono', monospace; }
+
+  /* chips */
+  .chip {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-right: 3px;
+  }
+  .ch-blue   { background: #dbeafe; color: #1d4ed8; }
+  .ch-green  { background: #d1fae5; color: #065f46; }
+  .ch-yellow { background: #fef3c7; color: #92400e; }
+  .ch-red    { background: #fee2e2; color: #991b1b; }
+  .ch-purple { background: #ede9fe; color: #5b21b6; }
+  .ch-gray   { background: #f1f5f9; color: #475569; }
+
+  /* ── recall grid ── */
+  .recall-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
+    margin-top: 10px;
+  }
+  .recall-item {
+    background: #fff;
+    border: 1.5px solid #7dd3fc;
+    border-radius: 6px;
+    padding: 9px 7px;
+    text-align: center;
+    font-size: 10.5px;
+    line-height: 1.5;
+  }
+  .ri-title { font-weight: 700; color: #0369a1; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+  .ri-algo  { color: #374151; font-size: 10px; }
+  .ri-score { color: #6b7280; font-size: 9px; margin-top: 3px; font-style: italic; font-family: 'SF Mono', monospace; }
+  .ri-owner { font-size: 8.5px; font-weight: 700; margin-top: 4px; padding: 1px 5px; border-radius: 3px; display: inline-block; }
+  .ri-gorse   { background: #dbeafe; color: #1e40af; }
+  .ri-fashion { background: #fef3c7; color: #92400e; }
+
+  /* ── rank fork ── */
+  .rank-fork {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px;
+    margin-top: 10px;
+  }
+  .rank-opt {
+    border-radius: 7px;
+    border: 1.5px solid;
+    padding: 10px;
+    text-align: center;
+    font-size: 10.5px;
+    background: #fff;
+  }
+  .ro-red    { border-color: #fca5a5; }
+  .ro-indigo { border-color: #a5b4fc; }
+  .ro-slate  { border-color: #cbd5e1; }
+  .rank-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 5px;
+  }
+  .rb-red    { background: #fee2e2; color: #991b1b; }
+  .rb-indigo { background: #e0e7ff; color: #3730a3; }
+  .rb-slate  { background: #f1f5f9; color: #475569; }
+  .ro-name   { font-weight: 700; color: #111827; margin-bottom: 4px; font-size: 11px; }
+  .ro-desc   { color: #6b7280; font-size: 10px; line-height: 1.5; }
+  .ro-owner  { margin-top: 7px; font-size: 8.5px; font-weight: 700; padding: 1px 5px; border-radius: 3px; display: inline-block; }
+
+  /* ── storage row ── */
+  .storage-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+
+  /* ── arrows ── */
+  .arrow-down {
+    display: flex;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 18px;
+    margin: 3px 0;
+    line-height: 1;
+  }
+  .arrow-label {
+    display: flex;
+    justify-content: center;
+    font-size: 9.5px;
+    color: #9ca3af;
+    margin-bottom: 2px;
+    font-style: italic;
+  }
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0 8px;
+  }
+  .section-divider hr { flex: 1; border: none; border-top: 1px dashed #e5e7eb; }
+  .section-divider span {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #9ca3af;
+    white-space: nowrap;
+  }
+
+  /* ── channel pill ── */
+  .channel-row { display: flex; gap: 8px; margin-top: 6px; }
+  .channel-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 4px;
+    padding: 3px 9px;
+    font-size: 10px;
+    color: #475569;
+    font-family: 'SF Mono', monospace;
+  }
+  .ch-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* ── note cards ── */
+  .note {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-left: 3px solid;
+    border-radius: 5px;
+    padding: 9px 11px;
+    font-size: 10.5px;
+    line-height: 1.6;
+    color: #374151;
+    margin-bottom: 10px;
+  }
+  .note-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+  }
+  .note ul { padding-left: 14px; }
+  .note li { margin-bottom: 2px; }
+  .note code {
+    font-size: 9.5px;
+    background: #f1f5f9;
+    padding: 1px 4px;
+    border-radius: 2px;
+    color: #0369a1;
+    font-family: 'SF Mono', monospace;
+  }
+  .note-blue   { border-left-color: #3b82f6; }
+  .note-green  { border-left-color: #10b981; }
+  .note-yellow { border-left-color: #f59e0b; }
+  .note-red    { border-left-color: #ef4444; }
+  .note-purple { border-left-color: #8b5cf6; }
+  .note-sky    { border-left-color: #0ea5e9; }
+  .note-gray   { border-left-color: #6b7280; }
+  .note-amber  { border-left-color: #f59e0b; }
+
+  /* merge bar */
+  .merge-bar {
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #7dd3fc, #38bdf8, #7dd3fc);
+    opacity: 0.6;
+    margin: 6px 0 3px;
+  }
+
+  /* ── bottom legend ── */
+  .bottom-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+  }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: #374151; }
+  .leg-swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+  .spacer    { height: 10px; }
+  .spacer-sm { height: 5px; }
+  code { font-family: 'SF Mono', 'Fira Code', monospace; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="slide-header">
+  <h1>Offline Recommendation Generation — Worker Pipeline</h1>
+  <div class="subtitle">worker/worker.go · worker/pipeline.go · logics/ · model/ctr/ · model/cf/</div>
+</div>
+
+<!-- ── Ownership legend ── -->
+<div class="ownership-bar">
+  <div class="own-tag"><div class="own-swatch swatch-gorse"></div>Gorse Core</div>
+  <div class="own-tag"><div class="own-swatch swatch-fashion"></div>fashion-recommend</div>
+  <div class="own-tag"><div class="own-swatch swatch-shared"></div>Shared boundary</div>
+</div>
+
+<!-- ── Main canvas ── -->
+<div class="canvas">
+
+  <!-- ════════════════════ LEFT NOTES ════════════════════ -->
+  <div class="left-notes">
+
+    <div class="note note-blue">
+      <div class="note-title" style="color:#1d4ed8">Sync Loop</div>
+      Polls master every <code>MetaTimeout</code>. Detects model version bump:
+      <code>latestModelId > currentModelId</code>. Signals <code>syncedChan</code> (buffered=1 — signals coalesce).
+    </div>
+
+    <div style="height:56px"></div>
+
+    <div class="note note-green">
+      <div class="note-title" style="color:#065f46">Pull Loop</div>
+      Wakes on <code>syncedChan</code>. Downloads from <code>blobStore</code> keyed by Unix timestamp. Atomically replaces both <code>MatrixFactorizationItems</code> and <code>ClickThroughRateModel</code> in Pipeline.
+    </div>
+
+    <div style="height:56px"></div>
+
+    <div class="note note-yellow">
+      <div class="note-title" style="color:#92400e">Main Loop Triggers</div>
+      Two wake conditions:<br>
+      <ul>
+        <li><code>ticker.C</code> — periodic schedule</li>
+        <li><code>pulledChan</code> — new model just loaded</li>
+      </ul>
+      Whichever fires first. Buffered=1 means a fast model pull won't queue multiple recommendation runs.
+    </div>
+
+    <div style="height:52px"></div>
+
+    <div class="note note-purple">
+      <div class="note-title" style="color:#5b21b6">Consistent Hashing</div>
+      Each worker handles a stable shard of users. Add a second worker → ~50% of users migrate automatically. No central partition table.
+      <br><br><code>consistent.Get(userId) == me</code>
+    </div>
+
+    <div style="height:50px"></div>
+
+    <div class="note note-gray">
+      <div class="note-title" style="color:#374151">Skip Guards</div>
+      Two early exits before any computation:<br>
+      <ul>
+        <li>User inactive beyond TTL</li>
+        <li>Digest match = cache still fresh</li>
+      </ul>
+      Saves the majority of CPU — only active users with stale caches proceed.
+    </div>
+
+  </div>
+
+  <!-- ════════════════════ CENTER FLOW ════════════════════ -->
+  <div class="center-flow">
+
+    <!-- ①②③ Three goroutines -->
+    <div class="zone zone-gorse">
+      <div class="zone-label zlabel-gorse">Gorse Core — worker/worker.go</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px;">
+
+        <div class="block b-blue">
+          <div class="block-title" style="color:#1d4ed8">① Sync()</div>
+          <div class="block-body">
+            <span class="chip ch-blue">goroutine</span><br>
+            GetMeta() RPC → master<br>
+            Parse full config JSON<br>
+            Connect DataClient<br>
+            Connect CacheClient<br>
+            Compare model IDs
+          </div>
+          <div class="block-ref">worker.go:134–239</div>
+        </div>
+
+        <div class="block b-green">
+          <div class="block-title" style="color:#065f46">② Pull()</div>
+          <div class="block-body">
+            <span class="chip ch-green">goroutine</span><br>
+            Wakes on syncedChan<br>
+            blobStore.Open(modelId)<br>
+            Unmarshal CF model<br>
+            Unmarshal CTR model<br>
+            Signal pulledChan
+          </div>
+          <div class="block-ref">worker.go:242–300</div>
+        </div>
+
+        <div class="block b-yellow">
+          <div class="block-title" style="color:#92400e">③ Main Loop</div>
+          <div class="block-body">
+            <span class="chip ch-yellow">goroutine</span><br>
+            select {<br>
+            &nbsp; case &lt;-ticker.C<br>
+            &nbsp; case &lt;-pulledChan<br>
+            }<br>
+            → run recommendations
+          </div>
+          <div class="block-ref">worker.go:361–393</div>
+        </div>
+
+      </div>
+
+      <div class="channel-row" style="margin-top:8px;">
+        <div class="channel-pill"><div class="ch-dot" style="background:#3b82f6"></div>syncedChan (buf=1)</div>
+        <div class="channel-pill"><div class="ch-dot" style="background:#10b981"></div>pulledChan (buf=1)</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+
+    <!-- ④ pullUsers -->
+    <div class="zone zone-gorse" style="margin-bottom:12px;">
+      <div class="zone-label zlabel-gorse">Gorse Core — worker/worker.go:409–438</div>
+      <div class="block b-indigo">
+        <div class="block-title" style="color:#3730a3">④ pullUsers() — Consistent Hash Sharding</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px;">
+          <div class="block-body">
+            Build consistent hash ring from <code>peers []string</code><br>
+            Stream all users from DataClient (batchSize=10,000)<br>
+            Keep only: <code>c.Get(userId) == me</code>
+          </div>
+          <div class="block-body" style="font-size:10px; color:#6b7280; border-left:1px solid #e5e7eb; padding-left:12px;">
+            N workers → each owns ~1/N of users<br>
+            Horizontal scale = zero extra coordination<br>
+            User shard is stable across restarts
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+    <div class="arrow-label">parallel.Detachable(len(users), p.Jobs) — one goroutine per user</div>
+
+    <!-- ⑤ Skip guards -->
+    <div class="zone zone-gorse" style="margin-bottom:12px;">
+      <div class="zone-label zlabel-gorse">Gorse Core — worker/pipeline.go</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:9px;">
+        <div class="block b-slate" style="text-align:center; padding:10px;">
+          <span class="chip ch-gray">SKIP</span>
+          <div class="block-body" style="margin-top:5px;">User inactive<br><span style="font-size:9.5px; color:#9ca3af;">last feedback beyond TTL</span></div>
+        </div>
+        <div class="block b-slate" style="text-align:center; padding:10px;">
+          <span class="chip ch-gray">SKIP</span>
+          <div class="block-body" style="margin-top:5px;">Cache still fresh<br><span style="font-size:9.5px; color:#9ca3af;">digest hash unchanged</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+    <div class="arrow-label">active user with stale cache — proceed to recall</div>
+
+    <div class="section-divider"><hr><span>Recall Stage</span><hr></div>
+
+    <!-- ⑥ Recall -->
+    <div class="zone zone-gorse" style="margin-bottom:12px;">
+      <div class="zone-label zlabel-gorse">Gorse Core — logics/recommend.go:126–147</div>
+      <div class="block b-sky" style="padding:13px;">
+        <div class="block-title" style="color:#0369a1">⑥ RecommendSequential() — 5 Recall Sources (concatenated, no cross-source normalization)</div>
+        <div class="recall-grid">
+
+          <div class="recall-item">
+            <div class="ri-title">Collaborative<br>Filtering</div>
+            <div class="ri-algo">HNSW<br>Dot Product</div>
+            <div class="ri-score">p_u · q_i</div>
+            <div class="ri-owner ri-gorse">Gorse</div>
+          </div>
+
+          <div class="recall-item">
+            <div class="ri-title">Item-to-Item</div>
+            <div class="ri-algo">IDF Jaccard /<br>Euclidean ANN /<br>LLM-embed</div>
+            <div class="ri-score">1 / (1 + d)</div>
+            <div class="ri-owner ri-gorse">Gorse</div>
+          </div>
+
+          <div class="recall-item">
+            <div class="ri-title">User-to-User</div>
+            <div class="ri-algo">IDF Jaccard<br>on item sets</div>
+            <div class="ri-score">sim(u, v)</div>
+            <div class="ri-owner ri-gorse">Gorse</div>
+          </div>
+
+          <div class="recall-item">
+            <div class="ri-title">Non-<br>Personalized</div>
+            <div class="ri-algo">expr() eval<br>top-K heap</div>
+            <div class="ri-score">f(item, feedback)</div>
+            <div class="ri-owner ri-fashion">fashion config</div>
+          </div>
+
+          <div class="recall-item">
+            <div class="ri-title">Latest</div>
+            <div class="ri-algo">Unix timestamp<br>sort desc</div>
+            <div class="ri-score">time.Unix()</div>
+            <div class="ri-owner ri-gorse">Gorse</div>
+          </div>
+
+        </div>
+        <div class="merge-bar"></div>
+        <div style="text-align:center; font-size:9.5px; color:#6b7280;">
+          → <code>candidates []cache.Score</code> &nbsp;·&nbsp; deduplication applied &nbsp;·&nbsp; scores not normalized across sources
+        </div>
+      </div>
+    </div>
+
+    <!-- fashion-recommend input arrow -->
+    <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin: -4px 0 10px;">
+      <div style="font-size:10px; color:#b45309; background:#fef3c7; border:1px solid #fcd34d; border-radius:4px; padding:3px 10px;">
+        ↑ <strong>fashion-recommend</strong> supplies user.Labels (style traits) &amp; item.Labels (categories, attributes) that feed recall feature extraction
+      </div>
+    </div>
+
+    <div class="section-divider"><hr><span>Replacement Injection (optional)</span><hr></div>
+
+    <!-- ⑦ Replacement injection -->
+    <div class="zone zone-shared" style="margin-bottom:12px;">
+      <div class="zone-label zlabel-shared">Gorse Core mechanism · fashion-recommend enables via config</div>
+      <div class="block b-purple">
+        <div class="block-title" style="color:#5b21b6">⑦ addReplacementCandidates() &nbsp;<span style="font-size:9px; color:#9ca3af; font-weight:400;">pipeline.go:505–547</span></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:7px;" class="block-body">
+          <div>Pull user's feedback history<br><span style="color:#9ca3af; font-size:9.5px;">positive + negative separately</span></div>
+          <div>Filter items already in candidates<br><span style="color:#9ca3af; font-size:9.5px;">deduplication</span></div>
+          <div>Inject with score=0<br><span style="color:#9ca3af; font-size:9.5px;">tagged pos/neg for decay later</span></div>
+        </div>
+        <div class="block-ref" style="margin-top:6px;">enabled by <code>Config.Recommend.Replacement.EnableReplacement = true</code> — set in fashion-recommend/config/config.toml</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+
+    <div class="section-divider"><hr><span>Ranking Stage</span><hr></div>
+
+    <!-- ⑧ Ranking fork -->
+    <div class="zone zone-gorse" style="margin-bottom:12px;">
+      <div class="zone-label zlabel-gorse">Gorse Core — worker/pipeline.go · logics/chat.go · model/ctr/</div>
+      <div class="block b-red" style="padding:13px;">
+        <div class="block-title" style="color:#991b1b">
+          ⑧ Ranking — routed by <code style="font-size:10px;">config.Recommend.Ranker.Type</code>
+        </div>
+        <div class="rank-fork">
+
+          <div class="rank-opt ro-red">
+            <div class="rank-badge rb-red">type = "fm"</div>
+            <div class="ro-name">FM Ranker</div>
+            <div class="ro-desc">
+              AFM BatchPredict()<br>
+              userId + itemId<br>
+              + userLabels + itemLabels<br>
+              + item embeddings<br><br>
+              <code style="font-size:9px;">score = σ(bias + linear<br>+ FM interactions<br>+ attention)</code>
+            </div>
+            <div class="block-ref" style="margin-top:6px;">pipeline.go:382–431<br>model/ctr/fm.go</div>
+            <div class="ro-owner" style="background:#dbeafe; color:#1e40af;">Gorse</div>
+            <div style="font-size:9px; color:#b45309; margin-top:4px; background:#fef3c7; border-radius:3px; padding:2px 5px;">
+              user.Labels from fashion-recommend trait extractor feed as features here
+            </div>
+          </div>
+
+          <div class="rank-opt ro-indigo">
+            <div class="rank-badge rb-indigo">type = "llm"</div>
+            <div class="ro-name">LLM Reranker</div>
+            <div class="ro-desc">
+              ChatReranker.Rank()<br>
+              query = render(user<br>+ recent liked items)<br>
+              docs = render(each item)<br><br>
+              → reranker API<br>
+              (qwen3-rerank)<br>
+              → relevance_score
+            </div>
+            <div class="block-ref" style="margin-top:6px;">pipeline.go:433–501<br>logics/chat.go:66–104</div>
+            <div class="ro-owner" style="background:#dbeafe; color:#1e40af;">Gorse</div>
+          </div>
+
+          <div class="rank-opt ro-slate">
+            <div class="rank-badge rb-slate">type = ""</div>
+            <div class="ro-name">Pass-Through</div>
+            <div class="ro-desc">
+              No reranking.<br>
+              Recall scores used as-is.<br><br>
+              Ordering undefined<br>across recall sources<br>with no normalization.<br><br>
+              <span style="color:#b45309; font-weight:600;">← Current mode in<br>fashion-recommend</span>
+            </div>
+            <div class="block-ref" style="margin-top:6px;">fashion-recommend/config/config.toml</div>
+            <div class="ro-owner" style="background:#fef3c7; color:#92400e;">fashion config choice</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- fashion note -->
+    <div style="display:flex; justify-content:center; margin: -4px 0 10px;">
+      <div style="font-size:10px; color:#b45309; background:#fef3c7; border:1px solid #fcd34d; border-radius:4px; padding:3px 10px;">
+        fashion-recommend currently sets <code>type = ""</code> (pass-through). FM or LLM can be enabled by changing config — no code changes needed.
+      </div>
+    </div>
+
+    <div class="section-divider"><hr><span>Score Decay (optional)</span><hr></div>
+
+    <!-- ⑨ Decay -->
+    <div class="zone zone-shared" style="margin-bottom:12px;">
+      <div class="zone-label zlabel-shared">Gorse Core mechanism · fashion-recommend enables via config</div>
+      <div class="block b-amber">
+        <div class="block-title" style="color:#92400e">⑨ applyReplacementDecay() &nbsp;<span style="font-size:9px; color:#9ca3af; font-weight:400;">pipeline.go:549–575</span></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:7px;" class="block-body">
+          <div>
+            <strong style="color:#92400e;">Positive history</strong><br>
+            score × <strong>0.8</strong><br>
+            <span style="color:#9ca3af; font-size:9.5px;">positive_replacement_decay</span>
+          </div>
+          <div>
+            <strong style="color:#374151;">Read / viewed</strong><br>
+            score × <strong>0.5</strong><br>
+            <span style="color:#9ca3af; font-size:9.5px;">read_replacement_decay</span>
+          </div>
+          <div style="color:#6b7280; font-size:10px;">
+            Familiar items stay visible but lose to fresh items on ties. Balances exploration vs exploitation.
+          </div>
+        </div>
+        <div class="block-ref" style="margin-top:6px;">decay values set in fashion-recommend/config/config.toml: positive=0.8, read=0.5</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+    <div class="section-divider"><hr><span>Output</span><hr></div>
+
+    <!-- ⑩⑪ Storage outputs -->
+    <div class="zone zone-gorse">
+      <div class="zone-label zlabel-gorse">Gorse Core — worker/pipeline.go · master/rpc.go</div>
+      <div class="storage-row">
+        <div class="block b-emerald">
+          <div class="block-title" style="color:#065f46">⑩ CacheClient.AddScores()</div>
+          <div class="block-body">
+            Key: <code>Recommend/{userId}</code><br>
+            Value: ranked <code>[]cache.Score</code><br>
+            TTL: <code>Config.Recommend.CacheExpire</code>
+          </div>
+          <div class="block-ref" style="margin-top:5px;">
+            Server reads on <code>GET /recommend/{userId}</code><br>
+            pipeline.go:218–230
+          </div>
+        </div>
+        <div class="block b-blue">
+          <div class="block-title" style="color:#1d4ed8">⑪ PushProgress() RPC</div>
+          <div class="block-body">
+            Reports task status to master<br>
+            Visible in dashboard<br>
+            <code>/dashboard/tasks</code>
+          </div>
+          <div class="block-ref" style="margin-top:5px;">
+            Stored in <code>remoteProgress sync.Map</code><br>
+            master/rpc.go:80–96
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+  </div>
+
+  <!-- ════════════════════ RIGHT NOTES ════════════════════ -->
+  <div class="right-notes">
+
+    <div class="note note-sky">
+      <div class="note-title" style="color:#0369a1">Model Distribution</div>
+      Model ID = Unix timestamp → monotonic, no CAS needed.<br><br>
+      Master GC's CTR models older than current CF model ID.<br><br>
+      <code>blobStore.Open(strconv.FormatInt(modelId, 10))</code>
+    </div>
+
+    <div style="height:50px"></div>
+
+    <div class="note note-purple">
+      <div class="note-title" style="color:#5b21b6">Parallelism</div>
+      <code>parallel.Detachable(len(users), p.Jobs, ...)</code><br><br>
+      All per-user work runs in a bounded goroutine pool. LLM reranker detaches from the pool during the API call to avoid blocking slots.
+    </div>
+
+    <div style="height:40px"></div>
+
+    <div class="note note-gray">
+      <div class="note-title" style="color:#374151">No Cross-Source Normalization</div>
+      CF scores: raw dot product (unbounded)<br>
+      Item-to-item: [0, 1]<br>
+      Timestamp: 10-digit int<br><br>
+      Only FM and LLM rankers unify these into a single score space. Pass-through leaves ordering undefined across sources.
+    </div>
+
+    <div style="height:24px"></div>
+
+    <div class="note note-yellow" style="border-left-color:#f59e0b;">
+      <div class="note-title" style="color:#92400e;">fashion-recommend Inputs</div>
+      The fashion layer contributes <strong>data</strong>, not control flow:<br>
+      <ul style="margin-top:5px;">
+        <li><strong>user.Labels</strong> — LLM-extracted style traits (extractor.go) used as CTR features</li>
+        <li><strong>item.Labels</strong> — fashion categories, attributes, embeddings</li>
+        <li><strong>Config choices</strong> — which recall sources, decay values, ranker type</li>
+      </ul>
+      The Worker pipeline machinery is 100% Gorse.
+    </div>
+
+    <div style="height:20px"></div>
+
+    <div class="note note-red">
+      <div class="note-title" style="color:#991b1b">FM vs LLM Tradeoff</div>
+      <ul>
+        <li><strong>FM</strong>: ~ms latency, needs training data, uses structured labels</li>
+        <li><strong>LLM</strong>: 100–500ms, zero training, semantic text understanding</li>
+        <li><strong>Now</strong>: fashion-recommend uses pass-through — no ranker active</li>
+      </ul>
+    </div>
+
+    <div style="height:18px"></div>
+
+    <div class="note note-green">
+      <div class="note-title" style="color:#065f46">Cache Design</div>
+      Worker writes → Server reads. Server holds no models, does no computation on the hot path.<br><br>
+      Cache miss → Server falls back to real-time CF. That fallback is <em>not</em> this pipeline — it's a direct Gorse server lookup.
+    </div>
+
+  </div>
+
+</div><!-- /canvas -->
+
+<!-- ── Bottom legend ── -->
+<div class="bottom-legend">
+  <div class="leg-item"><div class="leg-swatch" style="background:#eff6ff; border:1.5px solid #93c5fd;"></div>Gorse Core</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:#fffbeb; border:1.5px solid #fcd34d;"></div>fashion-recommend</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:#f5f3ff; border:1.5px solid #c4b5fd;"></div>Gorse mechanism, fashion-recommend config</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:#f0f9ff; border:1.5px solid #7dd3fc;"></div>Recall sources</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:#fff1f2; border:1.5px solid #fca5a5;"></div>Ranking</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:#ecfdf5; border:1.5px solid #6ee7b7;"></div>Cache output</div>
+</div>
+
+</body>
+</html>

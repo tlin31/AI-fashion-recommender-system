@@ -1,3 +1,16 @@
+# newly added by TL for git
+# Dependencies - Stop tracking huge library folders
+node_modules/
+dist/
+
+# Secrets - Critical for security (never commit these)
+.env
+*.local
+
+# Tooling/IDE - Local settings you don't need to share
+.claude/
+.idea/
+.DS_Store
 
 # Created by https://www.gitignore.io/api/go,windows,jetbrains
 

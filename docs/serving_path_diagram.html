@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagram B — The Serving Path</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    background: #f8f9fb;
+    color: #1a202c;
+    padding: 40px 48px 64px;
+  }
+
+  /* ── header ── */
+  .header { text-align: center; margin-bottom: 10px; }
+  .header h1 { font-size: 22px; font-weight: 700; color: #111827; }
+  .header .sub { font-size: 11px; color: #9ca3af; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.07em; font-family: 'SF Mono', monospace; }
+
+  /* ── ownership legend ── */
+  .own-strip { display: flex; justify-content: center; gap: 24px; margin: 14px 0 30px; flex-wrap: wrap; }
+  .own-item  { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #374151; }
+  .own-swatch { width: 26px; height: 10px; border-radius: 3px; }
+
+  /* ── path legend ── */
+  .path-strip { display: flex; justify-content: center; gap: 24px; margin-bottom: 30px; }
+  .path-item  { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #374151; }
+  .path-dot   { width: 13px; height: 13px; border-radius: 50%; }
+
+  /* ══════════════════════════════════════
+     CANVAS: 3 columns (left-note | center | right-note)
+  ══════════════════════════════════════ */
+  .canvas {
+    display: grid;
+    grid-template-columns: 185px 1fr 185px;
+    gap: 0;
+    max-width: 1260px;
+    margin: 0 auto;
+  }
+  .left-col  { padding-right: 14px; }
+  .right-col { padding-left:  14px; }
+  .mid-col   { min-width: 0; }
+
+  /* ── zone wrapper ── */
+  .zone {
+    border-radius: 10px; border: 2px solid;
+    padding: 14px 14px 12px;
+    margin-bottom: 10px; position: relative;
+  }
+  .z-fashion { background: #fffbeb; border-color: #fcd34d; }
+  .z-gorse   { background: #eff6ff; border-color: #93c5fd; }
+  .z-storage { background: #f8fafc; border-color: #cbd5e1; }
+  .z-green   { background: #f0fdf4; border-color: #86efac; }
+  .z-amber   { background: #fffbeb; border-color: #fde047; }
+  .z-blue    { background: #eff6ff; border-color: #93c5fd; }
+  .z-shared  { background: #f5f3ff; border-color: #c4b5fd; }
+
+  .zone-tag {
+    position: absolute; top: -11px; left: 14px;
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 1px 8px; border-radius: 4px; color: #fff;
+  }
+  .zt-fashion { background: #f59e0b; }
+  .zt-gorse   { background: #3b82f6; }
+  .zt-storage { background: #6b7280; }
+  .zt-green   { background: #16a34a; }
+  .zt-amber   { background: #d97706; }
+  .zt-blue    { background: #2563eb; }
+  .zt-shared  { background: #8b5cf6; }
+
+  /* ── actor / component blocks ── */
+  .actor {
+    background: #fff; border: 2px solid;
+    border-radius: 8px; padding: 11px 13px;
+    font-size: 11.5px; line-height: 1.6; color: #374151;
+    width: 100%;
+  }
+  .actor-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .actor-body  { color: #374151; line-height: 1.6; }
+  .actor-note  { font-size: 10px; color: #9ca3af; margin-top: 5px; font-style: italic; }
+
+  .a-slate  { border-color: #cbd5e1; }
+  .a-indigo { border-color: #a5b4fc; }
+  .a-green  { border-color: #86efac; }
+  .a-amber  { border-color: #fde047; }
+  .a-blue   { border-color: #93c5fd; }
+  .a-purple { border-color: #c4b5fd; }
+  .a-red    { border-color: #fca5a5; }
+  .a-sky    { border-color: #7dd3fc; }
+  .a-emer   { border-color: #6ee7b7; }
+
+  /* ── service call pill ── */
+  .svc-call {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 9px; border-radius: 4px;
+    font-family: 'SF Mono', monospace; margin-top: 4px;
+  }
+  .sc-get    { background: #dbeafe; color: #1e40af; }
+  .sc-post   { background: #d1fae5; color: #065f46; }
+  .sc-cache  { background: #f5f3ff; color: #5b21b6; }
+  .sc-db     { background: #fef3c7; color: #92400e; }
+  .sc-rpc    { background: #fee2e2; color: #991b1b; }
+
+  /* ── arrows ── */
+  .arrow {
+    display: flex; flex-direction: column; align-items: center;
+    margin: 3px 0;
+  }
+  .arrow-icon  { font-size: 20px; line-height: 1; color: #9ca3af; }
+  .arrow-label { font-size: 12.5px; font-weight: 500; color: #111827; text-align: center; line-height: 1.4; margin-top: 1px; }
+
+  /* ── decision diamond ── */
+  .decision-wrap { display: flex; flex-direction: column; align-items: center; margin: 4px 0; width: 100%; }
+  .diamond {
+    width: 140px; height: 68px;
+    background: #fff; border: 2px solid #94a3b8;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 10.5px; font-weight: 700; color: #111827;
+    line-height: 1.3; padding: 0 24px;
+  }
+  .d-green { background: #f0fdf4; border-color: #86efac; }
+  .d-amber { background: #fefce8; border-color: #fde047; }
+  .d-blue  { background: #eff6ff; border-color: #93c5fd; }
+  .d-slate { background: #f8fafc; border-color: #cbd5e1; }
+  .d-labels { display: flex; justify-content: space-between; width: 170px; margin-top: 3px; }
+  .d-yes  { font-size: 11px; font-weight: 700; color: #16a34a; }
+  .d-no   { font-size: 11px; font-weight: 700; color: #dc2626; }
+
+  /* ── three-path split ── */
+  .split-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  /* ── path column ── */
+  .path-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .path-header {
+    width: 100%; border-radius: 7px 7px 0 0;
+    padding: 9px 11px 8px; border: 2px solid; border-bottom: none;
+    text-align: center;
+  }
+  .ph-green { background: #dcfce7; border-color: #86efac; }
+  .ph-amber { background: #fef9c3; border-color: #fde047; }
+  .ph-blue  { background: #dbeafe; border-color: #93c5fd; }
+  .ph-tag   { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+  .ph-title { font-size: 12px; font-weight: 700; color: #111827; margin-top: 2px; line-height: 1.3; }
+
+  .path-body {
+    width: 100%; border: 2px solid; border-top: none;
+    border-radius: 0 0 7px 7px; padding: 10px 9px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  .pb-green { border-color: #86efac; background: #f9fefb; }
+  .pb-amber { border-color: #fde047; background: #fefff5; }
+  .pb-blue  { border-color: #93c5fd; background: #f7fbff; }
+
+  /* step node inside path col */
+  .step-node {
+    width: 100%; background: #fff; border: 1.5px solid;
+    border-radius: 6px; padding: 9px 10px;
+    font-size: 10.5px; line-height: 1.55; color: #374151;
+  }
+  .step-node .sn-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+  .sn-g { border-color: #86efac; }
+  .sn-a { border-color: #fde047; }
+  .sn-b { border-color: #93c5fd; }
+  .sn-s { border-color: #cbd5e1; background: #f8fafc; }
+
+  /* step number badge */
+  .snum {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    font-size: 9.5px; font-weight: 700; color: #fff;
+    flex-shrink: 0; margin-right: 4px; vertical-align: middle;
+  }
+  .sg { background: #16a34a; }
+  .sa { background: #d97706; }
+  .sb { background: #2563eb; }
+
+  /* outcome */
+  .outcome {
+    width: 100%; border-radius: 7px; border: 2px solid;
+    padding: 9px 11px; text-align: center;
+    font-size: 11.5px; font-weight: 700; line-height: 1.5;
+  }
+  .oc-g { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+  .oc-a { background: #fffbeb; border-color: #fde047; color: #92400e; }
+  .oc-b { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+
+  /* small arrow inside col */
+  .col-arrow { font-size: 16px; color: #9ca3af; text-align: center; line-height: 1; }
+
+  /* ── side notes ── */
+  .note {
+    background: #fff; border: 1px solid #e5e7eb; border-left: 3px solid;
+    border-radius: 5px; padding: 9px 11px;
+    font-size: 10.5px; line-height: 1.65; color: #374151; margin-bottom: 10px;
+  }
+  .note-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .note ul { padding-left: 13px; }
+  .note li  { margin-bottom: 2px; }
+  .note code { font-size: 9.5px; background: #f1f5f9; padding: 1px 4px; border-radius: 2px; color: #0369a1; font-family: 'SF Mono', monospace; }
+  .n-green  { border-left-color: #16a34a; }
+  .n-amber  { border-left-color: #d97706; }
+  .n-blue   { border-left-color: #2563eb; }
+  .n-purple { border-left-color: #8b5cf6; }
+  .n-gray   { border-left-color: #6b7280; }
+  .n-sky    { border-left-color: #0ea5e9; }
+  .n-red    { border-left-color: #dc2626; }
+
+  /* ── ownership badge ── */
+  .own-badge {
+    display: inline-block; font-size: 8px; font-weight: 700;
+    padding: 1px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px;
+  }
+  .ob-g { background: #dbeafe; color: #1e40af; }
+  .ob-f { background: #fef3c7; color: #92400e; }
+
+  /* ── divider ── */
+  .divider { display: flex; align-items: center; gap: 8px; margin: 6px 0 8px; }
+  .divider hr { flex: 1; border: none; border-top: 1px dashed #e5e7eb; }
+  .divider span { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; white-space: nowrap; }
+
+  /* ── shared response node ── */
+  .merge-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 6px; }
+  .merge-cell {
+    background: #fff; border: 1.5px solid #e5e7eb; border-radius: 6px;
+    padding: 8px 10px; font-size: 10.5px; color: #374151; text-align: center;
+  }
+  .mc-title { font-weight: 700; font-size: 10px; text-transform: uppercase; color: #374151; margin-bottom: 3px; }
+
+  /* ── bottom callout ── */
+  .callout {
+    max-width: 1260px; margin: 16px auto 0;
+    background: #eff6ff; border: 1.5px solid #93c5fd;
+    border-radius: 8px; padding: 13px 18px;
+    font-size: 12.5px; line-height: 1.7; color: #374151;
+  }
+  .callout strong { color: #111827; }
+
+  code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 10.5px; background: #f1f5f9; padding: 1px 4px; border-radius: 2px; color: #0369a1; }
+  strong { color: #111827; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="header">
+  <h1>Diagram B — The Serving Path</h1>
+  <div class="sub">server/rest.go · fashion-recommend/api/ · CacheClient (Redis) · DataClient (PostgreSQL)</div>
+</div>
+
+<!-- ── Ownership ── -->
+<div class="own-strip">
+  <div class="own-item"><div class="own-swatch" style="background:#f59e0b;"></div>fashion-recommend</div>
+  <div class="own-item"><div class="own-swatch" style="background:#3b82f6;"></div>Gorse Server</div>
+  <div class="own-item"><div class="own-swatch" style="background:#6b7280;"></div>Shared Storage</div>
+  <div class="own-item"><div class="own-swatch" style="background:#10b981;"></div>Gorse Worker (pre-computed)</div>
+</div>
+<div class="path-strip">
+  <div class="path-item"><div class="path-dot" style="background:#16a34a;"></div>Path A — Cache Hit</div>
+  <div class="path-item"><div class="path-dot" style="background:#d97706;"></div>Path B — Cache Miss</div>
+  <div class="path-item"><div class="path-dot" style="background:#2563eb;"></div>Path C — Session / Anonymous</div>
+</div>
+
+<!-- ═══════════════ CANVAS ═══════════════ -->
+<div class="canvas">
+
+  <!-- ══ LEFT NOTES ══ -->
+  <div class="left-col">
+
+    <div class="note n-gray">
+      <div class="note-title" style="color:#374151;">Server is Stateless</div>
+      Holds no trained models, runs no scoring. Reads config from Master via <code>GetMeta()</code> RPC. Adding more Server instances requires zero coordination.
+    </div>
+
+    <div style="height:50px"></div>
+
+    <div class="note n-gray">
+      <div class="note-title" style="color:#374151;">Two Entry Points</div>
+      <ul>
+        <li><strong>Returning user</strong> — provides <code>userId</code>, hits <code>GET /recommend</code></li>
+        <li><strong>Anonymous user</strong> — provides session items, hits <code>POST /session/recommend</code></li>
+      </ul>
+    </div>
+
+    <div style="height:52px"></div>
+
+    <div class="note n-green">
+      <div class="note-title" style="color:#15803d;">Path A — Hot Path</div>
+      The normal operating mode. Worker pre-computed everything. Server just reads Redis → filters → returns. Sub-millisecond.
+    </div>
+
+    <div style="height:56px"></div>
+
+    <div class="note n-amber">
+      <div class="note-title" style="color:#d97706;">Path B — Graceful Degradation</div>
+      Falls back to raw CF scores — a separate cache key written by Worker's CF update step. No re-ranking. Self-heals when Worker runs next cycle.
+    </div>
+
+    <div style="height:70px"></div>
+
+    <div class="note n-blue">
+      <div class="note-title" style="color:#2563eb;">Path C — Only Online Path</div>
+      The only path with live computation on the request. But all similarity scores are pre-built by Master — so it's still just cache reads + in-memory aggregation.
+    </div>
+
+  </div>
+
+  <!-- ══ CENTER FLOW ══ -->
+  <div class="mid-col">
+
+    <!-- ① ACTORS: Two client types -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+
+      <div class="zone z-fashion" style="margin-bottom:0;">
+        <div class="zone-tag zt-fashion">fashion-recommend</div>
+        <div class="actor a-amber" style="text-align:center;">
+          <div style="font-size:22px; margin-bottom:4px;">👤</div>
+          <div class="actor-title" style="color:#92400e;">Returning User</div>
+          <div class="actor-body">Has <code>userId</code> and interaction history</div>
+          <div style="margin-top:5px;"><span class="svc-call sc-get">GET /recommend/{userId}</span></div>
+          <div><span class="own-badge ob-f">fashion-recommend client</span></div>
+        </div>
+      </div>
+
+      <div class="zone z-fashion" style="margin-bottom:0;">
+        <div class="zone-tag zt-fashion">fashion-recommend</div>
+        <div class="actor a-blue" style="text-align:center;">
+          <div style="font-size:22px; margin-bottom:4px;">👻</div>
+          <div class="actor-title" style="color:#1d4ed8;">Anonymous / New User</div>
+          <div class="actor-body">No <code>userId</code> — provides session items in request body</div>
+          <div style="margin-top:5px;"><span class="svc-call sc-post">POST /session/recommend</span></div>
+          <div><span class="own-badge ob-f">fashion-recommend client</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">All requests arrive at the Gorse Server</div>
+    </div>
+
+    <!-- ② GORSE SERVER -->
+    <div class="zone z-gorse">
+      <div class="zone-tag zt-gorse">Gorse Core — server/rest.go</div>
+      <div class="actor a-indigo" style="text-align:center;">
+        <div style="font-size:22px; margin-bottom:4px;">🖥</div>
+        <div class="actor-title" style="color:#3730a3;">Gorse Server Node</div>
+        <div class="actor-body">
+          <strong>Stateless API layer.</strong> Holds no models, runs no inference, generates no recommendations.<br>
+          Syncs config from Master via <span class="svc-call sc-rpc">GetMeta() RPC</span> every <code>MetaTimeout</code>.<br>
+          Connects to DataClient and CacheClient based on received config.
+        </div>
+        <div><span class="own-badge ob-g">Gorse Core</span></div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">Routes to one of three paths based on endpoint + cache state</div>
+    </div>
+
+    <!-- ③ DECISION: which path? -->
+    <div class="zone z-storage" style="padding: 12px 14px;">
+      <div class="zone-tag zt-storage">Routing Decision</div>
+      <div class="decision-wrap">
+        <div class="diamond d-slate" style="font-size:10px; width:160px; height:72px;">Which request<br>type?</div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px; text-align:center; font-size:11px; font-weight:600;">
+        <div style="color:#15803d;">userId + cache populated</div>
+        <div style="color:#d97706;">userId + cache empty</div>
+        <div style="color:#2563eb;">no userId + session items</div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">three independent paths run from here</div>
+    </div>
+
+    <!-- ④ THREE PATH COLUMNS -->
+    <div class="split-row">
+
+      <!-- PATH A -->
+      <div class="path-col">
+        <div class="path-header ph-green">
+          <div class="ph-tag" style="color:#15803d;">Path A · Most Common</div>
+          <div class="ph-title">Cache Hit</div>
+        </div>
+        <div class="path-body pb-green">
+
+          <div class="step-node sn-g">
+            <div class="sn-title" style="color:#15803d;"><span class="snum sg">1</span>Read recommendation cache</div>
+            Look up <code>Recommend/{userId}</code> in CacheClient.<br>
+            <span class="svc-call sc-cache">CacheClient.GetScores()</span>
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="decision-wrap" style="margin:0;">
+            <div class="diamond d-green" style="width:110px; height:55px; font-size:10px;">Cache<br>hit?</div>
+            <div class="d-labels" style="width:140px;">
+              <span class="d-yes">✓ YES</span>
+              <span class="d-no">✗ → Path B</span>
+            </div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-g">
+            <div class="sn-title" style="color:#15803d;"><span class="snum sg">2</span>Filter seen items</div>
+            Read user feedback history.<br>
+            Remove already-interacted items.<br>
+            <span class="svc-call sc-db">DataClient.GetFeedback()</span>
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-g">
+            <div class="sn-title" style="color:#15803d;"><span class="snum sg">3</span>Category filter + top-N</div>
+            Apply <code>?category=</code> filter if present. Truncate to requested count. In-memory — no extra DB read.
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="outcome oc-g">
+            ✓ Full ranked list<br>
+            <span style="font-size:10px; font-weight:400;">Worker's recall + rank<br>pipeline result</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PATH B -->
+      <div class="path-col">
+        <div class="path-header ph-amber">
+          <div class="ph-tag" style="color:#92400e;">Path B · Fallback</div>
+          <div class="ph-title">Cache Miss</div>
+        </div>
+        <div class="path-body pb-amber">
+
+          <div class="step-node sn-a">
+            <div class="sn-title" style="color:#d97706;"><span class="snum sa">1</span>Recommend cache empty</div>
+            <code>Recommend/{userId}</code> returns nothing. TTL expired, Worker hasn't run, or new user.
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-a">
+            <div class="sn-title" style="color:#d97706;"><span class="snum sa">2</span>Read CF cache instead</div>
+            Falls back to <code>CollaborativeFiltering/{userId}</code>. Raw CF dot-product scores — written separately by Worker.<br>
+            <span class="svc-call sc-cache">CacheClient.GetScores()</span>
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="decision-wrap" style="margin:0;">
+            <div class="diamond d-amber" style="width:110px; height:55px; font-size:10px;">CF scores<br>exist?</div>
+            <div class="d-labels" style="width:140px;">
+              <span class="d-yes">✓ YES</span>
+              <span class="d-no">✗ empty</span>
+            </div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-a">
+            <div class="sn-title" style="color:#d97706;"><span class="snum sa">3</span>Same post-processing</div>
+            Filter seen items → category filter → top-N. Response shape identical to Path A — client cannot detect the degradation.
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="outcome oc-a">
+            ⚠ CF-ordered list<br>
+            <span style="font-size:10px; font-weight:400;">No CTR re-ranking<br>Self-heals next Worker cycle</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PATH C -->
+      <div class="path-col">
+        <div class="path-header ph-blue">
+          <div class="ph-tag" style="color:#1d4ed8;">Path C · Online</div>
+          <div class="ph-title">Session-Based</div>
+        </div>
+        <div class="path-body pb-blue">
+
+          <div class="step-node sn-b">
+            <div class="sn-title" style="color:#1d4ed8;"><span class="snum sb">1</span>Receive session items</div>
+            Request body: list of items engaged with this session + feedback types. Stateless — no userId stored.
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-b">
+            <div class="sn-title" style="color:#1d4ed8;"><span class="snum sb">2</span>Classify by signal strength</div>
+            Positive (liked, purchased) vs. weak (viewed). Positive items drive the similarity lookups.
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-b">
+            <div class="sn-title" style="color:#1d4ed8;"><span class="snum sb">3</span>Item-to-item lookup per item</div>
+            For each session item, read pre-computed similar items from CacheClient. Master built this index offline.<br>
+            <span class="svc-call sc-cache">CacheClient.GetSimilar()</span>
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="step-node sn-b">
+            <div class="sn-title" style="color:#1d4ed8;"><span class="snum sb">4</span>Aggregate scores + sort</div>
+            Items similar to multiple session items get scores <strong>summed</strong>. Exclude session items. Sort descending.
+            <div class="own-badge ob-g">Gorse</div>
+          </div>
+
+          <div class="col-arrow">↓</div>
+
+          <div class="outcome oc-b">
+            ↺ Session-relative list<br>
+            <span style="font-size:10px; font-weight:400;">Not cached — ephemeral<br>No personal history needed</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /split-row -->
+
+    <div class="arrow" style="margin-top:14px;">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">All three paths return the same JSON response shape — client cannot distinguish between them</div>
+    </div>
+
+    <!-- ⑤ SHARED STORAGE read sources -->
+    <div class="zone z-storage">
+      <div class="zone-tag zt-storage">Shared Storage — Read by Server (all paths)</div>
+      <div class="merge-row">
+        <div class="merge-cell" style="border-color:#c4b5fd;">
+          <div class="mc-title">⚡ CacheClient (Redis)</div>
+          <code>Recommend/{userId}</code><br>
+          <code>CF/{userId}</code><br>
+          <code>ItemToItem/{itemId}</code><br>
+          <span style="font-size:9.5px; color:#6b7280;">Pre-written by Worker &amp; Master</span>
+        </div>
+        <div class="merge-cell" style="border-color:#fcd34d;">
+          <div class="mc-title">🗄 DataClient (PostgreSQL)</div>
+          User feedback history<br>
+          <span style="font-size:9.5px; color:#6b7280;">For seen-item filtering only</span><br>
+          Read on every personalized request
+        </div>
+        <div class="merge-cell" style="border-color:#93c5fd;">
+          <div class="mc-title">🖥 Master (gRPC)</div>
+          Config + DataStore URL<br>
+          + CacheStore URL<br>
+          <span style="font-size:9.5px; color:#6b7280;">Polled every MetaTimeout</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-icon">↓</div>
+      <div class="arrow-label">JSON response returned to client</div>
+    </div>
+
+    <!-- ⑥ CLIENT RESPONSE -->
+    <div class="zone z-fashion">
+      <div class="zone-tag zt-fashion">fashion-recommend — Response</div>
+      <div class="actor a-amber" style="text-align:center;">
+        <div style="font-size:20px; margin-bottom:4px;">📱</div>
+        <div class="actor-title" style="color:#92400e;">Frontend / API Consumer</div>
+        <div class="actor-body">
+          Receives <code>[]Item</code> with <code>id</code>, <code>score</code>, <code>categories</code>, <code>timestamp</code><br>
+          Response shape is identical regardless of which path was taken
+        </div>
+        <div><span class="own-badge ob-f">fashion-recommend frontend</span></div>
+      </div>
+    </div>
+
+    <!-- ⑦ Worker pre-computation note -->
+    <div class="divider" style="margin-top:14px;"><hr><span>Pre-computation that makes serving fast</span><hr></div>
+
+    <div class="zone z-shared">
+      <div class="zone-tag zt-shared">Gorse Worker — runs offline, not on request path</div>
+      <div class="actor a-purple" style="text-align:center;">
+        <div style="font-size:20px; margin-bottom:4px;">⚙️</div>
+        <div class="actor-title" style="color:#5b21b6;">Worker Pipeline (pre-computed)</div>
+        <div class="actor-body">
+          Runs on schedule: 5 recall sources → rank (FM / LLM / pass-through) → writes <code>Recommend/{userId}</code> to CacheClient.<br>
+          This is what Path A reads. Without it, every request degrades to Path B or C.
+        </div>
+        <div><span class="own-badge ob-g">Gorse Core</span></div>
+      </div>
+    </div>
+
+  </div><!-- /mid-col -->
+
+  <!-- ══ RIGHT NOTES ══ -->
+  <div class="right-col">
+
+    <div class="note n-gray">
+      <div class="note-title" style="color:#374151;">Config Sync</div>
+      Server has no local config file. It pulls the full config JSON from Master on every poll. Change config on Master → all Server nodes converge within one <code>MetaTimeout</code> interval.
+    </div>
+
+    <div style="height:52px;"></div>
+
+    <div class="note n-gray">
+      <div class="note-title" style="color:#374151;">SQLite Proxy</div>
+      If <code>DataStore</code> or <code>CacheStore</code> is SQLite (local file), Server uses a gRPC proxy through Master instead of a direct connection. Transparent to all path logic.
+    </div>
+
+    <div style="height:130px;"></div>
+
+    <div class="note n-green">
+      <div class="note-title" style="color:#15803d;">Why Path A is Fast</div>
+      The Worker did all recall + ranking work offline. The Server's only "computation" is: 1 Redis read + in-memory list filter. Total: &lt;5ms in typical deployments.
+    </div>
+
+    <div style="height:52px;"></div>
+
+    <div class="note n-amber">
+      <div class="note-title" style="color:#d97706;">Path B Self-Heals</div>
+      A cache miss does NOT trigger a Worker run. The degraded CF-only response is served until the Worker's next scheduled cycle naturally populates the cache. No manual intervention needed.
+    </div>
+
+    <div style="height:82px;"></div>
+
+    <div class="note n-blue">
+      <div class="note-title" style="color:#2563eb;">Path C as RAG Retrieval</div>
+      Session items = the query. Item-to-item index = the document store. Score aggregation = the retrieval step. The closest analog to pure RAG in the entire system — no user model involved.
+    </div>
+
+    <div style="height:30px;"></div>
+
+    <div class="note n-purple">
+      <div class="note-title" style="color:#5b21b6;">Identical Response Shape</div>
+      All three paths return the exact same JSON structure. The client has no way to know whether it received a full re-ranked result (Path A), a CF fallback (Path B), or a session-based list (Path C).
+    </div>
+
+  </div>
+
+</div><!-- /canvas -->
+
+<!-- ── Bottom callout ── -->
+<div class="callout">
+  <strong>The architectural principle:</strong> The Server is stateless by design. Every path either reads a pre-populated cache written by the Worker (Paths A &amp; B) or reads a pre-built similarity index written by the Master (Path C). The Server can scale horizontally with no coordination — all shared state lives in CacheClient and DataClient, which every node reads from independently.
+</div>
+
+</body>
+</html>
