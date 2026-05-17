@@ -70,7 +70,10 @@ type = "items"
 column = ""
 
 # 协同过滤配置
+# type must be "mf" (matrix factorization) or "none". Default is "none",
+# which causes Gorse to reject any ranker that lists "collaborative".
 [recommend.collaborative]
+type = "mf"
 fit_period = "24h"
 fit_epoch = 50
 optimize_period = "168h"

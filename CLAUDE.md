@@ -327,3 +327,90 @@ CREATE TABLE comments (
 - `config/config.toml` — Gorse core configuration (DB, ports, algorithm parameters, LLM)
 - `fashion-recommend/config/config.toml` — fashion subsystem configuration
 - `fashion-recommend/docker-compose.yml` — spins up Postgres, Redis, and all three Gorse nodes
+
+---
+
+## Stage 4: Frontend HITL Integration — Design Decisions
+
+> Branch: `feat/HITL`. These decisions were made but not yet implemented.
+> Pick up from here in the next session.
+
+### Decision 1: Replace Go chat with Python agent on `/ai-chat`
+
+The current `/ai-chat` page calls the Go backend's `/api/ai/chat` endpoint, which is a
+stateless single-shot LLM call with no connection to Gorse or the real product catalogue
+(it hallucinates recommendations from training data).
+
+**Chosen approach:** Wire `/ai-chat` to the Python agent (`POST /api/ai/agent-chat` on
+`:8001`) instead. The Python agent is strictly better: it queries Gorse for real products
+via `get_recommendations` tool, has multi-turn PostgreSQL-backed memory, and supports HITL.
+No new page or tab needed — same URL, better backend.
+
+### Decision 2: HITL approval card is inline in the chat thread
+
+When `pending_approval: true` is returned by the agent, an approval card appears as the
+**next message bubble** in the conversation — not a modal, not a sidebar, not a separate page.
+
+Rationale: the approval is a direct response to something the user just said. Routing them
+away breaks the conversational moment.
+
+**Card behaviour:**
+- Appears immediately after the AI's response message
+- Shows the staged trait fields with scores (e.g. `minimalist 0.8`, `price: low`)
+- Input box is **disabled** while the card is visible (no new messages mid-approval)
+- **Confirm** button → calls `POST /api/ai/agent-resume` with `{ approved: true }`; card
+  replaced by a small success chip ("✓ Preferences saved"); input re-enabled
+- **Cancel** button → calls `POST /api/ai/agent-resume` with `{ approved: false }`; card
+  dismisses quietly; input re-enabled
+- Uses the existing orange/amber colour palette from `ProductCard.tsx`
+
+### Decision 3: Proxy routing
+
+Add two new proxy entries to `fashion-recommend/frontend/vite.config.ts`:
+```
+/api/ai/agent-chat  →  http://localhost:8001
+/api/ai/agent-resume → http://localhost:8001
+```
+The existing `/api` proxy (→ `:5001`) still handles all Go backend routes.
+
+### Files to change for Stage 4
+
+| File | Change |
+|---|---|
+| `fashion-recommend/frontend/vite.config.ts` | Add proxy entries for `:8001` agent endpoints |
+| `fashion-recommend/frontend/src/services/api.ts` | Add `agentChat()` and `agentResume()` functions |
+| `fashion-recommend/frontend/src/pages/AIChat.tsx` | Switch endpoint; add approval card UI; disable input during pending |
+
+---
+
+## Known Gaps / Future Work
+
+### Feedback not reaching Gorse (high priority)
+User interactions from the frontend are **not** being sent to Gorse as feedback signals.
+The recommendation algorithms train on seed data only.
+
+| Interaction | Status | Fix needed |
+|---|---|---|
+| **Like** ❤️ | Saves to PostgreSQL `likes` only | `like_handlers.go` → add `gorseClient.InsertFeedback` call with type `"favorite"` |
+| **Add to Cart** | Dead button — no `onClick` | `ProductCard.tsx` → add handler calling `addFeedback` with type `"add_to_cart"` |
+| **View / impression** | Not tracked | `ProductCard.tsx` → add `IntersectionObserver`; send `"view"` feedback on scroll-into-view |
+
+Files: `fashion-recommend/api/like_handlers.go`, `fashion-recommend/frontend/src/components/ProductCard.tsx`
+
+### Hardcoded user ID in Discover feed
+`HomePage.tsx` line 27 always fetches recommendations for `user_001` regardless of who
+is logged in. Fix: read username from `localStorage.getItem('username')` and pass it to
+`apiService.getRecommendations()`.
+
+File: `fashion-recommend/frontend/src/pages/HomePage.tsx`
+
+### Product images missing
+`public/images/` contains generic stock photos, not `product_001.jpg` etc. `ProductCard`
+falls back to showing the product ID as text. Add real product images or generate
+placeholder images named `product_001.jpg` through `product_010.jpg`.
+
+### Edge case hardening in Python agent (discussed, not coded)
+- **409 guard on `chat()`** — reject new messages while a HITL interrupt is pending
+- **409 guard on `resume()`** — reject resume calls when no interrupt is active
+- **DB failure safety in `write_traits_node`** — `try/except` to prevent silent graph crash
+- **Score clamping in `_merge_trait_updates`** — clamp style/colour scores to `[0.0, 1.0]`

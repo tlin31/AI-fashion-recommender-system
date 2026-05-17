@@ -9,8 +9,8 @@ services:
       POSTGRES_DB: gorse
       POSTGRES_USER: gorse
       POSTGRES_PASSWORD: gorse_pass
-    ports:
-      - "5432:5432"
+    # port 5432 not exposed to host — local Postgres is already on :5432.
+    # Gorse containers connect via Docker internal network (hostname "postgres").
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
