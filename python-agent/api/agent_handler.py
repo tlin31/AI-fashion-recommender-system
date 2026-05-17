@@ -17,7 +17,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from agent.graph import AgentGraph, AgentResult
 from db.client import DBClient
@@ -45,6 +45,18 @@ class AgentChatResponse(BaseModel):
     iterations: int
     tokens_used: int = 0
     trace: list[dict] | None = None
+    # HITL fields — non-empty when the graph paused at interrupt_before=["write_traits"]
+    pending_approval: bool = False
+    pending_trait_updates: list[dict] = Field(default_factory=list)
+
+
+class AgentResumeRequest(BaseModel):
+    approved: bool  # True = write traits to DB; False = discard staged updates
+
+
+class AgentResumeResponse(BaseModel):
+    approved: bool
+    message: str  # human-readable confirmation shown in the chat UI
 
 
 # ---------------------------------------------------------------------------
@@ -99,10 +111,44 @@ async def agent_chat(
         session_id=session_id,
         iterations=result.iterations,
         tokens_used=result.tokens_used,
+        pending_approval=result.pending_approval,
+        pending_trait_updates=result.pending_trait_updates,
     )
     if req.include_trace:
         resp.trace = [t.model_dump() for t in result.trace]
     return resp
+
+
+# ---------------------------------------------------------------------------
+# Resume route — POST /api/ai/agent-resume
+# ---------------------------------------------------------------------------
+
+@router.post("/agent-resume", response_model=AgentResumeResponse)
+async def agent_resume(
+    req: AgentResumeRequest,
+    request: Request,
+) -> AgentResumeResponse:
+    """Approve or reject a pending HITL trait-write interrupt.
+
+    The frontend calls this after the user taps 「确认保存」or 「取消」on the
+    approval card that appears when pending_approval=True in the chat response.
+
+    approved=True  → graph resumes, write_traits_node writes to DB + Gorse.
+    approved=False → staged updates are discarded; graph advances to END.
+    """
+    session_id: str | None = request.headers.get("X-Session-ID")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="缺少 X-Session-ID 请求头")
+
+    graph: AgentGraph = request.app.state.graph
+
+    try:
+        await graph.resume(session_id, req.approved)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    msg = "偏好已更新，将影响后续推荐。" if req.approved else "已取消本次偏好更新。"
+    return AgentResumeResponse(approved=req.approved, message=msg)
 
 
 # ---------------------------------------------------------------------------

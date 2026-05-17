@@ -26,12 +26,13 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
 from agent.tools import make_tools
 from db.client import DBClient
 from db.gorse_client import GorseClient
+from traits.gorse_sync import GorseSync
 
 # ---------------------------------------------------------------------------
 # System prompt — matches Go's buildInitialMessages() verbatim
@@ -44,6 +45,7 @@ _SYSTEM_PROMPT_TEMPLATE = """你是「时尚小助手」，一个专业的时尚
 - get_user_preferences：获取当前用户已保存的时尚偏好（风格、颜色、价格、品牌等），无需传参
 - get_item_details：获取指定商品的名称、品类和属性标签
 - search_fashion_trends：搜索当前时尚趋势和流行资讯
+- update_user_traits：当用户在对话中明确表达了风格偏好（如「我喜欢简约风」）、颜色偏好、价格敏感度或品牌偏好时，调用此工具暂存偏好更新，等待用户确认后写入系统。每次对话最多调用一次。
 
 在回答涉及推荐、偏好或购物的问题时，优先调用 get_user_preferences 了解用户品味，再调用 get_recommendations 获取商品列表。
 始终以友好、专业的语气用中文回答用户。"""
@@ -65,7 +67,9 @@ class AgentResult(BaseModel):
     answer: str
     trace: list[TraceStep]
     iterations: int
-    tokens_used: int = 0  # total tokens consumed this turn (router + finalizer)
+    tokens_used: int = 0
+    pending_approval: bool = False
+    pending_trait_updates: list[dict] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -74,10 +78,11 @@ class AgentResult(BaseModel):
 
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
-    user_id: str       # injected into tools via InjectedState
-    trace: list[dict]  # list[TraceStep dicts] accumulated across router calls
+    user_id: str
+    trace: list[dict]
     iterations: int
-    tokens_used: int   # cumulative tokens this turn (Fix 2A — cannot derive from messages)
+    tokens_used: int
+    pending_trait_updates: list[dict]  # staged by update_user_traits tool, flushed by write_traits node
 
 
 # ---------------------------------------------------------------------------
@@ -100,6 +105,47 @@ def _has_signal(content: str) -> bool:
         return parsed is not None
     except (json.JSONDecodeError, ValueError):
         return len(content) > 30  # non-JSON (e.g. Tavily results) need some body
+
+
+# ---------------------------------------------------------------------------
+# Trait merge helper
+# ---------------------------------------------------------------------------
+
+def _merge_trait_updates(existing: dict, updates: list[dict]) -> dict:
+    """Merge a list of staged trait update dicts into an existing traits dict.
+
+    Rules (mirror the extractor's _merge logic):
+      - style_preferences / color_preferences: update scores (staged value wins).
+      - price_sensitivity: last non-empty value wins.
+      - brand_preferences / occasions / keywords / interests: union, deduplicated.
+    """
+    # Start from a deep-ish copy of existing so we don't mutate the DB row.
+    merged: dict = {
+        "style_preferences": dict(existing.get("style_preferences") or {}),
+        "color_preferences": dict(existing.get("color_preferences") or {}),
+        "price_sensitivity": existing.get("price_sensitivity") or "",
+        "brand_preferences": list(existing.get("brand_preferences") or []),
+        "occasions": list(existing.get("occasions") or []),
+        "keywords": list(existing.get("keywords") or []),
+        "interests": list(existing.get("interests") or []),
+    }
+
+    for upd in updates:
+        if upd.get("style_preferences"):
+            merged["style_preferences"].update(upd["style_preferences"])
+        if upd.get("color_preferences"):
+            merged["color_preferences"].update(upd["color_preferences"])
+        if upd.get("price_sensitivity"):
+            merged["price_sensitivity"] = upd["price_sensitivity"]
+        for field in ("brand_preferences", "occasions", "keywords", "interests"):
+            if upd.get(field):
+                seen = set(merged[field])
+                for item in upd[field]:
+                    if item and item not in seen:
+                        merged[field].append(item)
+                        seen.add(item)
+
+    return merged
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +178,8 @@ class AgentGraph:
     ) -> None:
         self._config = config
         self._checkpointer = checkpointer
+        self._db = db
+        self._gorse_sync = GorseSync(db, gorse)
         self._tools = make_tools(db, gorse)
 
         # Router: Gemini with tools bound — makes every tool-call decision.
@@ -299,14 +347,17 @@ class AgentGraph:
             # Branch A — iteration cap: router hit the max loop count.
             if state.get("iterations", 0) >= max_iter:
                 return "quality_gate"
+
             # Branch B — token budget: cumulative cost exceeds the per-turn cap.
             # Fires before the tool-call check so an over-budget response doesn't
             # trigger another expensive tool + router cycle.
             if state.get("tokens_used", 0) >= token_budget:
                 return "quality_gate"
+
             # Branch C — continue ReAct loop: router decided to call a tool.
             if getattr(last, "tool_calls", None):
                 return "tools"
+                
             # Branch D — clean stop: router produced a plain-text response,
             # meaning it judged no more tools are needed.
             return "quality_gate"
@@ -332,6 +383,47 @@ class AgentGraph:
                 return "finalizer"
             return "fallback"
 
+        # ---- write_traits_node ----
+        # Runs AFTER the finalizer/fallback produces the answer.
+        # interrupt_before=["write_traits"] pauses the graph here so the
+        # frontend can ask the user to approve or reject the staged updates
+        # before anything is written to the DB.
+        #
+        # On APPROVE: resume() calls ainvoke(None, config) → this node fires.
+        # On REJECT:  resume() calls aupdate_state(..., as_node="write_traits")
+        #             which advances the cursor past this node to END without
+        #             executing the body.
+        async def write_traits_node(state: AgentState) -> dict:
+            updates = state.get("pending_trait_updates") or []
+            if not updates:
+                return {"pending_trait_updates": []}
+
+            user_id = state["user_id"]
+
+            # Read current traits from DB so we merge rather than overwrite.
+            existing_row = await self._db.get_user_traits(user_id)
+            existing_traits: dict = (existing_row or {}).get("traits") or {}
+            existing_confidence: float = (existing_row or {}).get("confidence_score", 0.5)
+
+            merged = _merge_trait_updates(existing_traits, updates)
+
+            # Small confidence bump when the user explicitly confirms preferences.
+            new_confidence = min(existing_confidence + 0.1, 1.0)
+
+            await self._db.save_user_traits(user_id, merged, new_confidence)
+            await self._gorse_sync.sync_user_traits(user_id)
+
+            return {"pending_trait_updates": []}
+
+        # ---- should_write_traits routing ----
+        # Only route through write_traits (and trigger the interrupt) when there
+        # are actually staged updates.  If the user never expressed a preference
+        # this turn, go straight to END — no approval prompt needed.
+        def should_write_traits(state: AgentState) -> str:
+            if state.get("pending_trait_updates"):
+                return "write_traits"
+            return END
+
         # ---- wire graph ----
         graph = StateGraph(AgentState)
         graph.add_node("router", router_node)
@@ -339,6 +431,7 @@ class AgentGraph:
         graph.add_node("quality_gate", quality_gate_node)
         graph.add_node("finalizer", finalizer_node)
         graph.add_node("fallback", fallback_node)
+        graph.add_node("write_traits", write_traits_node)
         graph.set_entry_point("router")
         graph.add_conditional_edges(
             "router",
@@ -351,9 +444,26 @@ class AgentGraph:
             quality_gate_route,
             {"finalizer": "finalizer", "fallback": "fallback"},
         )
-        graph.add_edge("finalizer", END)
-        graph.add_edge("fallback", END)
-        return graph.compile(checkpointer=self._checkpointer)
+        # Both answer nodes feed into should_write_traits: only take the
+        # write_traits branch when there are pending updates to approve.
+        graph.add_conditional_edges(
+            "finalizer",
+            should_write_traits,
+            {"write_traits": "write_traits", END: END},
+        )
+        graph.add_conditional_edges(
+            "fallback",
+            should_write_traits,
+            {"write_traits": "write_traits", END: END},
+        )
+        graph.add_edge("write_traits", END)
+        return graph.compile(
+            checkpointer=self._checkpointer,
+            # Pause BEFORE write_traits so the user can approve/reject.
+            # The graph serialises to the checkpointer here; resume() or
+            # reject() advances it from this exact point.
+            interrupt_before=["write_traits"],
+        )
 
 
     async def chat(
@@ -362,7 +472,8 @@ class AgentGraph:
         user_id: str,
         session_id: str,
     ) -> AgentResult:
-        """Run the ReAct loop and return the final answer + trace.
+        """ the only public method on AgentGraph & the single entry point the API handler calls to run the agent.
+        Run the ReAct loop and return the final answer + trace.
 
         With checkpointing enabled, conversation history is reconstructed
         automatically from PostgreSQL — the caller only sends the new message.
@@ -386,12 +497,15 @@ class AgentGraph:
 
         # trace, iterations, and tokens_used have no reducer (plain assignment) —
         # reset each turn so AgentResult reflects only the current request.
+        # pending_trait_updates also resets: a new user message starts a fresh
+        # approval cycle (the frontend blocks new messages during a pending approval).
         initial: AgentState = {
             "messages": seed_messages,
             "user_id": user_id,
             "trace": [],
             "iterations": 0,
             "tokens_used": 0,
+            "pending_trait_updates": [],
         }
         result = await self._compiled.ainvoke(initial, config)
 
@@ -409,9 +523,39 @@ class AgentGraph:
         raw_trace: list[dict] = result.get("trace") or []
         trace = [TraceStep(**t) for t in raw_trace]
 
+        # Detect HITL interrupt: if pending_trait_updates is still non-empty after
+        # ainvoke returns, the graph paused at interrupt_before=["write_traits"].
+        # write_traits_node clears the list on completion, so a non-empty list here
+        # means the graph is suspended and waiting for the user to approve or reject.
+        staged: list[dict] = result.get("pending_trait_updates") or []
+
         return AgentResult(
             answer=answer,
             trace=trace,
             iterations=result.get("iterations", 0),
             tokens_used=result.get("tokens_used", 0),
+            pending_approval=bool(staged),
+            pending_trait_updates=staged,
         )
+
+    async def resume(self, session_id: str, approved: bool) -> None:
+        """Resume a graph that is suspended at interrupt_before=["write_traits"].
+
+        approved=True  → run write_traits_node (DB write + Gorse sync).
+        approved=False → skip write_traits by pretending it already ran with an
+                         empty pending list (aupdate_state as_node advances the
+                         graph cursor to END without executing the node body).
+        """
+        config = {"configurable": {"thread_id": session_id}}
+        if approved:
+            # Resume normally — write_traits_node fires and flushes the updates.
+            await self._compiled.ainvoke(None, config)
+        else:
+            # Inject the node's "result" directly so LangGraph advances past it.
+            # as_node="write_traits" tells the checkpointer that write_traits ran
+            # and returned {"pending_trait_updates": []}, moving the cursor to END.
+            await self._compiled.aupdate_state(
+                config,
+                {"pending_trait_updates": []},
+                as_node="write_traits",
+            )

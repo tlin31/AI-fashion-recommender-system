@@ -19,9 +19,10 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from langchain_core.messages import ToolMessage
+from langchain_core.tools import InjectedToolCallId, tool
 from langchain_tavily import TavilySearch
-from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedState
+from langgraph.types import Command
 
 from db.client import DBClient
 from db.gorse_client import GorseClient
@@ -236,4 +237,90 @@ def make_tools(
         ),
     )
 
-    return [get_recommendations, get_user_preferences, get_item_details, tavily]
+    # ------------------------------------------------------------------
+    # Tool 5: update_user_traits
+    # Stages explicit preference updates expressed during conversation into
+    # pending_trait_updates state.  Nothing is written to the DB here —
+    # the write_traits graph node flushes the staged list after user
+    # approval (HITL interrupt_before=["write_traits"]).
+    #
+    # All 7 fields mirror the TraitsData schema shared by:
+    #   - Go:    fashion-recommend/database/models.go  TraitsData struct
+    #   - Python: python-agent/traits/extractor.py    _AI_SYSTEM_PROMPT / merge output
+    #   - Gorse:  python-agent/traits/gorse_sync.py   _traits_to_labels()
+    # ------------------------------------------------------------------
+    @tool
+    async def update_user_traits(
+        style_preferences: Annotated[
+            dict[str, float] | None,
+            "风格偏好评分，键为风格名（如 minimalist/casual/formal/streetwear/vintage/romantic），值为 0.0–1.0。"
+        ] = None,
+        color_preferences: Annotated[
+            dict[str, float] | None,
+            "颜色偏好评分，键为颜色名（如 black/white/gray/blue/red/pink/beige/brown/green/yellow），值为 0.0–1.0。"
+        ] = None,
+        price_sensitivity: Annotated[
+            str | None,
+            "价格敏感度，只能是 'low'、'medium' 或 'high' 之一。"
+        ] = None,
+        brand_preferences: Annotated[
+            list[str] | None,
+            "用户偏好的品牌列表，如 ['ZARA', 'UNIQLO']。"
+        ] = None,
+        occasions: Annotated[
+            list[str] | None,
+            "穿着场合列表，如 ['work', 'casual', 'party', 'date', 'sport', 'travel', 'wedding']。"
+        ] = None,
+        keywords: Annotated[
+            list[str] | None,
+            "从对话中提取的时尚关键词列表，如 ['简约', '舒适']。"
+        ] = None,
+        interests: Annotated[
+            list[str] | None,
+            "用户兴趣列表，如 ['运动', '旅行']。会编码为 Gorse 的 interest: 标签。"
+        ] = None,
+        tool_call_id: Annotated[str, InjectedToolCallId] = "",
+        pending_trait_updates: Annotated[list, InjectedState("pending_trait_updates")] = [],
+    ) -> Command:
+        """当用户在对话中明确表达时尚偏好时调用，将偏好更新暂存等待用户确认。
+        确认后系统会将更新写入数据库并同步到推荐引擎，使后续推荐立即反映新偏好。
+        每次对话最多调用一次。请勿在未收到用户明确偏好陈述时主动调用。
+        """
+        _VALID_PRICE = {"low", "medium", "high"}
+
+        if price_sensitivity is not None and price_sensitivity not in _VALID_PRICE:
+            return Command(update={
+                "messages": [ToolMessage(
+                    content=f"price_sensitivity 值无效：'{price_sensitivity}'，必须是 low/medium/high。",
+                    tool_call_id=tool_call_id,
+                )]
+            })
+
+        update = {k: v for k, v in {
+            "style_preferences": style_preferences,
+            "color_preferences": color_preferences,
+            "price_sensitivity": price_sensitivity,
+            "brand_preferences": brand_preferences,
+            "occasions": occasions,
+            "keywords": keywords,
+            "interests": interests,
+        }.items() if v is not None}
+
+        if not update:
+            return Command(update={
+                "messages": [ToolMessage(
+                    content="没有检测到有效的偏好字段，未暂存任何更新。",
+                    tool_call_id=tool_call_id,
+                )]
+            })
+
+        field_names = "、".join(update.keys())
+        return Command(update={
+            "pending_trait_updates": pending_trait_updates + [update],
+            "messages": [ToolMessage(
+                content=f"已暂存偏好更新（{field_names}），等待您确认后写入。",
+                tool_call_id=tool_call_id,
+            )],
+        })
+
+    return [get_recommendations, get_user_preferences, get_item_details, tavily, update_user_traits]
