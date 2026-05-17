@@ -69,7 +69,9 @@ async def test_invalid_price_sensitivity_returns_error(traits_tool_coroutine):
     cmd = await _invoke(traits_tool_coroutine, price_sensitivity="medium-high")
     msg = _tool_message(cmd)
     assert isinstance(msg, ToolMessage)
-    assert "无效" in msg.content or "low/medium/high" in msg.content
+    # Updated to match English message: "Invalid price_sensitivity value: ... Must be one of: low / medium / high."
+    # 原中文断言（保留供参考）: assert "无效" in msg.content or "low/medium/high" in msg.content
+    assert "Invalid" in msg.content or "low" in msg.content
     # Pending list must NOT have grown
     assert "pending_trait_updates" not in cmd.update or cmd.update["pending_trait_updates"] == []
 

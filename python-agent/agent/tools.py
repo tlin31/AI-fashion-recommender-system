@@ -72,14 +72,24 @@ def make_tools(
         user_id: Annotated[str, InjectedState("user_id")] = "",
         messages: Annotated[list, InjectedState("messages")] = [],
     ) -> str:
-        """获取个性化时尚商品推荐，或查找与指定商品相似的商品。
+        # 原中文 docstring（保留供参考）:
+        # """获取个性化时尚商品推荐，或查找与指定商品相似的商品。
+        #
+        # Args:
+        #     category: 可选的时尚品类过滤，如 'tops'、'dresses'、'shoes'、'accessories'。
+        #     item_id: 若提供，则查找与该商品相似的商品，而非基于用户偏好推荐。
+        #     n: 返回商品数量，默认5，最大20。
+        #
+        # 注意：仅在需要获取新的商品列表时调用。通用风格建议、流行趋势问题以及对已返回商品的追问，请勿再次调用本工具。
+        # """
+        """Fetch personalised fashion product recommendations, or find items similar to a given product.
 
         Args:
-            category: 可选的时尚品类过滤，如 'tops'、'dresses'、'shoes'、'accessories'。
-            item_id: 若提供，则查找与该商品相似的商品，而非基于用户偏好推荐。
-            n: 返回商品数量，默认5，最大20。
+            category: Optional fashion category filter, e.g. 'tops', 'dresses', 'shoes', 'accessories'.
+            item_id: If provided, find items similar to this product instead of user-preference-based recommendations.
+            n: Number of results to return (default 5, max 20).
 
-        注意：仅在需要获取新的商品列表时调用。通用风格建议、流行趋势问题以及对已返回商品的追问，请勿再次调用本工具。
+        Note: Only call this when a new product list is needed. Do NOT call again for general style advice, trend questions, or follow-up questions about already-returned products.
         """
         # --- Trap 1 fix: throttle after 2 calls in the same turn ---
         prior_calls = sum(
@@ -88,7 +98,8 @@ def make_tools(
             if isinstance(msg, ToolMessage) and getattr(msg, "name", "") == "get_recommendations"
         )
         if prior_calls >= 2:
-            return "已为您获取推荐商品列表，请根据已有结果为用户作答，无需再次调用本工具。"
+            # 原中文 message（保留供参考）: "已为您获取推荐商品列表，请根据已有结果为用户作答，无需再次调用本工具。"
+            return "Product recommendations have already been fetched this turn. Please use the existing results to answer the user — do not call this tool again."
 
         n = max(1, min(n, 20))
         try:
@@ -111,7 +122,8 @@ def make_tools(
                 })
             return json.dumps(enriched, ensure_ascii=False)
         except Exception as exc:
-            return f"商品搜索失败: {exc}"
+            # 原中文 message（保留供参考）: return f"商品搜索失败: {exc}"
+            return f"Product search failed: {exc}"
 
     # ------------------------------------------------------------------
     # Tool 2: get_user_preferences
@@ -132,8 +144,11 @@ def make_tools(
         user_id: Annotated[str, InjectedState("user_id")] = "",
         messages: Annotated[list, InjectedState("messages")] = [],
     ) -> str:
-        """从数据库获取当前用户已保存的时尚风格偏好，包含风格、颜色、价格敏感度、场合及品牌偏好。
-        每次对话只需调用一次，无需传参，直接调用即可。请勿在同一对话中重复调用。"""
+        # 原中文 docstring（保留供参考）:
+        # """从数据库获取当前用户已保存的时尚风格偏好，包含风格、颜色、价格敏感度、场合及品牌偏好。
+        # 每次对话只需调用一次，无需传参，直接调用即可。请勿在同一对话中重复调用。"""
+        """Retrieve the current user's saved fashion style preferences from the database, including style, colour, price sensitivity, occasions, and brand preferences.
+        Call at most once per conversation — no parameters needed. Do not call again in the same conversation."""
         # --- Edge case 3 fix: block calls after the first in this turn ---
         prior_calls = sum(
             1
@@ -141,14 +156,17 @@ def make_tools(
             if isinstance(msg, ToolMessage) and getattr(msg, "name", "") == "get_user_preferences"
         )
         if prior_calls >= 1:
-            return "用户偏好已在本次对话中获取，请直接使用之前的结果，无需再次调用。"
+            # 原中文 message（保留供参考）: "用户偏好已在本次对话中获取，请直接使用之前的结果，无需再次调用。"
+            return "User preferences were already fetched this conversation. Use the previous result directly — do not call this tool again."
 
         try:
             row = await db.get_user_traits(user_id)
             if row is None:
+                # 原中文 message（保留供参考）:
+                # "message": f"用户 {user_id} 暂无保存的时尚偏好记录，建议询问用户基本风格偏好后再推荐。"
                 return json.dumps({
                     "status": "no_data",
-                    "message": f"用户 {user_id} 暂无保存的时尚偏好记录，建议询问用户基本风格偏好后再推荐。",
+                    "message": f"No saved fashion preferences found for user {user_id}. Consider asking the user about their basic style preferences before making recommendations.",
                 }, ensure_ascii=False)
 
             traits = row.get("traits") or {}
@@ -183,18 +201,29 @@ def make_tools(
             # Attach a natural-language hint when confidence is low so the
             # router can decide to ask a clarifying question without extra logic.
             if confidence == "low":
+                # 原中文 hint（保留供参考）:
+                # result["hint"] = (
+                #     f"偏好记录已有 {staleness_days} 天未更新，用户风格可能已改变，"
+                #     "建议先询问是否有新的偏好后再推荐。"
+                # )
                 result["hint"] = (
-                    f"偏好记录已有 {staleness_days} 天未更新，用户风格可能已改变，"
-                    "建议先询问是否有新的偏好后再推荐。"
+                    f"Preferences were last updated {staleness_days} days ago — the user's style may have shifted. "
+                    "Consider asking if they have any new preferences before making recommendations."
                 )
             elif confidence == "medium":
+                # 原中文 hint（保留供参考）:
+                # result["hint"] = (
+                #     f"偏好记录更新于 {staleness_days} 天前，基本可信，"
+                #     "如用户主动提及偏好变化请以新信息为准。"
+                # )
                 result["hint"] = (
-                    f"偏好记录更新于 {staleness_days} 天前，基本可信，"
-                    "如用户主动提及偏好变化请以新信息为准。"
+                    f"Preferences were last updated {staleness_days} days ago — generally reliable, "
+                    "but defer to any new preferences the user mentions in this conversation."
                 )
             return json.dumps(result, ensure_ascii=False, indent=2)
         except Exception as exc:
-            return f"获取用户偏好失败: {exc}"
+            # 原中文 message（保留供参考）: return f"获取用户偏好失败: {exc}"
+            return f"Failed to retrieve user preferences: {exc}"
 
     # ------------------------------------------------------------------
     # Tool 3: get_item_details
@@ -202,15 +231,22 @@ def make_tools(
     # ------------------------------------------------------------------
     @tool
     async def get_item_details(item_id: str) -> str:
-        """获取指定商品的详细信息，包括商品名称、品类及属性标签（品牌、颜色、价格区间等）。
+        # 原中文 docstring（保留供参考）:
+        # """获取指定商品的详细信息，包括商品名称、品类及属性标签（品牌、颜色、价格区间等）。
+        #
+        # Args:
+        #     item_id: 要查询的商品ID。
+        # """
+        """Get detailed information for a specific product, including its name, category, and attribute labels (brand, colour, price range, etc.).
 
         Args:
-            item_id: 要查询的商品ID。
+            item_id: The ID of the product to look up.
         """
         try:
             data = await gorse.get_item(item_id)
             if not data:
-                return f"未找到商品 {item_id} 的详情。"
+                # 原中文 message（保留供参考）: return f"未找到商品 {item_id} 的详情。"
+                return f"Item not found: {item_id}"
 
             result = {
                 "item_id": data.get("ItemId", item_id),
@@ -220,20 +256,27 @@ def make_tools(
             }
             return json.dumps(result, ensure_ascii=False, indent=2)
         except Exception as exc:
-            return f"获取商品详情失败: {exc}"
+            # 原中文 message（保留供参考）: return f"获取商品详情失败: {exc}"
+            return f"Failed to retrieve item details: {exc}"
 
     # ------------------------------------------------------------------
     # Tool 4: search_fashion_trends  (Tavily — replaces DuckDuckGo client)
     # ------------------------------------------------------------------
     # TavilySearchResults is already a @tool; we just configure it.
     # Renaming it keeps trace output consistent with the Go implementation.
+    # 原中文 description（保留供参考）:
+    # description=(
+    #     "搜索当前时尚趋势、季节性风格、品牌动态或穿搭指南。"
+    #     "适用于「2026春季流行什么」类问题。"
+    #     "query 参数为英文或中文搜索词，例如 '2026 spring minimalist fashion trends'。"
+    # )
     tavily = TavilySearch(
         max_results=5,
         name="search_fashion_trends",
         description=(
-            "搜索当前时尚趋势、季节性风格、品牌动态或穿搭指南。"
-            "适用于「2026春季流行什么」类问题。"
-            "query 参数为英文或中文搜索词，例如 '2026 spring minimalist fashion trends'。"
+            "Search for current fashion trends, seasonal styles, brand news, or outfit guides. "
+            "Use for questions like 'What's trending in spring 2026?' "
+            "The query parameter should be an English search term, e.g. '2026 spring minimalist fashion trends'."
         ),
     )
 
@@ -251,47 +294,67 @@ def make_tools(
     # ------------------------------------------------------------------
     @tool
     async def update_user_traits(
+        # 原中文 annotations（保留供参考）:
+        # "风格偏好评分，键为风格名（如 minimalist/casual/formal/streetwear/vintage/romantic），值为 0.0–1.0。"
         style_preferences: Annotated[
             dict[str, float] | None,
-            "风格偏好评分，键为风格名（如 minimalist/casual/formal/streetwear/vintage/romantic），值为 0.0–1.0。"
+            "Style preference scores. Keys are style names (e.g. minimalist/casual/formal/streetwear/vintage/romantic), values are 0.0–1.0."
         ] = None,
+        # 原中文 annotations（保留供参考）:
+        # "颜色偏好评分，键为颜色名（如 black/white/gray/blue/red/pink/beige/brown/green/yellow），值为 0.0–1.0。"
         color_preferences: Annotated[
             dict[str, float] | None,
-            "颜色偏好评分，键为颜色名（如 black/white/gray/blue/red/pink/beige/brown/green/yellow），值为 0.0–1.0。"
+            "Colour preference scores. Keys are colour names (e.g. black/white/gray/blue/red/pink/beige/brown/green/yellow), values are 0.0–1.0."
         ] = None,
+        # 原中文 annotations（保留供参考）:
+        # "价格敏感度，只能是 'low'、'medium' 或 'high' 之一。"
         price_sensitivity: Annotated[
             str | None,
-            "价格敏感度，只能是 'low'、'medium' 或 'high' 之一。"
+            "Price sensitivity — must be one of: 'low', 'medium', or 'high'."
         ] = None,
+        # 原中文 annotations（保留供参考）:
+        # "用户偏好的品牌列表，如 ['ZARA', 'UNIQLO']。"
         brand_preferences: Annotated[
             list[str] | None,
-            "用户偏好的品牌列表，如 ['ZARA', 'UNIQLO']。"
+            "List of preferred brands, e.g. ['ZARA', 'UNIQLO']."
         ] = None,
+        # 原中文 annotations（保留供参考）:
+        # "穿着场合列表，如 ['work', 'casual', 'party', 'date', 'sport', 'travel', 'wedding']。"
         occasions: Annotated[
             list[str] | None,
-            "穿着场合列表，如 ['work', 'casual', 'party', 'date', 'sport', 'travel', 'wedding']。"
+            "List of wearing occasions, e.g. ['work', 'casual', 'party', 'date', 'sport', 'travel', 'wedding']."
         ] = None,
+        # 原中文 annotations（保留供参考）:
+        # "从对话中提取的时尚关键词列表，如 ['简约', '舒适']。"
         keywords: Annotated[
             list[str] | None,
-            "从对话中提取的时尚关键词列表，如 ['简约', '舒适']。"
+            "Fashion keywords extracted from the conversation, e.g. ['minimalist', 'comfortable']."
         ] = None,
+        # 原中文 annotations（保留供参考）:
+        # "用户兴趣列表，如 ['运动', '旅行']。会编码为 Gorse 的 interest: 标签。"
         interests: Annotated[
             list[str] | None,
-            "用户兴趣列表，如 ['运动', '旅行']。会编码为 Gorse 的 interest: 标签。"
+            "User interest list, e.g. ['sports', 'travel']. Encoded as Gorse 'interest:' labels."
         ] = None,
         tool_call_id: Annotated[str, InjectedToolCallId] = "",
         pending_trait_updates: Annotated[list, InjectedState("pending_trait_updates")] = [],
     ) -> Command:
-        """当用户在对话中明确表达时尚偏好时调用，将偏好更新暂存等待用户确认。
-        确认后系统会将更新写入数据库并同步到推荐引擎，使后续推荐立即反映新偏好。
-        每次对话最多调用一次。请勿在未收到用户明确偏好陈述时主动调用。
+        # 原中文 docstring（保留供参考）:
+        # """当用户在对话中明确表达时尚偏好时调用，将偏好更新暂存等待用户确认。
+        # 确认后系统会将更新写入数据库并同步到推荐引擎，使后续推荐立即反映新偏好。
+        # 每次对话最多调用一次。请勿在未收到用户明确偏好陈述时主动调用。
+        # """
+        """Call this when the user explicitly states a fashion preference during the conversation. Stages the preference update for user confirmation before writing to the system.
+        Once confirmed, the update is written to the database and synced to the recommendation engine so future recommendations immediately reflect the new preferences.
+        Call at most once per conversation turn. Do NOT call unless the user has made a clear, explicit preference statement.
         """
         _VALID_PRICE = {"low", "medium", "high"}
 
         if price_sensitivity is not None and price_sensitivity not in _VALID_PRICE:
             return Command(update={
                 "messages": [ToolMessage(
-                    content=f"price_sensitivity 值无效：'{price_sensitivity}'，必须是 low/medium/high。",
+                    # 原中文 message（保留供参考）: f"price_sensitivity 值无效：'{price_sensitivity}'，必须是 low/medium/high。"
+                    content=f"Invalid price_sensitivity value: '{price_sensitivity}'. Must be one of: low / medium / high.",
                     tool_call_id=tool_call_id,
                 )]
             })
@@ -309,16 +372,20 @@ def make_tools(
         if not update:
             return Command(update={
                 "messages": [ToolMessage(
-                    content="没有检测到有效的偏好字段，未暂存任何更新。",
+                    # 原中文 message（保留供参考）: "没有检测到有效的偏好字段，未暂存任何更新。"
+                    content="No valid preference fields were detected — nothing was staged.",
                     tool_call_id=tool_call_id,
                 )]
             })
 
-        field_names = "、".join(update.keys())
+        # 原中文 separator and message（保留供参考）:
+        # field_names = "、".join(update.keys())
+        # content=f"已暂存偏好更新（{field_names}），等待您确认后写入。"
+        field_names = ", ".join(update.keys())
         return Command(update={
             "pending_trait_updates": pending_trait_updates + [update],
             "messages": [ToolMessage(
-                content=f"已暂存偏好更新（{field_names}），等待您确认后写入。",
+                content=f"Preference update staged ({field_names}) — waiting for your confirmation before saving.",
                 tool_call_id=tool_call_id,
             )],
         })
