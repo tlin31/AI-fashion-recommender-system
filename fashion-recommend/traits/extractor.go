@@ -125,25 +125,45 @@ func (e *Extractor) ExtractFromKeywords(content string) *database.TraitsData {
 
 // ExtractFromAI 使用 AI 提取特质
 func (e *Extractor) ExtractFromAI(ctx context.Context, conversationHistory string) (*database.TraitsData, error) {
-	systemPrompt := `你是一个时尚偏好分析专家。分析用户对话，提取用户的时尚偏好特质。
+	// 原中文 prompt（保留供参考）:
+	// systemPrompt := `你是一个时尚偏好分析专家。分析用户对话，提取用户的时尚偏好特质。
+	//
+	// 请以 JSON 格式返回，包含以下字段：
+	// {
+	//   "style_preferences": {"minimalist": 0.8, "casual": 0.6},
+	//   "color_preferences": {"black": 0.9, "white": 0.7},
+	//   "price_sensitivity": "medium",
+	//   "brand_preferences": ["ZARA", "UNIQLO"],
+	//   "occasions": ["work", "casual"],
+	//   "keywords": ["简约", "舒适", "高质量"],   // ← Chinese examples
+	//   "interests": ["运动", "旅行"]              // ← Chinese examples
+	// }
+	//
+	// 注意：
+	// 1. 分数范围 0.0-1.0
+	// 2. price_sensitivity 只能是 low/medium/high
+	// 3. 只返回 JSON，不要其他解释`
+	systemPrompt := `You are a fashion preference analysis expert. Analyze the user's conversation and extract their fashion preference traits.
 
-请以 JSON 格式返回，包含以下字段：
+Return the result in JSON format with the following fields:
 {
   "style_preferences": {"minimalist": 0.8, "casual": 0.6},
   "color_preferences": {"black": 0.9, "white": 0.7},
   "price_sensitivity": "medium",
   "brand_preferences": ["ZARA", "UNIQLO"],
   "occasions": ["work", "casual"],
-  "keywords": ["简约", "舒适", "高质量"],
-  "interests": ["运动", "旅行"]
+  "keywords": ["minimalist", "comfortable", "high-quality"],
+  "interests": ["sports", "travel"]
 }
 
-注意：
-1. 分数范围 0.0-1.0
-2. price_sensitivity 只能是 low/medium/high
-3. 只返回 JSON，不要其他解释`
+Rules:
+1. Score range is 0.0–1.0
+2. price_sensitivity must be one of: low / medium / high
+3. Return JSON only — no additional explanation`
 
-	userPrompt := fmt.Sprintf("分析以下对话，提取用户的时尚偏好：\n\n%s", conversationHistory)
+	// 原中文 prompt（保留供参考）:
+	// userPrompt := fmt.Sprintf("分析以下对话，提取用户的时尚偏好：\n\n%s", conversationHistory)
+	userPrompt := fmt.Sprintf("Analyze the following conversation and extract the user's fashion preferences:\n\n%s", conversationHistory)
 
 	// 直接构建对话历史字符串，使用简化的 Chat 方法
 	fullPrompt := systemPrompt + "\n\n" + userPrompt

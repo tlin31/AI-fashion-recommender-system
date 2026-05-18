@@ -22,7 +22,9 @@ export default function AIChat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: '你好！我是时尚小助手，可以帮你了解时尚趋势、推荐商品、提供穿搭建议。有什么我可以帮你的吗？'
+      // 原中文 greeting（保留供参考）:
+      // content: '你好！我是时尚小助手，可以帮你了解时尚趋势、推荐商品、提供穿搭建议。有什么我可以帮你的吗？'
+      content: "Hello! I'm Fashion Curator, your personal style AI. I can help you explore fashion trends, discover products, and put together outfits. What can I help you with today?"
     }
   ])
   const [input, setInput] = useState('')
@@ -84,10 +86,11 @@ export default function AIChat() {
         <div className="flex items-center justify-center mb-2">
           <Bot className="h-8 w-8 text-primary-600 mr-2" />
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-pink-600 bg-clip-text text-transparent">
-            AI 时尚助手
+            Fashion Curator
           </h1>
         </div>
-        <p className="text-gray-600">与 AI 聊天，获取个性化时尚建议</p>
+        {/* 原中文（保留供参考）: 与 AI 聊天，获取个性化时尚建议 */}
+        <p className="text-gray-600">Chat with your AI stylist for personalised fashion advice</p>
       </div>
 
       {/* 消息列表 */}

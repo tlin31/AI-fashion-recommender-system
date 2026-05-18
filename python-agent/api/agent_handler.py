@@ -17,9 +17,9 @@ from __future__ import annotations
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from agent.graph import AgentGraph, AgentResult
+from agent.graph import AgentGraph, AgentResult, HITLNotPendingError, HITLPendingError
 from db.client import DBClient
 from traits.extractor import TraitExtractor
 from traits.gorse_sync import GorseSync
@@ -45,6 +45,18 @@ class AgentChatResponse(BaseModel):
     iterations: int
     tokens_used: int = 0
     trace: list[dict] | None = None
+    # HITL fields — non-empty when the graph paused at interrupt_before=["write_traits"]
+    pending_approval: bool = False
+    pending_trait_updates: list[dict] = Field(default_factory=list)
+
+
+class AgentResumeRequest(BaseModel):
+    approved: bool  # True = write traits to DB; False = discard staged updates
+
+
+class AgentResumeResponse(BaseModel):
+    approved: bool
+    message: str  # human-readable confirmation shown in the chat UI
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +73,7 @@ async def agent_chat(
     request: Request,
 ) -> AgentChatResponse:
     if not req.message:
-        raise HTTPException(status_code=400, detail="请求参数错误")
+        raise HTTPException(status_code=400, detail="message field is required")
 
     user_id: str = request.headers.get("X-User-ID") or "guest"
     session_id: str = request.headers.get("X-Session-ID") or str(uuid4())
@@ -72,7 +84,7 @@ async def agent_chat(
     gorse_sync: GorseSync = request.app.state.gorse_sync
 
     # 1. Create conversation record (idempotent).
-    await db.create_conversation(user_id, session_id, "Agent 对话")
+    await db.create_conversation(user_id, session_id, "Agent conversation")
 
     # 2. Persist user message.
     await db.save_message(session_id, user_id, "user", req.message)
@@ -81,6 +93,8 @@ async def agent_chat(
     # session_id is passed as thread_id — the checkpointer replays history from DB.
     try:
         result: AgentResult = await graph.chat(req.message, user_id, session_id)
+    except HITLPendingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -99,10 +113,46 @@ async def agent_chat(
         session_id=session_id,
         iterations=result.iterations,
         tokens_used=result.tokens_used,
+        pending_approval=result.pending_approval,
+        pending_trait_updates=result.pending_trait_updates,
     )
     if req.include_trace:
         resp.trace = [t.model_dump() for t in result.trace]
     return resp
+
+
+# ---------------------------------------------------------------------------
+# Resume route — POST /api/ai/agent-resume
+# ---------------------------------------------------------------------------
+
+@router.post("/agent-resume", response_model=AgentResumeResponse)
+async def agent_resume(
+    req: AgentResumeRequest,
+    request: Request,
+) -> AgentResumeResponse:
+    """Approve or reject a pending HITL trait-write interrupt.
+
+    The frontend calls this after the user taps 「确认保存」or 「取消」on the
+    approval card that appears when pending_approval=True in the chat response.
+
+    approved=True  → graph resumes, write_traits_node writes to DB + Gorse.
+    approved=False → staged updates are discarded; graph advances to END.
+    """
+    session_id: str | None = request.headers.get("X-Session-ID")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="X-Session-ID header is required")
+
+    graph: AgentGraph = request.app.state.graph
+
+    try:
+        await graph.resume(session_id, req.approved)
+    except HITLNotPendingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    msg = "Preferences saved — your recommendations will reflect this shortly." if req.approved else "Preference update cancelled."
+    return AgentResumeResponse(approved=req.approved, message=msg)
 
 
 # ---------------------------------------------------------------------------
@@ -122,4 +172,4 @@ async def _extract_traits(
             await extractor.analyze_and_save(user_id, session_id, messages)
             await gorse_sync.sync_user_traits(user_id)
     except Exception as exc:
-        print(f"后台特质提取失败 [{user_id}/{session_id}]: {exc}")
+        print(f"Background trait extraction failed [{user_id}/{session_id}]: {exc}")

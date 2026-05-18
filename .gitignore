@@ -120,3 +120,39 @@ $RECYCLE.BIN/
 .vscode
 
 # End of https://www.gitignore.io/api/go,windows,jetbrains
+
+# ── Claude Code local settings ────────────────────────────────────────────────
+.claude/
+
+# ── JetBrains / IntelliJ full project folder ─────────────────────────────────
+.idea/
+
+# ── Node / frontend build artefacts ──────────────────────────────────────────
+fashion-recommend/frontend/node_modules/
+fashion-recommend/frontend/dist/
+admin-dashboard/node_modules/
+admin-dashboard/dist/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# ── Local secrets / env ───────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Local working notes (not part of codebase) ───────────────────────────────
+TODO.md
+changes.md
+
+# ── Go build artefacts ────────────────────────────────────────────────────────
+fashion-recommend/bin/
+*.log
