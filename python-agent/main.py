@@ -45,12 +45,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     google_api_key: str = ""
-    google_model: str = "gemma-3-12b-it"
+    google_model: str = ""  # falls back to agent_final_model if not set in .env
 
     agent_router_model: str = "gemini-2.5-flash"
-    agent_final_model: str = "gemma-3-27b-it"
+    agent_final_model: str = "gemini-2.5-flash"
     agent_max_iterations: int = 8
     agent_token_budget: int = 20_000
+    mock_ai: bool = False
 
     # Tavily API key — read automatically by TavilySearchResults via TAVILY_API_KEY env var.
     # Setting it here makes it visible in Settings and allows .env loading.
@@ -99,11 +100,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
         graph = AgentGraph(agent_cfg, db, gorse, checkpointer=checkpointer)
 
+        # ---- Mock mode (MOCK_AI=true) — bypasses all real LLM calls ----
+        if settings.mock_ai:
+            from agent.mocks import install_mock_models
+            install_mock_models(graph)
+
         # ---- Trait extraction LLM (same Google credentials, base model) ----
-        llm = ChatGoogleGenerativeAI(
-            model=settings.google_model,
-            google_api_key=settings.google_api_key,
-        )
+        if settings.mock_ai:
+            from unittest.mock import AsyncMock
+            llm = AsyncMock()
+            llm.ainvoke = AsyncMock(return_value=type("R", (), {"content": ""})())
+        else:
+            llm = ChatGoogleGenerativeAI(
+                model=settings.google_model or settings.agent_final_model,
+                google_api_key=settings.google_api_key,
+            )
         extractor = TraitExtractor(llm, db)
         gorse_sync = GorseSync(db, gorse)
 
