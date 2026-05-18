@@ -13,6 +13,8 @@ from unittest.mock import AsyncMock
 import pytest
 from langchain_core.messages import AIMessage
 
+from agent.graph import HITLNotPendingError, HITLPendingError
+
 
 # ---------------------------------------------------------------------------
 # Local message factories
@@ -131,3 +133,66 @@ async def test_resume_approved_clears_pending(agent_graph):
     config = {"configurable": {"thread_id": "sess_clear_01"}}
     snap = await agent_graph._compiled.aget_state(config)
     assert snap.values.get("pending_trait_updates") == []
+
+
+# ---------------------------------------------------------------------------
+# Edge-case tests
+# ---------------------------------------------------------------------------
+
+async def test_chat_raises_409_while_interrupt_pending(agent_graph):
+    """Sending a new message while a HITL interrupt is pending must raise
+    HITLPendingError (translated to HTTP 409 by the handler)."""
+    _setup_hitl_turn(agent_graph)
+    await agent_graph.chat("I love minimalist style", "user_F", "sess_409_chat")
+    # Graph is now paused — second message must be rejected.
+    _setup_normal_turn(agent_graph)
+    with pytest.raises(HITLPendingError):
+        await agent_graph.chat("show me more", "user_F", "sess_409_chat")
+
+
+async def test_resume_raises_409_when_not_pending(agent_graph):
+    """Calling resume() when the graph is not paused must raise
+    HITLNotPendingError (translated to HTTP 409 by the handler)."""
+    _setup_normal_turn(agent_graph)
+    await agent_graph.chat("just a normal message", "user_G", "sess_409_resume")
+    # No interrupt was triggered — resume must be rejected.
+    with pytest.raises(HITLNotPendingError):
+        await agent_graph.resume("sess_409_resume", approved=True)
+
+
+async def test_resume_raises_409_on_double_call(agent_graph):
+    """Calling resume() twice on the same session must raise HITLNotPendingError
+    on the second call (the first call already consumed the interrupt)."""
+    _setup_hitl_turn(agent_graph)
+    await agent_graph.chat("I prefer low prices", "user_H", "sess_double_resume")
+    await agent_graph.resume("sess_double_resume", approved=False)
+    # Second resume on the same (now-completed) session must be rejected.
+    with pytest.raises(HITLNotPendingError):
+        await agent_graph.resume("sess_double_resume", approved=True)
+
+
+async def test_write_traits_db_failure_does_not_crash_graph(agent_graph, mock_db):
+    """If the DB write in write_traits_node fails, the graph must still reach END
+    and pending_trait_updates must be cleared (no stuck checkpoint)."""
+    mock_db.save_user_traits.side_effect = RuntimeError("DB connection lost")
+    _setup_hitl_turn(agent_graph)
+    await agent_graph.chat("I like vintage style", "user_I", "sess_db_fail")
+
+    # Should not raise — the node catches and logs the error.
+    await agent_graph.resume("sess_db_fail", approved=True)
+
+    # Graph must have advanced to END — a second resume must now raise 409.
+    with pytest.raises(HITLNotPendingError):
+        await agent_graph.resume("sess_db_fail", approved=True)
+
+
+async def test_score_clamping_in_merge(agent_graph, mock_db):
+    """Scores outside [0.0, 1.0] must be clamped after merging."""
+    # Stage an update with an out-of-range score.
+    _setup_hitl_turn(agent_graph, style={"minimalist": 1.8, "casual": -0.3})
+    await agent_graph.chat("I really love minimalist", "user_J", "sess_clamp")
+    await agent_graph.resume("sess_clamp", approved=True)
+
+    _, saved_traits, _ = mock_db.save_user_traits.call_args[0]
+    assert saved_traits["style_preferences"]["minimalist"] == pytest.approx(1.0)
+    assert saved_traits["style_preferences"]["casual"] == pytest.approx(0.0)

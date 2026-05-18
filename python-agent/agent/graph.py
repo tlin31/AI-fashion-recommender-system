@@ -19,7 +19,24 @@ Key design decisions vs. Go:
 from __future__ import annotations
 
 import json
+import logging
 from typing import Annotated
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Custom exceptions — translated to HTTP 409 by the API handler
+# ---------------------------------------------------------------------------
+
+class HITLPendingError(RuntimeError):
+    """Raised when chat() is called while a trait-approval interrupt is already
+    pending for the same session.  The frontend must call /agent-resume first."""
+
+
+class HITLNotPendingError(RuntimeError):
+    """Raised when resume() is called but the graph is not currently paused at
+    the write_traits interrupt (e.g. duplicate resume call, wrong session ID)."""
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -160,6 +177,16 @@ def _merge_trait_updates(existing: dict, updates: list[dict]) -> dict:
                         merged[field].append(item)
                         seen.add(item)
 
+    # Clamp all score fields to [0.0, 1.0].
+    # The LLM can return values outside this range; clamping prevents corrupt
+    # Gorse label weights and normalisation artifacts downstream.
+    merged["style_preferences"] = {
+        k: max(0.0, min(1.0, v)) for k, v in merged["style_preferences"].items()
+    }
+    merged["color_preferences"] = {
+        k: max(0.0, min(1.0, v)) for k, v in merged["color_preferences"].items()
+    }
+
     return merged
 
 
@@ -223,7 +250,8 @@ class AgentGraph:
 
             # thinking: The AI examines the history and determines whether to use a tool or answer the user directly
             # ainvoke stands for Asynchronous Invoke of the model
-            # After the AI responds, resp will typically contain either:A content string if the AI has the answer. OR Tool calls if the AI needs more information.
+            # After the AI responds, resp will typically contain either:A content string if the AI has the answer.
+            # OR Tool calls if the AI needs more information.
             resp: AIMessage = await self._router_model.ainvoke(state["messages"])
 
             # Tracking Loops: iterations counter is incremented.--> prevent the agent from looping indefinitely if it encounters an issue.
@@ -443,18 +471,29 @@ class AgentGraph:
 
             user_id = state["user_id"]
 
-            # Read current traits from DB so we merge rather than overwrite.
-            existing_row = await self._db.get_user_traits(user_id)
-            existing_traits: dict = (existing_row or {}).get("traits") or {}
-            existing_confidence: float = (existing_row or {}).get("confidence_score", 0.5)
+            try:
+                # Read current traits from DB so we merge rather than overwrite.
+                existing_row = await self._db.get_user_traits(user_id)
+                existing_traits: dict = (existing_row or {}).get("traits") or {}
+                existing_confidence: float = (existing_row or {}).get("confidence_score", 0.5)
 
-            merged = _merge_trait_updates(existing_traits, updates)
+                merged = _merge_trait_updates(existing_traits, updates)
 
-            # Small confidence bump when the user explicitly confirms preferences.
-            new_confidence = min(existing_confidence + 0.1, 1.0)
+                # Small confidence bump when the user explicitly confirms preferences.
+                new_confidence = min(existing_confidence + 0.1, 1.0)
 
-            await self._db.save_user_traits(user_id, merged, new_confidence)
-            await self._gorse_sync.sync_user_traits(user_id)
+                await self._db.save_user_traits(user_id, merged, new_confidence)
+                await self._gorse_sync.sync_user_traits(user_id)
+            except Exception as exc:
+                # Log and swallow — do NOT re-raise.  Re-raising here would leave
+                # the graph in a broken state with no way for the frontend to recover
+                # (the interrupt has already been consumed).  The pending list is
+                # still cleared so the graph advances to END cleanly.
+                # A retry / dead-letter queue can be layered on top in the future.
+                logger.error(
+                    "write_traits_node: failed to persist traits for user %s: %s",
+                    user_id, exc, exc_info=True,
+                )
 
             return {"pending_trait_updates": []}
 
@@ -530,6 +569,18 @@ class AgentGraph:
         # system prompt. On subsequent turns it's already in the checkpoint and
         # adding it again would grow the context window every call.
         existing = await self._compiled.aget_state(config)
+
+        # Guard: reject new messages while the graph is paused waiting for
+        # trait-approval.  Sending a message into a suspended graph would merge
+        # the new input with the pending state and produce undefined behaviour.
+        # The frontend should disable the input box when pending_approval=True,
+        # but this is the server-side safety net.
+        if "write_traits" in (existing.next or ()):
+            raise HITLPendingError(
+                "A trait-approval is pending for this session. "
+                "Call POST /agent-resume before sending a new message."
+            )
+
         if not existing.values.get("messages"):
             seed_messages = [
                 SystemMessage(content=system_prompt),
@@ -590,6 +641,17 @@ class AgentGraph:
                          graph cursor to END without executing the node body).
         """
         config = {"configurable": {"thread_id": session_id}}
+
+        # Guard: reject resume calls when the graph is not actually paused.
+        # This catches duplicate resume calls (e.g. double-tap on the Confirm
+        # button) and resume calls with a wrong/expired session ID.
+        existing = await self._compiled.aget_state(config)
+        if "write_traits" not in (existing.next or ()):
+            raise HITLNotPendingError(
+                "No pending trait-approval found for this session. "
+                "The approval may have already been processed or the session ID is incorrect."
+            )
+
         if approved:
             # Resume normally — write_traits_node fires and flushes the updates.
             await self._compiled.ainvoke(None, config)

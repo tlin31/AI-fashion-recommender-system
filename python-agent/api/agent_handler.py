@@ -19,7 +19,7 @@ from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from agent.graph import AgentGraph, AgentResult
+from agent.graph import AgentGraph, AgentResult, HITLNotPendingError, HITLPendingError
 from db.client import DBClient
 from traits.extractor import TraitExtractor
 from traits.gorse_sync import GorseSync
@@ -73,7 +73,7 @@ async def agent_chat(
     request: Request,
 ) -> AgentChatResponse:
     if not req.message:
-        raise HTTPException(status_code=400, detail="请求参数错误")
+        raise HTTPException(status_code=400, detail="message field is required")
 
     user_id: str = request.headers.get("X-User-ID") or "guest"
     session_id: str = request.headers.get("X-Session-ID") or str(uuid4())
@@ -84,7 +84,7 @@ async def agent_chat(
     gorse_sync: GorseSync = request.app.state.gorse_sync
 
     # 1. Create conversation record (idempotent).
-    await db.create_conversation(user_id, session_id, "Agent 对话")
+    await db.create_conversation(user_id, session_id, "Agent conversation")
 
     # 2. Persist user message.
     await db.save_message(session_id, user_id, "user", req.message)
@@ -93,6 +93,8 @@ async def agent_chat(
     # session_id is passed as thread_id — the checkpointer replays history from DB.
     try:
         result: AgentResult = await graph.chat(req.message, user_id, session_id)
+    except HITLPendingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -138,16 +140,18 @@ async def agent_resume(
     """
     session_id: str | None = request.headers.get("X-Session-ID")
     if not session_id:
-        raise HTTPException(status_code=400, detail="缺少 X-Session-ID 请求头")
+        raise HTTPException(status_code=400, detail="X-Session-ID header is required")
 
     graph: AgentGraph = request.app.state.graph
 
     try:
         await graph.resume(session_id, req.approved)
+    except HITLNotPendingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    msg = "偏好已更新，将影响后续推荐。" if req.approved else "已取消本次偏好更新。"
+    msg = "Preferences saved — your recommendations will reflect this shortly." if req.approved else "Preference update cancelled."
     return AgentResumeResponse(approved=req.approved, message=msg)
 
 
@@ -168,4 +172,4 @@ async def _extract_traits(
             await extractor.analyze_and_save(user_id, session_id, messages)
             await gorse_sync.sync_user_traits(user_id)
     except Exception as exc:
-        print(f"后台特质提取失败 [{user_id}/{session_id}]: {exc}")
+        print(f"Background trait extraction failed [{user_id}/{session_id}]: {exc}")
