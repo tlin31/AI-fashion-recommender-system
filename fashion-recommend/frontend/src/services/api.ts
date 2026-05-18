@@ -47,6 +47,26 @@ export const apiService = {
     return response.data
   },
 
+  // Python LangGraph agent
+  agentChat: async (userId: string, message: string, sessionId?: string) => {
+    const headers: Record<string, string> = { 'X-User-ID': userId }
+    if (sessionId) headers['X-Session-ID'] = sessionId
+    const response = await api.post('/ai/agent-chat', { message }, { headers })
+    return response.data as {
+      message: string
+      session_id: string
+      pending_approval: boolean
+      pending_trait_updates: Record<string, any>[]
+    }
+  },
+
+  agentResume: async (sessionId: string, approved: boolean) => {
+    const response = await api.post('/ai/agent-resume', { approved }, {
+      headers: { 'X-Session-ID': sessionId }
+    })
+    return response.data as { approved: boolean; message: string }
+  },
+
   // AI 相关
   chatWithAI: async (message: string, history: any[], sessionId?: string, userId?: string) => {
     const headers: any = {}

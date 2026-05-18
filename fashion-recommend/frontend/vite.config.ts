@@ -12,11 +12,19 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      '/api/ai/agent-chat': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
+      '/api/ai/agent-resume': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:5001',
         changeOrigin: true,
       },
-       '/images': {
+      '/images': {
         target: 'http://localhost:5001',
         changeOrigin: true,
       },

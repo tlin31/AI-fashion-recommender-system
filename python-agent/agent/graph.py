@@ -199,7 +199,7 @@ class AgentConfig(BaseModel):
     # Router: must support function calling — only Gemini models qualify.
     # Finalizer: text-generation only, no tool calls needed — Gemma works fine.
     router_model: str = "gemini-2.5-flash"  # Gemini: function-calling capable
-    final_model: str = "gemma-3-27b-it"     # Gemma: strong writer, free tier
+    final_model: str = "gemini-2.5-flash"
     max_iterations: int = 8
     token_budget: int = 20_000  # exit ReAct loop early if cumulative tokens exceed this
 

@@ -1,36 +1,42 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Send, Bot, User, Sparkles } from 'lucide-react'
+import { Send, Bot, User, Sparkles, CheckCircle } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import apiService from '../services/api'
 
-interface Message {
+type TextMessage = {
+  type: 'text'
   role: 'user' | 'assistant'
   content: string
 }
 
-// 生成或获取 Session ID
-const getSessionId = () => {
-  let sessionId = sessionStorage.getItem('ai_session_id')
-  if (!sessionId) {
-    sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-    sessionStorage.setItem('ai_session_id', sessionId)
-  }
-  return sessionId
+type ApprovalMessage = {
+  type: 'approval'
+  traitUpdates: Record<string, any>[]
+  threadId: string
 }
 
+type ApprovedChip = {
+  type: 'approved'
+}
+
+type ChatMessage = TextMessage | ApprovalMessage | ApprovedChip
+
 export default function AIChat() {
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
+      type: 'text',
       role: 'assistant',
-      // 原中文 greeting（保留供参考）:
-      // content: '你好！我是时尚小助手，可以帮你了解时尚趋势、推荐商品、提供穿搭建议。有什么我可以帮你的吗？'
       content: "Hello! I'm Fashion Curator, your personal style AI. I can help you explore fashion trends, discover products, and put together outfits. What can I help you with today?"
-    }
+    },
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sessionId] = useState(getSessionId())
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const hasPendingApproval = messages.some(m => m.type === 'approval')
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -41,32 +47,64 @@ export default function AIChat() {
   }, [messages])
 
   const handleSend = async () => {
-    if (!input.trim() || loading) return
+    if (!input.trim() || loading || hasPendingApproval) return
 
-    const userMessage: Message = { role: 'user', content: input }
+    const userMessage: ChatMessage = { type: 'text', role: 'user', content: input }
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setLoading(true)
 
     try {
-      const history = messages.map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      }))
-
-      // 获取用户名作为 userId
       const username = localStorage.getItem('username') || 'guest'
 
-      const response = await apiService.chatWithAI(input, history, sessionId, username)
-      const assistantMessage: Message = { role: 'assistant', content: response.message }
+      // [Go backend — stateless single-shot chat, no Gorse integration]
+      // const history = messages
+      //   .filter((m): m is TextMessage => m.type === 'text')
+      //   .map(m => ({ role: m.role, content: m.content }))
+      // const sessionId = sessionStorage.getItem('ai_session_id') ?? undefined
+      // const goResponse = await apiService.chatWithAI(input, history, sessionId, username)
+      // const assistantMessage: ChatMessage = { type: 'text', role: 'assistant', content: goResponse.message }
+      // setMessages(prev => [...prev, assistantMessage])
+
+      const response = await apiService.agentChat(username, input, sessionId)
+
+      if (response.session_id) setSessionId(response.session_id)
+
+      const assistantMessage: ChatMessage = { type: 'text', role: 'assistant', content: response.message }
       setMessages(prev => [...prev, assistantMessage])
+
+      if (response.pending_approval && response.pending_trait_updates?.length > 0) {
+        const approvalCard: ChatMessage = {
+          type: 'approval',
+          traitUpdates: response.pending_trait_updates,
+          threadId: response.session_id,
+        }
+        setMessages(prev => [...prev, approvalCard])
+      }
     } catch (error) {
-      console.error('AI 对话失败:', error)
-      const errorMessage: Message = {
+      console.error('Agent chat error:', error)
+      const errorMessage: ChatMessage = {
+        type: 'text',
         role: 'assistant',
-        content: '抱歉，我遇到了一些问题。请稍后再试。'
+        content: 'Sorry, something went wrong. Please try again.'
       }
       setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleApprove = async (approved: boolean, cardThreadId: string) => {
+    setMessages(prev => prev.filter(m => m.type !== 'approval'))
+    setLoading(true)
+
+    try {
+      await apiService.agentResume(cardThreadId, approved)  // cardThreadId = session_id
+      if (approved) {
+        setMessages(prev => [...prev, { type: 'approved' }])
+      }
+    } catch (error) {
+      console.error('Agent resume error:', error)
     } finally {
       setLoading(false)
     }
@@ -81,7 +119,6 @@ export default function AIChat() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 h-[calc(100vh-4rem)]">
-      {/* 标题 */}
       <div className="mb-6 text-center">
         <div className="flex items-center justify-center mb-2">
           <Bot className="h-8 w-8 text-primary-600 mr-2" />
@@ -89,45 +126,150 @@ export default function AIChat() {
             Fashion Curator
           </h1>
         </div>
-        {/* 原中文（保留供参考）: 与 AI 聊天，获取个性化时尚建议 */}
         <p className="text-gray-600">Chat with your AI stylist for personalised fashion advice</p>
       </div>
 
-      {/* 消息列表 */}
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-4 h-[calc(100%-12rem)] overflow-y-auto">
         <div className="space-y-4">
-          {messages.map((message, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className={`flex items-start space-x-2 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                {/* 头像 */}
-                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                  message.role === 'user' 
-                    ? 'bg-primary-600' 
-                    : 'bg-gradient-to-br from-purple-500 to-pink-500'
-                }`}>
-                  {message.role === 'user' ? (
-                    <User className="h-5 w-5 text-white" />
-                  ) : (
-                    <Sparkles className="h-5 w-5 text-white" />
-                  )}
-                </div>
+          {messages.map((message, index) => {
+            if (message.type === 'approved') {
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex justify-center"
+                >
+                  <div className="flex items-center space-x-2 bg-green-50 border border-green-200 rounded-full px-5 py-2 text-green-700 text-sm font-medium shadow-sm">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Preferences saved</span>
+                  </div>
+                </motion.div>
+              )
+            }
 
-                {/* 消息内容 */}
-                <div className={`rounded-2xl px-4 py-3 ${
-                  message.role === 'user'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                }`}>
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+            if (message.type === 'approval') {
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-center"
+                >
+                  <div className="w-full max-w-md bg-white border-2 border-amber-400 rounded-2xl shadow-lg overflow-hidden">
+                    {/* header bar */}
+                    <div className="bg-gradient-to-r from-amber-400 to-orange-400 px-5 py-4">
+                      <div className="flex items-center space-x-2 mb-0.5">
+                        <Sparkles className="h-5 w-5 text-white" />
+                        <p className="text-base font-bold text-white tracking-wide">
+                          Save style preferences?
+                        </p>
+                      </div>
+                      <p className="text-xs text-amber-100 pl-7">Based on your last message</p>
+                    </div>
+
+                    {/* trait rows — flatten {field, value, score} or nested {style_preferences: {minimalist: 0.9}} */}
+                    <div className="px-5 py-4 space-y-2">
+                      {message.traitUpdates.flatMap((update, i) => {
+                        // Simple format: {field, value, score}
+                        if (update.field != null) {
+                          const score = update.score != null ? Math.round(update.score * 100) : null
+                          return [(
+                            <div key={i} className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider w-28 shrink-0">
+                                {String(update.field).replace(/_/g, ' ')}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-800 capitalize">{String(update.value)}</span>
+                                {score != null && <span className="text-xs text-white bg-amber-400 rounded-full px-2 py-0.5 font-medium">{score}%</span>}
+                              </div>
+                            </div>
+                          )]
+                        }
+                        // Nested format: {style_preferences: {minimalist: 0.9}, price_sensitivity: "medium"}
+                        return Object.entries(update).map(([key, val]) => {
+                          const label = key.replace(/_/g, ' ').replace(/\bpreferences\b/g, '').trim()
+                          const entries = val != null && typeof val === 'object' ? Object.entries(val as Record<string, number>) : [[String(val), null]] as [string, number | null][]
+                          return entries.map(([v, score], j) => (
+                            <div key={`${i}-${key}-${j}`} className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider w-28 shrink-0">{label}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-800 capitalize">{v}</span>
+                                {score != null && <span className="text-xs text-white bg-amber-400 rounded-full px-2 py-0.5 font-medium">{Math.round(score * 100)}%</span>}
+                              </div>
+                            </div>
+                          ))
+                        }).flat()
+                      })}
+                    </div>
+
+                    {/* actions */}
+                    <div className="px-5 pb-5 flex items-center gap-4">
+                      <button
+                        onClick={() => handleApprove(true, message.threadId)}
+                        className="flex-1 py-2.5 bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-500 hover:to-orange-500 text-white font-semibold rounded-xl shadow transition-all active:scale-95"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => handleApprove(false, message.threadId)}
+                        className="text-sm text-gray-400 hover:text-gray-600 transition-colors py-2.5 px-3"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            }
+
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`flex items-start space-x-2 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                    message.role === 'user'
+                      ? 'bg-primary-600'
+                      : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                  }`}>
+                    {message.role === 'user' ? (
+                      <User className="h-5 w-5 text-white" />
+                    ) : (
+                      <Sparkles className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                  <div className={`rounded-2xl px-4 py-3 ${
+                    message.role === 'user'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-900'
+                  }`}>
+                    {message.role === 'user' ? (
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                          ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-2">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 mb-2">{children}</ol>,
+                          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                          h3: ({ children }) => <h3 className="font-semibold text-sm mt-3 mb-1">{children}</h3>,
+                          code: ({ children }) => <code className="bg-gray-200 rounded px-1 text-xs font-mono">{children}</code>,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            )
+          })}
 
           {loading && (
             <motion.div
@@ -154,21 +296,20 @@ export default function AIChat() {
         </div>
       </div>
 
-      {/* 输入框 */}
       <div className="bg-white rounded-2xl shadow-lg p-4">
         <div className="flex items-end space-x-2">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="输入你的问题..."
-            className="flex-1 resize-none border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-transparent max-h-32"
+            placeholder={hasPendingApproval ? 'Respond to the preference update above first…' : 'Ask me anything about fashion…'}
+            className="flex-1 resize-none border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-transparent max-h-32 disabled:bg-gray-50 disabled:text-gray-400"
             rows={1}
-            disabled={loading}
+            disabled={loading || hasPendingApproval}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || loading}
+            disabled={!input.trim() || loading || hasPendingApproval}
             className="bg-gradient-to-r from-primary-600 to-pink-600 text-white p-3 rounded-xl hover:from-primary-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="h-5 w-5" />
