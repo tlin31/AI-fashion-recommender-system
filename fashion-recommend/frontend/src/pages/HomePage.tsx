@@ -24,7 +24,8 @@ export default function HomePage() {
   const loadRecommendations = async () => {
     try {
       setLoading(true)
-      const data = await apiService.getRecommendations('user_001', 20)
+      const username = localStorage.getItem('username') || 'user_001'
+      const data = await apiService.getRecommendations(username, 20)
       setItems(data.items)
     } catch (error) {
       console.error('Failed to load recommendations:', error)
