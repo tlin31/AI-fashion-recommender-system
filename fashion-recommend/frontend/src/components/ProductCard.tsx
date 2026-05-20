@@ -8,11 +8,12 @@ interface ProductCardProps {
   id: string
   name: string
   score: number
+  price?: number
   onLike?: () => void
   onAddToCart?: () => void
 }
 
-export default function ProductCard({ id, name, score }: ProductCardProps) {
+export default function ProductCard({ id, name, score, price }: ProductCardProps) {
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [showComments, setShowComments] = useState(false)
@@ -144,7 +145,9 @@ export default function ProductCard({ id, name, score }: ProductCardProps) {
 
           {/* Actions */}
           <div className="flex items-center justify-between">
-            <span className="text-base font-serif font-semibold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">$299</span>
+            <span className="text-base font-serif font-semibold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+              {price ? `$${(price / 84).toFixed(2)}` : '—'}
+            </span>
 
             <div className="flex items-center space-x-3">
               {/* Comment Button */}

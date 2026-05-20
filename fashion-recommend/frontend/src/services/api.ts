@@ -12,6 +12,8 @@ const api = axios.create({
 export interface RecommendItem {
   item_id: string
   score: number
+  name: string
+  price: number
   categories?: string[]
 }
 

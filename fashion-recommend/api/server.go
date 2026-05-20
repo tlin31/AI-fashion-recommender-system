@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"fashion-recommend/ai"
 	"fashion-recommend/auth"
@@ -214,16 +215,41 @@ func (s *Server) getRecommend(c *gin.Context) {
 	category := c.DefaultQuery("category", "")
 	n, _ := strconv.Atoi(c.DefaultQuery("n", "10"))
 
-	items, err := s.gorseClient.GetRecommend(userId, category, n)
+	recommended, err := s.gorseClient.GetRecommend(userId, category, n)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Enrich each item with name and price by fetching full item details from Gorse.
+	// Labels store "item_name:..." and "price:..." set at seed time.
+	type EnrichedItem struct {
+		ItemId string  `json:"item_id"`
+		Score  float64 `json:"score"`
+		Name   string  `json:"name"`
+		Price  float64 `json:"price"`
+	}
+	enriched := make([]EnrichedItem, 0, len(recommended))
+	for _, rec := range recommended {
+		item := EnrichedItem{ItemId: rec.ItemId, Score: rec.Score}
+		if full, err := s.gorseClient.GetItem(rec.ItemId); err == nil {
+			for _, label := range full.Labels {
+				if strings.HasPrefix(label, "item_name:") {
+					item.Name = strings.TrimPrefix(label, "item_name:")
+				} else if strings.HasPrefix(label, "price:") {
+					if p, err := strconv.ParseFloat(strings.TrimPrefix(label, "price:"), 64); err == nil {
+						item.Price = p
+					}
+				}
+			}
+		}
+		enriched = append(enriched, item)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"user_id": userId,
-		"items":   items,
-		"total":   len(items),
+		"items":   enriched,
+		"total":   len(enriched),
 	})
 }
 
