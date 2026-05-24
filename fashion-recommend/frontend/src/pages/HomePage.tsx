@@ -274,8 +274,9 @@ export default function HomePage() {
                 >
                   <ProductCard
                     id={item.item_id}
-                    name={item.item_id}
+                    name={item.name}
                     score={item.score}
+                    price={item.price}
                   />
                 </motion.div>
               ))}

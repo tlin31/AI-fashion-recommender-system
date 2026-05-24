@@ -47,10 +47,6 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     google_model: str = ""  # falls back to agent_final_model if not set in .env
 
-    agent_router_model: str = "gemini-2.5-flash"
-    agent_final_model: str = "gemini-2.5-flash"
-    agent_max_iterations: int = 8
-    agent_token_budget: int = 20_000
     mock_ai: bool = False
 
     # Tavily API key — read automatically by TavilySearchResults via TAVILY_API_KEY env var.
@@ -91,13 +87,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with AsyncPostgresSaver.from_conn_string(settings.database_url) as checkpointer:
         await checkpointer.setup()
 
-        agent_cfg = AgentConfig(
-            api_key=settings.google_api_key,
-            router_model=settings.agent_router_model,
-            final_model=settings.agent_final_model,
-            max_iterations=settings.agent_max_iterations,
-            token_budget=settings.agent_token_budget,
-        )
+        agent_cfg = AgentConfig()
         graph = AgentGraph(agent_cfg, db, gorse, checkpointer=checkpointer)
 
         # ---- Mock mode (MOCK_AI=true) — bypasses all real LLM calls ----

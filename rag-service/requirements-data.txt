@@ -1,0 +1,8 @@
+# Dependencies for one-time data acquisition and normalization scripts only.
+# Not needed to run the RAG service itself.
+# Install with: pip install -r requirements-data.txt
+
+kagglehub>=0.3.0
+pandas==2.2.0
+psycopg2-binary==2.9.9
+python-dotenv==1.0.0
