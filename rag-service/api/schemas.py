@@ -10,8 +10,16 @@ from pydantic import BaseModel, Field
 
 
 class QueryRequest(BaseModel):
+    # A required string field. The ... (called an Ellipsis) tells Python:
+    # "This field is mandatory and has no default value."
     query: str = Field(..., description="Natural language product query")
+
+    # A dictionary (map) that is optional. The dict | None syntax means
+    # it can accept either a dictionary or a None value. It defaults to None.
     filters: dict | None = Field(None, description="Structured pre-filters, e.g. {'price_max': 80, 'category': 'trousers'}")
+
+    # An integer field that defaults to 5 if omitted. It enforces strict mathematical limits.
+    # 1<= k <=20
     top_k: int = Field(5, ge=1, le=20, description="Number of products to return")
 
 

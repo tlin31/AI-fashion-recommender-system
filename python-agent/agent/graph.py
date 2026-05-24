@@ -44,6 +44,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import TypedDict
 
 from agent.tools import make_tools
@@ -194,14 +195,16 @@ def _merge_trait_updates(existing: dict, updates: list[dict]) -> dict:
 # Config
 # ---------------------------------------------------------------------------
 
-class AgentConfig(BaseModel):
-    api_key: str
+class AgentConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    api_key: str = Field(default="", validation_alias="GOOGLE_API_KEY")
     # Router: must support function calling — only Gemini models qualify.
     # Finalizer: text-generation only, no tool calls needed — Gemma works fine.
-    router_model: str = "gemini-2.5-flash"  # Gemini: function-calling capable
-    final_model: str = "gemini-2.5-flash"
-    max_iterations: int = 8
-    token_budget: int = 20_000  # exit ReAct loop early if cumulative tokens exceed this
+    router_model: str = Field(default="gemini-2.5-flash", validation_alias="AGENT_ROUTER_MODEL")
+    final_model: str = Field(default="gemma-3-27b-it", validation_alias="AGENT_FINAL_MODEL")
+    max_iterations: int = Field(default=8, validation_alias="AGENT_MAX_ITERATIONS")
+    token_budget: int = Field(default=20_000, validation_alias="AGENT_TOKEN_BUDGET")
 
 
 # ---------------------------------------------------------------------------

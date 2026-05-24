@@ -26,6 +26,8 @@ async def embed(text: str) -> list[float]:
     return response.data[0].embedding
 
 
+# Euclidean norm /magnitude (or length) = squaring each individual number in the vector,
+# adding them all together, and taking the square root
 def cosine_similarity(a: list[float], b: list[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b))
     norm_a = sum(x * x for x in a) ** 0.5
