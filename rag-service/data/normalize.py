@@ -78,6 +78,29 @@ def bucket_price(price: float, p33: float, p67: float) -> str:
     return "premium"
 
 
+# Ordered from most specific to least so longer terms match before their substrings
+# (e.g. "kurta set" before "kurta", "sweatshirt" before "shirt")
+_CATEGORY_KEYWORDS = [
+    "kurta set", "co-ord", "jumpsuit", "sweatshirt", "lehenga",
+    "palazzo", "leggings", "trousers", "cardigan", "pullover",
+    "blazer", "sweater", "hoodie", "jacket", "churidar", "joggers",
+    "cargos", "shorts", "dupatta", "tunic", "shrug", "kurta", "kurti",
+    "saree", "dress", "skirt", "jeans", "top", "shirt", "suit",
+]
+
+
+def _derive_category(attrs: dict, name: str) -> str:
+    """Use Top Type from p_attributes; fall back to keyword scan of product name."""
+    top_type = attrs.get("Top Type", "").lower().strip()
+    if top_type:
+        return top_type
+    name_lower = name.lower()
+    for kw in _CATEGORY_KEYWORDS:
+        if kw in name_lower:
+            return kw
+    return "apparel"
+
+
 # ── Main pipeline ─────────────────────────────────────────────────────────────
 
 def clean(df: pd.DataFrame) -> pd.DataFrame:
@@ -94,7 +117,10 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     attrs = df["p_attributes"].astype(str).map(parse_attrs)
     df["occasion"] = attrs.map(lambda a: a.get("Occasion", "")).str.lower().str.strip()
     df["material"] = attrs.map(lambda a: a.get("Top Fabric", "")).str.lower().str.strip()
-    df["category"] = attrs.map(lambda a: a.get("Top Type", "")).str.lower().str.strip()
+    df["category"] = [
+        _derive_category(a, n)
+        for a, n in zip(attrs, df["name"].astype(str))
+    ]
 
     # 5. Normalise scalar fields
     df["brand"] = df["brand"].astype(str).str.lower().str.strip()
