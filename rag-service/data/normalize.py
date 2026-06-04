@@ -13,6 +13,7 @@ import ast
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -163,6 +164,23 @@ def _parse_price(raw) -> float | None:
         return None
 
 
+# Matches trailing "(Color, Size)" or "(Color)" variant suffixes Amazon appends to
+# child-ASIN titles (e.g. "Women's Dress(Navy Blue, XL)").  We strip these before
+# embedding so the vector represents the product, not one specific variant.
+_VARIANT_SUFFIX = re.compile(
+    r"\s*\([^)]*\b(?:XS|S|M|L|XL|XXL|2XL|3XL|4XL|5XL"
+    r"|black|white|red|blue|green|pink|gr[ae]y|navy|beige|brown"
+    r"|purple|yellow|orange|ivory|cream|burgundy|olive|teal|coral|rose"
+    r"|\d+W|\d+L)\b[^)]*\)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _clean_title(title: str) -> str:
+    """Strip trailing variant suffix from title (color/size combos)."""
+    return _VARIANT_SUFFIX.sub("", title).strip()
+
+
 def _build_description(row: pd.Series) -> str:
     """
     Concatenate title + features + description + key details fields.
@@ -172,7 +190,7 @@ def _build_description(row: pd.Series) -> str:
     """
     parts: list[str] = []
 
-    title = str(row.get("title") or "").strip()
+    title = _clean_title(str(row.get("title") or "").strip())
     if title:
         parts.append(title)
 
@@ -237,8 +255,27 @@ def bucket_price(price: float, p33: float, p67: float) -> str:
 
 # ── Main pipeline ─────────────────────────────────────────────────────────────
 
+def _ts() -> str:
+    return time.strftime("%H:%M:%S")
+
+
+def _apply_with_progress(df: pd.DataFrame, func, label: str, batch: int = 50_000) -> pd.Series:
+    """Run df.apply(func) in batches, printing progress every `batch` rows."""
+    total = len(df)
+    parts = []
+    t0 = time.time()
+    for start in range(0, total, batch):
+        end = min(start + batch, total)
+        parts.append(df.iloc[start:end].apply(func, axis=1))
+        elapsed = time.time() - t0
+        rate = (end) / elapsed if elapsed > 0 else 0
+        eta = (total - end) / rate if rate > 0 else 0
+        print(f"  [{_ts()}] {label}: {end:,}/{total:,} rows  ({rate:,.0f} rows/s  ETA {eta:.0f}s)")
+    return pd.concat(parts)
+
+
 def clean(src: Path) -> pd.DataFrame:
-    print(f"Reading {src.name}  (chunked, {CHUNK_SIZE:,} rows/chunk)...")
+    print(f"[{_ts()}] Reading {src.name}  (chunked, {CHUNK_SIZE:,} rows/chunk)...")
 
     chunks: list[pd.DataFrame] = []
     total_read = 0
@@ -258,33 +295,37 @@ def clean(src: Path) -> pd.DataFrame:
         chunks.append(chunk)
 
         kept = sum(len(c) for c in chunks)
-        print(f"  Read {total_read:,} rows → kept {kept:,} after early filter...")
+        print(f"  [{_ts()}] Read {total_read:,} rows → kept {kept:,} after early filter...")
 
     df = pd.concat(chunks, ignore_index=True)
-    print(f"  Total after early filter: {len(df):,} products")
+    print(f"[{_ts()}] Total after early filter: {len(df):,} products")
 
-    # Build derived fields
-    print("  Building descriptions and extracting metadata...")
-    df["description"] = df.apply(_build_description, axis=1)
+    # Build derived fields — slow apply, prints progress every 50k rows
+    print(f"[{_ts()}] Building descriptions ({len(df):,} rows) ...")
+    df["description"] = _apply_with_progress(df, _build_description, "description")
     df = df[df["description"].str.len() > 30]
+    print(f"[{_ts()}] Descriptions done — {len(df):,} rows with len>30")
 
-    details_col       = df.apply(lambda r: _parse_details(r.get("details")), axis=1)
+    print(f"[{_ts()}] Extracting details metadata ({len(df):,} rows) ...")
+    details_col       = _apply_with_progress(df, lambda r: _parse_details(r.get("details")), "details")
     df["occasion"]    = details_col.map(_extract_occasion)
     df["material"]    = details_col.map(_extract_material)
     df["colour"]      = details_col.map(_extract_colour)
     df["category"]    = df["title"].astype(str).map(_derive_category)
+    print(f"[{_ts()}] Metadata done")
 
     # Drop non-fashion items (watches, pencil cases, tech accessories, etc.)
     # that slipped through Amazon's loose "AMAZON FASHION" category.
     before = len(df)
     df = df[df["category"].notna()]
-    print(f"  Dropped {before - len(df):,} non-fashion items (no keyword match) → {len(df):,} remain")
+    print(f"[{_ts()}] Dropped {before - len(df):,} non-fashion items (no keyword match) → {len(df):,} remain")
 
     df["image_url"]   = df.get("images", pd.Series([[] for _ in range(len(df))])).map(_extract_image_url)
 
     # Normalise scalar fields
+    print(f"[{_ts()}] Normalising scalar fields ...")
     df["product_id"]   = df["parent_asin"].astype(str).str.strip()
-    df["name"]         = df["title"].astype(str).str.strip()
+    df["name"]         = df["title"].astype(str).map(_clean_title)
     df["brand"]        = df.get("store", pd.Series([""] * len(df))).fillna("").astype(str).str.lower().str.strip()
     df["price"]        = df.get("price", pd.Series([None] * len(df))).map(_parse_price)
     df["avg_rating"]   = pd.to_numeric(df.get("average_rating"), errors="coerce")
@@ -300,12 +341,62 @@ def clean(src: Path) -> pd.DataFrame:
         )
     else:
         df["price_range"] = "mid"
+    print(f"[{_ts()}] Scalar fields done")
+
+    # ── Quality filters ──────────────────────────────────────────────────────────
+
+    # 1. Richness: title must be descriptive AND have real feature/description text.
+    #    Products that only have a title produce near-useless embeddings for RAG.
+    print(f"[{_ts()}] Computing richness signals ({len(df):,} rows) ...")
+    raw_desc_len = _apply_with_progress(
+        df, lambda r: len(" ".join(r.get("description") or [])), "raw_desc_len"
+    )
+    feature_count = _apply_with_progress(
+        df,
+        lambda r: len(r.get("features") or []) if isinstance(r.get("features"), list) else 0,
+        "feature_count",
+    )
+    before = len(df)
+    df = df[
+        (df["title"].astype(str).str.len() >= 60) &
+        ((feature_count >= 2) | (raw_desc_len >= 100))
+    ]
+    print(f"[{_ts()}] Richness filter (title≥60 + feat≥2 or desc≥100): dropped {before - len(df):,} → {len(df):,} remain")
+
+    # 2. Minimum review signal: at least 5 ratings to avoid long-tail noise.
+    before = len(df)
+    df = df[df["rating_count"] >= 5]
+    print(f"[{_ts()}] Min reviews filter (≥5): dropped {before - len(df):,} → {len(df):,} remain")
+
+    # 3. Price sanity: drop obvious non-fashion outliers (>$500).
+    #    NULL price is fine — majority of records have no price.
+    before = len(df)
+    df = df[df["price"].isna() | (df["price"] <= 500)]
+    print(f"[{_ts()}] Price filter (≤$500 or null): dropped {before - len(df):,} → {len(df):,} remain")
+
+    # 4. Duplicate product dedup: two strategies combined —
+    #
+    #    a) parent_asin dedup: child ASINs sharing the same parent_asin (true variants).
+    #       Keep the highest-rated row per parent_asin.
+    #
+    #    b) title+brand dedup: separate parent ASINs that are the same physical product
+    #       listed multiple times (e.g. MOSHENGQI leggings with 12 near-identical entries,
+    #       each with a different parent_asin but identical cleaned title and brand).
+    #       Keep the highest-rated row per (cleaned_name, brand) pair.
+    #
+    #    Sort descending first so drop_duplicates keeps the first (= highest-rated) row.
+    before = len(df)
+    df = df.sort_values("rating_count", ascending=False)
+    df = df.drop_duplicates(subset=["product_id"])           # (a) true child variants
+    df = df.drop_duplicates(subset=["name", "brand"])        # (b) same title+brand duplicates
+    print(f"[{_ts()}] Dedup (parent ASIN + title+brand): dropped {before - len(df):,} duplicates → {len(df):,} unique products remain")
 
     # Subsample: top SUBSAMPLE_SIZE by rating_count (highest signal quality)
+    print(f"[{_ts()}] Selecting top {SUBSAMPLE_SIZE:,} by rating_count ...")
     df = df.dropna(subset=["rating_count"])
     df = df.nlargest(SUBSAMPLE_SIZE, "rating_count")
 
-    print(f"\n  === Subsample stats ({len(df):,} products) ===")
+    print(f"\n[{_ts()}] === Subsample stats ({len(df):,} products) ===")
     print(f"  Top categories : {df['category'].value_counts().head(8).to_dict()}")
     print(f"  Price buckets  : {df['price_range'].value_counts().to_dict()}")
     print(f"  With image_url : {(df['image_url'] != '').sum()}")
@@ -320,11 +411,14 @@ def clean(src: Path) -> pd.DataFrame:
 
 def write_to_postgres(df: pd.DataFrame) -> int:
     url = os.environ["POSTGRES_URL"]
+    new_ids = list(df["product_id"].astype(str))
     conn = psycopg2.connect(url)
     try:
         with conn:
             with conn.cursor() as cur:
                 cur.execute(CREATE_TABLE_SQL)
+
+                # Upsert new/updated rows
                 records = df.to_dict("records")
                 # Convert pandas NA/NaT to None for psycopg2
                 for rec in records:
@@ -335,7 +429,20 @@ def write_to_postgres(df: pd.DataFrame) -> int:
                         except (TypeError, ValueError):
                             pass
                 cur.executemany(UPSERT_SQL, records)
-        print(f"\nUpserted {len(records)} products into rag_products.")
+
+                # Delete stale rows — products that were in the table from a
+                # previous run but are no longer in the current top-N selection
+                # (e.g. deduped-out child variants like MOSHENGQI duplicates).
+                cur.execute(
+                    "DELETE FROM rag_products WHERE product_id != ALL(%s)",
+                    (new_ids,)
+                )
+                deleted = cur.rowcount
+
+        ts = time.strftime('%H:%M:%S')
+        print(f"\n[{ts}] Upserted {len(records):,} products into rag_products.")
+        if deleted:
+            print(f"[{ts}] Deleted {deleted:,} stale rows no longer in top-{len(records):,} selection.")
         return len(records)
     finally:
         conn.close()

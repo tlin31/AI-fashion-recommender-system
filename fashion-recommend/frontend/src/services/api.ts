@@ -14,6 +14,8 @@ export interface RecommendItem {
   score: number
   name: string
   price: number
+  price_range?: string
+  avg_rating?: number
   categories?: string[]
 }
 

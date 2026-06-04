@@ -85,16 +85,20 @@ async def upsert_chunks(chunks: list[dict]) -> int:
     total = 0
     for i in range(0, len(chunks), _BATCH_SIZE):
         batch = chunks[i : i + _BATCH_SIZE]
+        def _trunc(s: str, n: int) -> str:
+            """Truncate by bytes to stay within Milvus VARCHAR limit."""
+            return s.encode()[:n].decode("utf-8", errors="ignore")
+
         data = [
-            [c["id"] for c in batch],
+            [c["id"][:128] for c in batch],
             [c["vector"] for c in batch],
-            [c["product_id"] for c in batch],
-            [c["chunk_type"] for c in batch],
-            [c["text"][:2048] for c in batch],  # guard against oversized text
-            [c.get("price_range", "") for c in batch],
-            [c.get("category", "") for c in batch],
-            [c.get("occasion", "") for c in batch],
-            [c.get("brand", "") for c in batch],
+            [c["product_id"][:64] for c in batch],
+            [c["chunk_type"][:16] for c in batch],
+            [_trunc(c["text"], 2040) for c in batch],
+            [c.get("price_range", "")[:32] for c in batch],
+            [c.get("category", "")[:64] for c in batch],
+            [c.get("occasion", "")[:64] for c in batch],
+            [c.get("brand", "")[:64] for c in batch],
         ]
         col.upsert(data)
         total += len(batch)

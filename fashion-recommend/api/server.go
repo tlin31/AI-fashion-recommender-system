@@ -1,7 +1,11 @@
 package api
 
 import (
+	"io"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -58,6 +62,10 @@ func (s *Server) setupRoutes() {
 		api.POST("/ai/chat", s.aiChat)
 		api.POST("/ai/explain", s.aiExplainRecommendation)
 		api.POST("/ai/style-advice", s.aiStyleAdvice)
+
+		// Python agent proxy — forward to LangGraph agent on :8001
+		api.POST("/ai/agent-chat", s.proxyToPythonAgent)
+		api.POST("/ai/agent-resume", s.proxyToPythonAgent)
 
 		// 评论相关
 		api.POST("/comments", s.createComment)
@@ -221,16 +229,21 @@ func (s *Server) getRecommend(c *gin.Context) {
 		return
 	}
 
-	// Enrich each item with name and price by fetching full item details from Gorse.
-	// Labels store "item_name:..." and "price:..." set at seed time.
+	// Enrich each item with name, price, and price_range from Gorse labels.
+	// Labels set at seed time: "item_name:...", "price:...", "price_range:..."
 	type EnrichedItem struct {
-		ItemId string  `json:"item_id"`
-		Score  float64 `json:"score"`
-		Name   string  `json:"name"`
-		Price  float64 `json:"price"`
+		ItemId     string  `json:"item_id"`
+		Score      float64 `json:"score"`
+		Name       string  `json:"name"`
+		Price      float64 `json:"price"`
+		PriceRange string  `json:"price_range"`
+		AvgRating  float64 `json:"avg_rating"`
 	}
 	enriched := make([]EnrichedItem, 0, len(recommended))
 	for _, rec := range recommended {
+		if rec.ItemId == "" {
+			continue
+		}
 		item := EnrichedItem{ItemId: rec.ItemId, Score: rec.Score}
 		if full, err := s.gorseClient.GetItem(rec.ItemId); err == nil {
 			for _, label := range full.Labels {
@@ -239,6 +252,12 @@ func (s *Server) getRecommend(c *gin.Context) {
 				} else if strings.HasPrefix(label, "price:") {
 					if p, err := strconv.ParseFloat(strings.TrimPrefix(label, "price:"), 64); err == nil {
 						item.Price = p
+					}
+				} else if strings.HasPrefix(label, "price_range:") {
+					item.PriceRange = strings.TrimPrefix(label, "price_range:")
+				} else if strings.HasPrefix(label, "avg_rating:") {
+					if r, err := strconv.ParseFloat(strings.TrimPrefix(label, "avg_rating:"), 64); err == nil {
+						item.AvgRating = r
 					}
 				}
 			}
@@ -277,6 +296,31 @@ func (s *Server) healthCheck(c *gin.Context) {
 		"status":  "ok",
 		"service": "fashion-recommend-api",
 	})
+}
+
+// proxyToPythonAgent reverse-proxies /api/ai/agent-* requests to the
+// LangGraph python agent running on PYTHON_AGENT_URL (default :8001).
+func (s *Server) proxyToPythonAgent(c *gin.Context) {
+	agentURL := os.Getenv("PYTHON_AGENT_URL")
+	if agentURL == "" {
+		agentURL = "http://localhost:8001"
+	}
+	target, err := url.Parse(agentURL)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "invalid python agent URL"})
+		return
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, e error) {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "python agent unavailable: " + e.Error()})
+	}
+	// Strip the response writer hijack so Gin doesn't double-write headers
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		// Pass through as-is
+		_ = io.Discard
+		return nil
+	}
+	proxy.ServeHTTP(c.Writer, c.Request)
 }
 
 // Run 启动服务器
