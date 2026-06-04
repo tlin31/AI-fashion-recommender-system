@@ -155,4 +155,5 @@ changes.md
 
 # ── Go build artefacts ────────────────────────────────────────────────────────
 fashion-recommend/bin/
-*.log
+*.logfashion-recommend/public/images/*.jpg
+Myntra Fashion Product Dataset/
