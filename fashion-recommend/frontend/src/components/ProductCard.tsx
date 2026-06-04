@@ -9,11 +9,13 @@ interface ProductCardProps {
   name: string
   score: number
   price?: number
+  priceRange?: string
+  avgRating?: number
   onLike?: () => void
   onAddToCart?: () => void
 }
 
-export default function ProductCard({ id, name, score, price }: ProductCardProps) {
+export default function ProductCard({ id, name, score, price, priceRange, avgRating }: ProductCardProps) {
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [showComments, setShowComments] = useState(false)
@@ -90,11 +92,13 @@ export default function ProductCard({ id, name, score, price }: ProductCardProps
               onLoad={() => setImageLoaded(true)}
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
-                e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                const span = document.createElement('span');
-                span.className = 'text-4xl font-light text-orange-300';
-                span.innerText = id;
-                e.currentTarget.parentElement?.appendChild(span);
+                const parent = e.currentTarget.parentElement;
+                if (parent && !parent.querySelector('.img-fallback')) {
+                  const span = document.createElement('span');
+                  span.className = 'img-fallback text-sm font-serif text-orange-400 text-center px-4';
+                  span.innerText = name || id;
+                  parent.appendChild(span);
+                }
               }}
             />
 
@@ -137,16 +141,22 @@ export default function ProductCard({ id, name, score, price }: ProductCardProps
             {name || `Product ${id}`}
           </h3>
 
-          {score && (
+          {avgRating ? (
             <p className="text-xs text-amber-900 mb-4 font-serif">
-              Rating: <span className="text-orange-600 font-semibold">{score.toFixed(1)}</span>/10
+              ★ <span className="text-orange-600 font-semibold">{avgRating.toFixed(1)}</span>
+              <span className="text-amber-700">/5</span>
             </p>
-          )}
+          ) : null}
 
           {/* Actions */}
           <div className="flex items-center justify-between">
             <span className="text-base font-serif font-semibold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-              {price ? `$${(price / 84).toFixed(2)}` : '—'}
+              {price
+                ? `$${price.toFixed(2)}`
+                : priceRange === 'budget' ? '$'
+                : priceRange === 'mid' ? '$$'
+                : priceRange === 'premium' ? '$$$'
+                : '—'}
             </span>
 
             <div className="flex items-center space-x-3">

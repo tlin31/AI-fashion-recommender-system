@@ -186,10 +186,26 @@ export default function AIChat() {
                             </div>
                           )]
                         }
-                        // Nested format: {style_preferences: {minimalist: 0.9}, price_sensitivity: "medium"}
+                        // Nested format: {style_preferences: {minimalist: 0.9}, price_sensitivity: "medium", keywords: ["floral"]}
                         return Object.entries(update).map(([key, val]) => {
                           const label = key.replace(/_/g, ' ').replace(/\bpreferences\b/g, '').trim()
-                          const entries = val != null && typeof val === 'object' ? Object.entries(val as Record<string, number>) : [[String(val), null]] as [string, number | null][]
+
+                          // Array value e.g. keywords: ["floral", "casual"] — show as comma-joined chip, no score
+                          if (Array.isArray(val)) {
+                            return [(
+                              <div key={`${i}-${key}`} className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider w-28 shrink-0">{label}</span>
+                                <span className="text-sm font-semibold text-gray-800 capitalize">{(val as string[]).join(', ')}</span>
+                              </div>
+                            )]
+                          }
+
+                          // Object value e.g. style_preferences: {minimalist: 0.9}
+                          const entries: [string, number | null][] =
+                            val != null && typeof val === 'object'
+                              ? Object.entries(val as Record<string, number>)
+                              : [[String(val), null]]
+
                           return entries.map(([v, score], j) => (
                             <div key={`${i}-${key}-${j}`} className="flex items-center justify-between">
                               <span className="text-xs font-medium text-gray-500 uppercase tracking-wider w-28 shrink-0">{label}</span>

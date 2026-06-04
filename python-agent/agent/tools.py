@@ -15,6 +15,7 @@ Go's injectDefaultUserID() helper.
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -270,15 +271,23 @@ def make_tools(
     #     "适用于「2026春季流行什么」类问题。"
     #     "query 参数为英文或中文搜索词，例如 '2026 spring minimalist fashion trends'。"
     # )
-    tavily = TavilySearch(
-        max_results=5,
-        name="search_fashion_trends",
-        description=(
-            "Search for current fashion trends, seasonal styles, brand news, or outfit guides. "
-            "Use for questions like 'What's trending in spring 2026?' "
-            "The query parameter should be an English search term, e.g. '2026 spring minimalist fashion trends'."
-        ),
-    )
+    _tavily_key = os.environ.get("TAVILY_API_KEY", "")
+    if _tavily_key:
+        tavily = TavilySearch(
+            max_results=5,
+            name="search_fashion_trends",
+            description=(
+                "Search for current fashion trends, seasonal styles, brand news, or outfit guides. "
+                "Use for questions like 'What's trending in spring 2026?' "
+                "The query parameter should be an English search term, e.g. '2026 spring minimalist fashion trends'."
+            ),
+        )
+    else:
+        import logging
+        logging.getLogger(__name__).warning(
+            "TAVILY_API_KEY not set — search_fashion_trends tool disabled."
+        )
+        tavily = None
 
     # ------------------------------------------------------------------
     # Tool 5: update_user_traits
@@ -390,4 +399,7 @@ def make_tools(
             )],
         })
 
-    return [get_recommendations, get_user_preferences, get_item_details, tavily, update_user_traits]
+    tools = [get_recommendations, get_user_preferences, get_item_details, update_user_traits]
+    if tavily is not None:
+        tools.insert(3, tavily)
+    return tools

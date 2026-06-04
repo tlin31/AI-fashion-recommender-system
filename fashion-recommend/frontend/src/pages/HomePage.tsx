@@ -277,6 +277,8 @@ export default function HomePage() {
                     name={item.name}
                     score={item.score}
                     price={item.price}
+                    priceRange={item.price_range}
+                    avgRating={item.avg_rating}
                   />
                 </motion.div>
               ))}
