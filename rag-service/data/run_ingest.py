@@ -9,6 +9,12 @@ import argparse
 import asyncio
 import hashlib
 import os
+import sys
+
+# Scripts in data/ are run from the rag-service/ root, but Python adds the script's
+# own directory (data/) to sys.path — not the working directory. This line ensures
+# rag-service/ is always on the path so `ingestion.*` imports resolve correctly.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import psycopg2
 from dotenv import load_dotenv

@@ -8,9 +8,14 @@
 
 from __future__ import annotations
 
+import html
 import os
 import re
+import sys
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import ftfy
 import pandas as pd
 import psycopg2
 from dotenv import load_dotenv
@@ -75,7 +80,9 @@ def scrape_reviews(
         print("and pass its path as reviews_csv.")
         return []
 
+    print(f"Reading {reviews_csv}...")
     df = pd.read_csv(reviews_csv, low_memory=False)
+    print(f"  Loaded {len(df):,} rows")
 
     # Normalise column names to lowercase
     df.columns = df.columns.str.lower().str.strip()
@@ -87,11 +94,27 @@ def scrape_reviews(
         return []
 
     df = df.dropna(subset=[text_col])
-    df["clean_text"] = df[text_col].astype(str).apply(
-        lambda t: re.sub(r"\s+", " ", t).strip()
-    )
+    print(f"  After dropna: {len(df):,} rows")
+
+    # Cleaning pipeline (order matters):
+    #   1. ftfy          - fix mojibake before anything else touches the bytes
+    #   2. html.unescape - decode HTML entities (&#34; -> ", &amp; -> &)
+    #   3. strip HTML    - remove <br />, <p>, etc. left from review formatting
+    #   4. strip Markdown emphasis (*word* -> word)
+    #   5. collapse whitespace
+    def _clean(t: str) -> str:
+        t = ftfy.fix_text(t)
+        t = html.unescape(t)
+        t = re.sub(r"<[^>]+>", " ", t)
+        t = re.sub(r"\*+([^*]+)\*+", r"\1", t)
+        t = re.sub(r"\s+", " ", t).strip()
+        return t
+
+    df["clean_text"] = df[text_col].astype(str).apply(_clean)
+
     # Drop reviews below minimum word count
     df = df[df["clean_text"].str.split().str.len() >= MIN_WORDS]
+    print(f"  After MIN_WORDS={MIN_WORDS} filter: {len(df):,} reviews to match")
 
     # Simple matching: assign each review to the first product_id whose name
     # appears as a keyword in the review. For small catalogs this is fast enough.
@@ -106,17 +129,92 @@ def scrape_reviews(
     results: list[dict] = []
     per_product_texts: dict[str, list[str]] = {pid: [] for pid in catalog}
 
-    for text in df["clean_text"]:
-        text_lower = text.lower()
-        for pid, name in catalog.items():
-            # Match if any word from the product name (>4 chars) appears in the review
-            keywords = [w for w in name.split() if len(w) > 4]
-            if keywords and any(kw in text_lower for kw in keywords):
-                per_product_texts[pid].append(text)
-                break  # assign to first matching product only
+    # Build inverted index: keyword → [product_ids that contain it]
+    #
+    # Two-sided discriminativeness filter (both must pass):
+    #
+    #   Product-side  (MAX_KEYWORD_PRODUCTS): drop keywords shared by many products.
+    #                 "blue" appears in 800 product names → useless for matching.
+    #
+    #   Review-side   (MAX_REVIEW_FREQUENCY): drop keywords that appear in many reviews.
+    #                 "pocket" appears in 30k reviews but only 1 product name → passes
+    #                 the product-side filter but causes 1,700 false matches.
+    #                 A keyword appearing in >2% of reviews is too generic to be
+    #                 discriminative regardless of how specific it is to a product.
+    #
+    # Together these approximate TF-IDF: keywords rare in both the product catalog
+    # AND the review corpus carry the most signal.
+    MAX_KEYWORD_PRODUCTS = 20
+    MAX_REVIEW_FREQUENCY = int(len(df) * 0.02)  # 2% of review corpus
 
+    # Count how many reviews each keyword appears in (document frequency)
+    print("  Computing review-side keyword frequencies...")
+    review_word_counts: dict[str, int] = {}
+    for text in df["clean_text"]:
+        for word in set(text.lower().split()):   # set() counts once per review
+            if len(word) > 4:
+                review_word_counts[word] = review_word_counts.get(word, 0) + 1
+
+    raw_index: dict[str, list[str]] = {}
+    for pid, name in catalog.items():
+        for word in name.split():
+            if len(word) > 4:
+                raw_index.setdefault(word, []).append(pid)
+
+    keyword_to_pids = {
+        kw: pids for kw, pids in raw_index.items()
+        if len(pids) <= MAX_KEYWORD_PRODUCTS                          # product-side
+        and review_word_counts.get(kw, 0) <= MAX_REVIEW_FREQUENCY    # review-side
+    }
+    dropped_product_side = sum(1 for kw, pids in raw_index.items() if len(pids) > MAX_KEYWORD_PRODUCTS)
+    dropped_review_side  = sum(1 for kw, pids in raw_index.items()
+                               if len(pids) <= MAX_KEYWORD_PRODUCTS
+                               and review_word_counts.get(kw, 0) > MAX_REVIEW_FREQUENCY)
+    print(f"  Inverted index: {len(keyword_to_pids)} discriminative keywords "
+          f"(dropped {dropped_product_side} high product-fanout, "
+          f"{dropped_review_side} high review-frequency like 'pocket'/'pants')")
+
+    total = len(df)
+    matched = 0
+    for i, text in enumerate(df["clean_text"]):
+        if i % 100_000 == 0:
+            print(f"  Matching: {i:,}/{total:,} reviews processed, {matched} matched so far...")
+
+        words = set(text.lower().split())
+
+        # Count how many product-name keywords appear in this review per product.
+        # Assigning to the highest-hit product (rather than first-in-dict-order)
+        # is strictly more accurate: "Biba floral kurta" review scores higher on
+        # the "Biba Floral Kurta" product than on a generic "kurta" product.
+        hit_counts: dict[str, int] = {}
+        for word in words:
+            if word in keyword_to_pids:
+                for pid in keyword_to_pids[word]:
+                    hit_counts[pid] = hit_counts.get(pid, 0) + 1
+
+        # Require at least 2 keyword hits before assigning.
+        # A single generic keyword hit ("pocket", "cotton") is coincidence;
+        # 2+ hits from the same product name is genuine signal.
+        strong_hits = {pid: count for pid, count in hit_counts.items() if count >= 2}
+        if strong_hits:
+            best_pid = max(strong_hits, key=lambda p: strong_hits[p])
+            per_product_texts[best_pid].append(text)
+            matched += 1
+
+    n_products_matched = sum(1 for t in per_product_texts.values() if t)
+    print(f"  Matching complete: {matched:,} reviews matched to {n_products_matched} products")
+
+    # Cap reviews per product before deduplication.
+    # Without this, a product matching "kurta" accumulates tens of thousands of reviews
+    # and the O(n²) Jaccard dedup takes hours. 200 candidates is enough signal;
+    # we'll keep ~50 after deduplication anyway.
+    MAX_CANDIDATES = 200
     for pid, texts in per_product_texts.items():
-        deduped = _deduplicate(texts)
+        if not texts:
+            continue
+        candidates = texts[:MAX_CANDIDATES]
+        deduped = _deduplicate(candidates)
+        print(f"  product {pid}: {len(texts):,} matched → {len(candidates)} sampled → {len(deduped)} kept after dedup")
         for text in deduped:
             results.append({"product_id": pid, "text": text, "source": "kaggle"})
 

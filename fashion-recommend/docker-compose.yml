@@ -78,7 +78,108 @@ services:
       - gorse-master
     restart: unless-stopped
 
+  # Milvus dependencies
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.14
+    container_name: fashion-milvus-etcd
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    volumes:
+      - etcd_data:/etcd
+    command: >
+      etcd
+      --advertise-client-urls=http://etcd:2379
+      --listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-13T19-46-17Z
+    container_name: fashion-milvus-minio
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - minio_data:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Kafka broker (KRaft mode — no Zookeeper required)
+  # Used only for rag-service POST /ingest streaming path.
+  # POST /query does not need Kafka.
+  #
+  # Dual-listener setup:
+  #   EXTERNAL (port 9092) — host processes connect here (uvicorn running on your Mac)
+  #   INTERNAL (port 9093) — Docker containers connect here (future containerised rag-service)
+  #   CONTROLLER (port 9094) — KRaft leader election, internal only, never exposed
+  #
+  # Each listener advertises a different address back to clients (step 2 of the
+  # Kafka handshake). EXTERNAL advertises localhost:9092; INTERNAL advertises
+  # kafka:9093. Without this split, a container would get told "connect to
+  # localhost:9092", look at its own loopback, find nothing, and fail.
+  kafka:
+    image: bitnamilegacy/kafka:3.7
+    container_name: fashion-kafka
+    ports:
+      - "9092:9092" # EXTERNAL — host processes
+      - "9093:9093" # INTERNAL — Docker containers (exposed so host can verify)
+    environment:
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_LISTENERS: EXTERNAL://:9092,INTERNAL://:9093,CONTROLLER://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: EXTERNAL://localhost:9092,INTERNAL://kafka:9093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9094
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # Milvus vector store — used by rag-service for HNSW semantic search
+  milvus:
+    image: milvusdb/milvus:v2.4.0
+    container_name: fashion-milvus
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus_data:/var/lib/milvus
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
 volumes:
   postgres_data:
   redis_data:
   gorse_data:
+  etcd_data:
+  minio_data:
+  milvus_data:
+  kafka_data:
