@@ -14,6 +14,7 @@
 #   .milvus_client     MilvusClient | None
 #   .milvus_collection str
 #   .reranker          Reranker
+#   .kafka_producer    AIOKafkaProducer | None
 
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI
 from pymilvus import MilvusClient
 
@@ -105,6 +107,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "All /query requests will return empty results until Milvus is restored."
         )
 
+    # ── 4. Kafka producer (ingest write path) ─────────────────────────────
+    # Optional — POST /ingest degrades gracefully if Kafka is unreachable.
+    # The query path never touches Kafka, so startup is not blocked.
+    bootstrap = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+    try:
+        producer = AIOKafkaProducer(
+            bootstrap_servers=bootstrap,
+            value_serializer=lambda v: __import__("json").dumps(v).encode(),
+        )
+        await producer.start()
+        app.state.kafka_producer = producer
+        logger.info("Kafka producer connected to %s", bootstrap)
+    except Exception as exc:
+        app.state.kafka_producer = None
+        logger.warning("Kafka unavailable at startup (%s); POST /ingest will return 503", exc)
+
     logger.info("rag-service ready on port 8002")
     yield  # ← serve requests
 
@@ -116,6 +134,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.info("Milvus client closed")
         except Exception as exc:
             logger.warning("Error closing Milvus client: %s", exc)
+    if app.state.kafka_producer is not None:
+        try:
+            await app.state.kafka_producer.stop()
+            logger.info("Kafka producer stopped")
+        except Exception as exc:
+            logger.warning("Error stopping Kafka producer: %s", exc)
     logger.info("rag-service shutdown complete")
 
 
