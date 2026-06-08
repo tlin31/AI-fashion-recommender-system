@@ -391,10 +391,11 @@ async def hybrid_search(
             for hit in milvus_results[0]:
                 dense_hits.append(
                     {
-                        "chunk_id":   hit["id"],
-                        "product_id": hit["entity"].get("product_id", ""),
-                        "text":       hit["entity"].get("text", ""),
-                        "score":      float(hit["distance"]),  # overwritten by RRF
+                        "chunk_id":    hit["id"],
+                        "product_id":  hit["entity"].get("product_id", ""),
+                        "text":        hit["entity"].get("text", ""),
+                        "score":       float(hit["distance"]),  # overwritten by RRF
+                        "milvus_score": float(hit["distance"]), # preserved for CRAG grader
                         "metadata": {
                             "chunk_type":  hit["entity"].get("chunk_type", ""),
                             "price_range": hit["entity"].get("price_range", ""),
