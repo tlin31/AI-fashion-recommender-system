@@ -31,7 +31,7 @@ _POSTGRES_URL = os.environ.get(
 )
 
 # Intentional typo preserved from the original stub to avoid rename ripple.
-RetriivalPath = Literal["synthesize", "retry", "fallback"]
+RetriivalPath = Literal["synthesize", "retry", "fallback", "best_effort"]
 
 
 # ---------------------------------------------------------------------------
@@ -193,20 +193,27 @@ async def run_crag(
     if score >= _CRAG_HIGH_THRESHOLD:
         return candidates, "synthesize"
 
-    # Very low quality — rewriting is unlikely to help; use trending products.
+    # Very low quality — rewriting is unlikely to jump two thresholds; return the
+    # best candidates we already have rather than discarding them for trending products.
+    # Trending products have zero overlap with any labeled ASINs and hurt recall badly.
     if score < _CRAG_LOW_THRESHOLD:
-        logger.info("CRAG: score below low threshold, falling back to trending")
-        return await _fetch_trending_fallback(), "fallback"
+        logger.info(
+            "CRAG: score=%.3f below low threshold — skipping retries, "
+            "returning best retrieved candidates (best_effort)",
+            score,
+        )
+        return candidates, "best_effort"
 
     # Borderline quality — attempt query rewrites up to max_retries times.
     for attempt in range(1, max_retries + 1):
         elapsed = time.monotonic() - start
         if elapsed >= time_budget:
             logger.warning(
-                "CRAG: time budget %.1fs exceeded after %.2fs (attempt %d), falling back",
+                "CRAG: time budget %.1fs exceeded after %.2fs (attempt %d) — "
+                "returning best candidates so far",
                 time_budget, elapsed, attempt,
             )
-            return await _fetch_trending_fallback(), "fallback"
+            return candidates, "best_effort"
 
         rewritten = await _rewrite_query(query)
         new_candidates = await hybrid_search(
@@ -219,8 +226,11 @@ async def run_crag(
         )
 
         if not new_candidates:
-            logger.info("CRAG attempt %d: empty results after rewrite, falling back", attempt)
-            return await _fetch_trending_fallback(), "fallback"
+            logger.info(
+                "CRAG attempt %d: empty results after rewrite — keeping pre-rewrite candidates",
+                attempt,
+            )
+            return candidates, "best_effort"
 
         new_score = _grade(new_candidates)
         logger.info("CRAG attempt %d score=%.3f", attempt, new_score)
@@ -229,13 +239,22 @@ async def run_crag(
             return new_candidates, "retry"
 
         if new_score < _CRAG_LOW_THRESHOLD:
-            # Rewrite made things worse — cut losses rather than trying again.
-            return await _fetch_trending_fallback(), "fallback"
+            # Rewrite degraded quality further — return best candidates seen so far.
+            logger.info(
+                "CRAG attempt %d: rewrite degraded score to %.3f — "
+                "returning best candidates so far",
+                attempt, new_score,
+            )
+            return candidates, "best_effort"
 
         # Still borderline — keep the better candidates and try once more.
         if new_score > score:
             candidates, score = new_candidates, new_score
 
-    # All retries exhausted without crossing the high threshold.
-    logger.info("CRAG: max retries (%d) exhausted, falling back to trending", max_retries)
-    return await _fetch_trending_fallback(), "fallback"
+    # All retries exhausted without crossing the high threshold — return whatever
+    # candidates we have (best seen across all attempts).
+    logger.info(
+        "CRAG: max retries (%d) exhausted — returning best candidates (score=%.3f)",
+        max_retries, score,
+    )
+    return candidates, "best_effort"

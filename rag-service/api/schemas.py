@@ -45,7 +45,7 @@ class QueryResponse(BaseModel):
     answer: str = Field(..., description="Grounded natural language answer")
     products: list[ProductResult]
     cited_sources: list[str] = Field(..., description="Product IDs cited in the answer")
-    retrieval_path: Literal["synthesize", "retry", "fallback"]
+    retrieval_path: Literal["synthesize", "retry", "fallback", "best_effort"]
     latency_ms: LatencyBreakdown
 
 

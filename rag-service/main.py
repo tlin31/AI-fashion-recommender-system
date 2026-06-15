@@ -23,6 +23,10 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from dotenv import load_dotenv
+
+load_dotenv(override=True)  # override=True so .env changes take effect on --reload
+
 from aiokafka import AIOKafkaProducer
 from fastapi import FastAPI
 from pymilvus import MilvusClient

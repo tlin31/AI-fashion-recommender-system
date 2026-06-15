@@ -1,1 +1,1412 @@
-[]
+[
+  {
+    "id": "q001",
+    "query": "Russell Athletic Dri-Power moisture wicking fleece hoodie men",
+    "type": "navigational",
+    "relevance": {
+      "B09KHSM7BB": 2,
+      "B009R09Z8W": 1
+    },
+    "notes": "Brand + product type lookup; BM25 should rank this highly."
+  },
+  {
+    "id": "q002",
+    "query": "NELEUS women's 3 pack compression base layer dry fit tank top",
+    "type": "navigational",
+    "relevance": {
+      "B09M6X79V9": 2,
+      "B07BM9GWG7": 1
+    },
+    "notes": "Brand + multi-pack compression tank; BM25 wins on exact terms."
+  },
+  {
+    "id": "q003",
+    "query": "MOSHENGQI women ruched butt lifting high waist yoga leggings booty",
+    "type": "navigational",
+    "relevance": {
+      "B081XYDBL2": 2,
+      "B092ZNLS7B": 2,
+      "B095NW2T8S": 1
+    },
+    "notes": "Brand + distinctive descriptor; two MOSHENGQI variants both score 2."
+  },
+  {
+    "id": "q004",
+    "query": "Oalka women high waist yoga joggers pockets sweatpants",
+    "type": "navigational",
+    "relevance": {
+      "B08F1V3KB9": 2,
+      "B0B16Q1854": 1
+    },
+    "notes": "Brand + product type; BM25 should rank Oalka first."
+  },
+  {
+    "id": "q005",
+    "query": "MEROKEETY open front chunky knit draped cardigan sweater",
+    "type": "navigational",
+    "relevance": {
+      "B0BGQ3MBH3": 2,
+      "B09C8LRXN4": 1
+    },
+    "notes": "Brand + distinctive product descriptor."
+  },
+  {
+    "id": "q006",
+    "query": "Joe's USA men's hoodie 50 50 cotton poly fleece sweatshirt",
+    "type": "navigational",
+    "relevance": {
+      "B009R09Z8W": 2,
+      "B09KHSM7BB": 1
+    },
+    "notes": "Brand + material composition query; BM25 should find exact match."
+  },
+  {
+    "id": "q007",
+    "query": "SB SOX 15-20mmHg lite compression socks men women",
+    "type": "navigational",
+    "relevance": {
+      "B06W57G8QX": 2,
+      "B09QFJGKM5": 1
+    },
+    "notes": "Brand + technical spec (mmHg); BM25 excels at numeric specs."
+  },
+  {
+    "id": "q008",
+    "query": "HotStyle BESTIE mini backpack purse multiple colors patterns",
+    "type": "navigational",
+    "relevance": {
+      "B09TXPYLQF": 2
+    },
+    "notes": "Brand + model name lookup; very specific navigational query."
+  },
+  {
+    "id": "q009",
+    "query": "DEVOPS men UPF 50 long sleeve sun protection fishing hiking t-shirt",
+    "type": "navigational",
+    "relevance": {
+      "B0BYCZ2W78": 2
+    },
+    "notes": "Brand + UPF rating + use case; BM25 matches on UPF and brand."
+  },
+  {
+    "id": "q010",
+    "query": "HOMELEX jersey knit head wrap turban scarf tie women",
+    "type": "navigational",
+    "relevance": {
+      "B08GPZL157": 2
+    },
+    "notes": "Brand + product type; distinctive multi-keyword query."
+  },
+  {
+    "id": "q011",
+    "query": "LA ACTIVE baby girls cable knit winter tights non-skid grip toddler",
+    "type": "navigational",
+    "relevance": {
+      "B086SHHWRH": 2
+    },
+    "notes": "Brand + specific feature (non-skid grip); BM25 wins on brand + keyword combo."
+  },
+  {
+    "id": "q012",
+    "query": "Aoxjox women high waist vital seamless leggings yoga pants workout",
+    "type": "navigational",
+    "relevance": {
+      "B0BVMLJTFS": 2,
+      "B081XYDBL2": 1
+    },
+    "notes": "Brand + product line name; BM25 should match 'vital seamless'."
+  },
+  {
+    "id": "q013",
+    "query": "EOSIEDUR women two piece zip jacket elastic waistband sweatsuit tracksuit set",
+    "type": "navigational",
+    "relevance": {
+      "B0BG5PWPN5": 2,
+      "B0B3DJBN32": 1
+    },
+    "notes": "Brand + product description; BM25 wins on 'two piece' + 'tracksuit'."
+  },
+  {
+    "id": "q014",
+    "query": "Dokotoo oversized chunky fuzzy open front fleece cardigan hoodie",
+    "type": "navigational",
+    "relevance": {
+      "B09C8LRXN4": 2,
+      "B0BGQ3MBH3": 1
+    },
+    "notes": "Brand + material descriptor combo."
+  },
+  {
+    "id": "q015",
+    "query": "DIDK women cute cartoon print tee shorts pajama set",
+    "type": "navigational",
+    "relevance": {
+      "B07XDZ73Z9": 2
+    },
+    "notes": "Brand + product type; pajama sets are distinctive enough for BM25."
+  },
+  {
+    "id": "q016",
+    "query": "OZERO waterproof winter touchscreen anti-slip thermal gloves",
+    "type": "navigational",
+    "relevance": {
+      "B07VPGY6FX": 2
+    },
+    "notes": "Brand + multi-feature glove query."
+  },
+  {
+    "id": "q017",
+    "query": "HUHOT women sleeveless V neck ombre summer beach dress with pocket",
+    "type": "navigational",
+    "relevance": {
+      "B08B12FQXD": 2,
+      "B07WJGPBDN": 1
+    },
+    "notes": "Brand + distinctive color effect (ombre) + pocket feature."
+  },
+  {
+    "id": "q018",
+    "query": "icyzone workout muscle tank tops women running gym yoga athletic shirts",
+    "type": "navigational",
+    "relevance": {
+      "B07S8KMCQW": 2,
+      "B09M6X79V9": 1
+    },
+    "notes": "Brand + product category; BM25 wins on brand name."
+  },
+  {
+    "id": "q019",
+    "query": "SweatyRocks women drawstring striped side jogger sweatpants pocket",
+    "type": "navigational",
+    "relevance": {
+      "B09VM4FZ6W": 2,
+      "B09MJTRDCW": 1
+    },
+    "notes": "Brand + distinctive 'striped side' descriptor."
+  },
+  {
+    "id": "q020",
+    "query": "RIOJOY scrunch butt booty lifting leggings high waist yoga capri with pockets",
+    "type": "navigational",
+    "relevance": {
+      "B095NW2T8S": 2,
+      "B081XYDBL2": 1
+    },
+    "notes": "Brand + 'scrunch butt' is a distinctive search term; BM25 should win."
+  },
+  {
+    "id": "q021",
+    "query": "something cozy for lounging at home on weekend mornings",
+    "type": "exploratory",
+    "relevance": {
+      "B07XDZ73Z9": 2,
+      "B09MJTRDCW": 2,
+      "B09KHSM7BB": 1,
+      "B009R09Z8W": 1,
+      "B091B1R94F": 0,
+      "B08MSTMW2F": 1,
+      "B091JXZJ7X": 0,
+      "B0B8Q689XG": 2,
+      "B0163KOAHO": 1,
+      "B086W3BRFZ": 1,
+      "B09BCGXG46": 2,
+      "B08LD62DCF": 2,
+      "B07ZKSCD7J": 1
+    },
+    "notes": "Semantic: 'cozy lounging' maps to pajamas and soft joggers. BM25 misses 'cozy' as a descriptor.",
+    "dense_only": true
+  },
+  {
+    "id": "q022",
+    "query": "flowy dress for a beach wedding guest",
+    "type": "exploratory",
+    "relevance": {
+      "B07CQ84KLT": 2,
+      "B08B12FQXD": 2,
+      "B07WJGPBDN": 1,
+      "B087R3DFRJ": 1,
+      "B07PJXX8XV": 2,
+      "B09JWJ5L8S": 1,
+      "B0BG5H84CZ": 2,
+      "B09MD9B79B": 2,
+      "B0B1Q2MR23": 2,
+      "B07YHJB1JV": 2,
+      "B08C326CT8": 2,
+      "B09LH9BJDT": 2,
+      "B08VS3Y4HP": 2
+    },
+    "notes": "Occasion-based: 'beach wedding' is not in product titles; dense retrieval finds boho/summer dresses."
+  },
+  {
+    "id": "q023",
+    "query": "outfit for yoga studio classes that also works for a coffee run after",
+    "type": "exploratory",
+    "relevance": {
+      "B081XYDBL2": 2,
+      "B0BVMLJTFS": 2,
+      "B08F1V3KB9": 1,
+      "B09M6X79V9": 1,
+      "B07YFRBZWL": 1,
+      "B08KGBM73Z": 2,
+      "B088ZR3Q86": 1,
+      "B07SMRDFH1": 2,
+      "B08DKT1T3B": 2,
+      "B07L61LCBM": 2,
+      "B07CHTZ1HM": 2,
+      "B0922Z2GNQ": 2,
+      "B08VJ8JGMD": 2
+    },
+    "notes": "Use-case: gym-to-street activewear; 'coffee run' is not in any product."
+  },
+  {
+    "id": "q024",
+    "query": "comfortable outfit for an eight-hour long haul flight",
+    "type": "exploratory",
+    "relevance": {
+      "B0B16Q1854": 2,
+      "B09VM4FZ6W": 2,
+      "B09MJTRDCW": 1,
+      "B07XDZ73Z9": 1,
+      "B01GU34AU6": 0,
+      "B016CTV268": 1,
+      "B09FXHJ88D": 2,
+      "B08516JL48": 2,
+      "B077XMN5B6": 0,
+      "B09LH9BJDT": 1,
+      "B091B1R94F": 1,
+      "B07V4J6HJ9": 2,
+      "B07PBRN5DV": 2,
+      "B08MVQ62Z4": 2
+    },
+    "notes": "Travel comfort: 'flight' is not in product descriptions; dense maps to soft elastic-waist pants.",
+    "dense_only": true
+  },
+  {
+    "id": "q025",
+    "query": "dress for a summer cocktail party that's fun but not too serious",
+    "type": "exploratory",
+    "relevance": {
+      "B07DY3H2XX": 2,
+      "B07WJGPBDN": 1,
+      "B07CQ84KLT": 1
+    },
+    "notes": "'Cocktail party not too serious' implies bodycon/midi rather than formal gown."
+  },
+  {
+    "id": "q026",
+    "query": "warm layer for outdoor autumn hiking day trip",
+    "type": "exploratory",
+    "relevance": {
+      "B09KHSM7BB": 2,
+      "B07VPGY6FX": 2,
+      "B07J5XH426": 1,
+      "B0BYCZ2W78": 1
+    },
+    "notes": "Layering for autumn hike; dense retrieval connects 'warm layer outdoor' to fleece hoodie + gloves."
+  },
+  {
+    "id": "q027",
+    "query": "practical clothing for someone recovering from shoulder surgery",
+    "type": "exploratory",
+    "relevance": {
+      "B07YSSNLSW": 2
+    },
+    "notes": "Very specific functional need; 'shoulder surgery' is in the product description directly.",
+    "dense_only": true
+  },
+  {
+    "id": "q028",
+    "query": "gift ideas for a fitness-obsessed friend who loves working out",
+    "type": "exploratory",
+    "relevance": {
+      "B09M6X79V9": 2,
+      "B095NW2T8S": 1,
+      "B06W57G8QX": 1,
+      "B07S8KMCQW": 1,
+      "B01MUAYFHU": 2,
+      "B07VNVW9L5": 2,
+      "B0C6JBL42K": 2,
+      "B01N985HDE": 2,
+      "B097BMDMKB": 2,
+      "B00OQC64VW": 0,
+      "B0816989ZN": 0,
+      "B09Z62696J": 1,
+      "B09FXLWP9P": 2
+    },
+    "notes": "'Gift for fitness friend' is semantic; dense maps to activewear/compression gear.",
+    "dense_only": true
+  },
+  {
+    "id": "q029",
+    "query": "feminine casual dress for a Sunday brunch with friends",
+    "type": "exploratory",
+    "relevance": {
+      "B07CQ84KLT": 2,
+      "B087R3DFRJ": 2,
+      "B07WJGPBDN": 1,
+      "B073P8HMWS": 1,
+      "B0BG5H84CZ": 2,
+      "B0C344XSC2": 2,
+      "B095K9SF3K": 2,
+      "B09PRMHVWJ": 1,
+      "B07PS2X9CC": 1,
+      "B07QRRR7KD": 2,
+      "B097M4MPHR": 2,
+      "B09LH9BJDT": 2,
+      "B09LH64L8G": 2
+    },
+    "notes": "Occasion-based: 'Sunday brunch' is purely semantic context."
+  },
+  {
+    "id": "q030",
+    "query": "something stylish but comfortable for a casual date night in autumn",
+    "type": "exploratory",
+    "relevance": {
+      "B07WJGPBDN": 2,
+      "B07DY3H2XX": 1,
+      "B0BGQ3MBH3": 1,
+      "B01JW6CJBU": 1,
+      "B0BFKH4JMV": 2,
+      "B0BG5H84CZ": 1,
+      "B095PZB2HK": 1,
+      "B09LH9BJDT": 2,
+      "B0BPXTWWVW": 1,
+      "B09JLW26L4": 1,
+      "B07YXD4STK": 2,
+      "B07Q3M8WST": 1,
+      "B09LH64L8G": 2
+    },
+    "notes": "Season + occasion: 'autumn date night' requires semantic connection to midi dress + cozy layers."
+  },
+  {
+    "id": "q031",
+    "query": "smart casual look for business casual office environment",
+    "type": "exploratory",
+    "relevance": {
+      "B07L5JNZFP": 2,
+      "B0B16Q1854": 1,
+      "B07DY3H2XX": 1,
+      "B0947173ZT": 2,
+      "B0B51LW4K2": 1,
+      "B07YXD4STK": 2,
+      "B07RXLM8W7": 2,
+      "B081YDLHQT": 2,
+      "B09QMF1G4K": 2,
+      "B07CG5QBYS": 2,
+      "B07H4JP7SH": 2,
+      "B07NKGGCX8": 2
+    },
+    "notes": "'Business casual' is semantic; dense maps to chino trousers and polished joggers.",
+    "dense_only": true
+  },
+  {
+    "id": "q032",
+    "query": "running gear for cool weather outdoor workouts in early spring",
+    "type": "exploratory",
+    "relevance": {
+      "B0BYCZ2W78": 2,
+      "B08F1V3KB9": 2,
+      "B09M6X79V9": 1,
+      "B09KHSM7BB": 1,
+      "B09JSMGGBK": 2,
+      "B09J29WW4W": 2,
+      "B0BL6TDRBB": 1,
+      "B097W1RSM1": 2,
+      "B09K4XG235": 2,
+      "B09RHXV42L": 2,
+      "B08ZCT1VXT": 1,
+      "B098B4MG4M": 2
+    },
+    "notes": "Seasonal workout context; dense connects 'cool weather running' to moisture-wicking layers."
+  },
+  {
+    "id": "q033",
+    "query": "back to school outfit ideas for young kids",
+    "type": "exploratory",
+    "relevance": {
+      "B07PHW2CWH": 2,
+      "B086SHHWRH": 1,
+      "B0B2ZVBS68": 0,
+      "B085L298KP": 2,
+      "B08XKFG4BF": 2,
+      "B07TDJGVPT": 2,
+      "B08X2CNH7S": 2,
+      "B0749HKVXR": 2,
+      "B098BNWD94": 1,
+      "B08923HLW5": 2,
+      "B081G7JFR6": 2
+    },
+    "notes": "'Back to school kids' is semantic; maps to character t-shirts and comfortable tights."
+  },
+  {
+    "id": "q034",
+    "query": "comfortable everyday wear for a nursing mom",
+    "type": "exploratory",
+    "relevance": {
+      "B082W1BRXK": 2,
+      "B09MJTRDCW": 1
+    },
+    "notes": "'Nursing mom' directly maps to nursing bra; dense retrieval also surfaces comfortable pants.",
+    "dense_only": true
+  },
+  {
+    "id": "q035",
+    "query": "holiday party dress that's festive but not overly formal",
+    "type": "exploratory",
+    "relevance": {
+      "B07DY3H2XX": 2,
+      "B07CQ84KLT": 1,
+      "B07WJGPBDN": 1
+    },
+    "notes": "'Holiday party festive not formal' is semantic; maps to cocktail and boho dresses."
+  },
+  {
+    "id": "q036",
+    "query": "festival or music concert outfit that makes you stand out in a crowd",
+    "type": "exploratory",
+    "relevance": {
+      "B089YV34P1": 2,
+      "B07CQ84KLT": 1,
+      "B084RR9N7B": 1
+    },
+    "notes": "'Stand out at festival' semantically matches glow-in-dark tee and statement pieces.",
+    "dense_only": true
+  },
+  {
+    "id": "q037",
+    "query": "what to wear at the beach all day from swimming to dinner",
+    "type": "exploratory",
+    "relevance": {
+      "B08B12FQXD": 2,
+      "B0853371FL": 2,
+      "B0C3G9447V": 1,
+      "B07CQ84KLT": 1,
+      "B08BHP1XFN": 2,
+      "B07QRRR7KD": 2,
+      "B07R1XGJZ2": 2,
+      "B09JWJ5L8S": 2,
+      "B06XG1C9CN": 2,
+      "B0BG5H84CZ": 2,
+      "B085XPGKJP": 2,
+      "B07PJXX8XV": 2,
+      "B0BC4DGCY6": 2
+    },
+    "notes": "Full beach day: swimwear + shorts + sandals + cover-up dress."
+  },
+  {
+    "id": "q038",
+    "query": "morning jog outfit that stays comfortable running errands afterward",
+    "type": "exploratory",
+    "relevance": {
+      "B08F1V3KB9": 2,
+      "B09VM4FZ6W": 1,
+      "B0B16Q1854": 1
+    },
+    "notes": "Run-to-errands transition; semantic connection to stylish joggers."
+  },
+  {
+    "id": "q039",
+    "query": "complete gym bag essentials for starting a new fitness routine",
+    "type": "exploratory",
+    "relevance": {
+      "B09M6X79V9": 2,
+      "B07S8KMCQW": 2,
+      "B081XYDBL2": 1,
+      "B06W57G8QX": 1,
+      "B073FBTG4L": 2,
+      "B087LZHG4B": 2,
+      "B001CLGS6G": 2,
+      "B07KRZLC2Q": 2,
+      "B07FXNN21Y": 1,
+      "B097W1RSM1": 2,
+      "B0BYJMG265": 2,
+      "B0BYJHP21S": 2,
+      "B0887ZJ79Y": 2
+    },
+    "notes": "'Gym bag essentials new routine' is purely semantic; maps to multi-pack activewear.",
+    "dense_only": true
+  },
+  {
+    "id": "q040",
+    "query": "protective clothing and accessories for winter outdoor activities",
+    "type": "exploratory",
+    "relevance": {
+      "B07VPGY6FX": 2,
+      "B09KHSM7BB": 1,
+      "B07J5XH426": 1,
+      "B07G4WDQNZ": 2,
+      "B07Y82NYHP": 2,
+      "B09D7ZDTSV": 2,
+      "B01N9GSNY6": 2,
+      "B081H7WBVR": 2,
+      "B08M3CMCKZ": 2,
+      "B08LQ5RX47": 2,
+      "B01M5H43SA": 2
+    },
+    "notes": "'Winter outdoor protection' maps to gloves + hoodie + windbreaker."
+  },
+  {
+    "id": "q041",
+    "query": "cute travel outfit that keeps essentials handy without a big bag",
+    "type": "exploratory",
+    "relevance": {
+      "B09TXPYLQF": 2,
+      "B0B16Q1854": 1,
+      "B08HM3Y85H": 1,
+      "B08KH3YRZZ": 1,
+      "B07TWRKHHN": 2,
+      "B072JX6LJB": 1,
+      "B09KNL82LM": 2,
+      "B01NAHQ6CX": 2,
+      "B01MAZDPZ2": 1,
+      "B073FBTG4L": 2,
+      "B07CHKJDTB": 2
+    },
+    "notes": "'Travel essentials handy' maps semantically to mini backpack + comfortable pants.",
+    "dense_only": true
+  },
+  {
+    "id": "q042",
+    "query": "stylish compression wear for serious athletes who care about recovery",
+    "type": "exploratory",
+    "relevance": {
+      "B06W57G8QX": 2,
+      "B09QFJGKM5": 1,
+      "B09M6X79V9": 1,
+      "B08RJ3C1WP": 2,
+      "B01EVENT9Y": 1,
+      "B0067HH850": 2,
+      "B09G31GN3D": 2,
+      "B08KDJWXF6": 2,
+      "B07P11GD8B": 2,
+      "B07WSTZZSJ": 1,
+      "B07JQD4716": 2,
+      "B06W9NJLF6": 2,
+      "B08JCS3T7M": 2
+    },
+    "notes": "'Athlete recovery' semantically connects to compression socks; dense helps here."
+  },
+  {
+    "id": "q043",
+    "query": "bohemian summer style outfit with flowing fabric",
+    "type": "exploratory",
+    "relevance": {
+      "B07CQ84KLT": 2,
+      "B08B12FQXD": 1,
+      "B08GPZL157": 1,
+      "B07S3XTT7F": 2,
+      "B07S9CCCTD": 2,
+      "B097RFTKJP": 2,
+      "B08TWB7R5R": 1,
+      "B08VS3Y4HP": 2,
+      "B07N1JKFZM": 2,
+      "B0833QJG7N": 2,
+      "B0833QXC84": 2,
+      "B0833QLDP9": 2,
+      "B0833QYJWY": 2
+    },
+    "notes": "'Bohemian summer flowing' maps to polka dot rayon maxi; BM25 may miss 'bohemian'.",
+    "dense_only": true
+  },
+  {
+    "id": "q044",
+    "query": "cozy winter sweater look for staying warm without sacrificing style",
+    "type": "exploratory",
+    "relevance": {
+      "B0BGQ3MBH3": 2,
+      "B09C8LRXN4": 2,
+      "B09KHSM7BB": 1,
+      "B09KV65DSW": 2,
+      "B09H76KGGN": 2,
+      "B08G7FZ9TD": 1,
+      "B08TMJ1HWN": 0,
+      "B07YXD4STK": 1,
+      "B07K45LJGG": 2,
+      "B07GVVNDV1": 2,
+      "B0991N14XV": 2,
+      "B09D78NTHB": 2
+    },
+    "notes": "'Warm without sacrificing style' is semantic; maps to chunky knit cardigans."
+  },
+  {
+    "id": "q045",
+    "query": "warm and cute clothes to keep a baby comfortable in a stroller outdoors",
+    "type": "exploratory",
+    "relevance": {
+      "B086SHHWRH": 2,
+      "B098BNWD94": 2,
+      "B088JVSWSC": 1,
+      "B0921FPXCW": 2,
+      "B09BLXK4FF": 2,
+      "B00E9S8UNS": 2,
+      "B092G4163H": 2,
+      "B085L298KP": 1,
+      "B0BW8C3XD7": 2,
+      "B093FFC2TK": 2,
+      "B07Z995XV8": 1
+    },
+    "notes": "'Baby comfortable in stroller outdoors' semantically maps to warm tights for infants.",
+    "dense_only": true
+  },
+  {
+    "id": "q046",
+    "query": "professional yet comfortable look for a business casual environment",
+    "type": "exploratory",
+    "relevance": {
+      "B07L5JNZFP": 2,
+      "B0B16Q1854": 1,
+      "B0947173ZT": 2,
+      "B07XZ8NKX4": 2,
+      "B07YXD4STK": 2,
+      "B0BVMGLR2Z": 1,
+      "B07CG5QBYS": 1,
+      "B07X8DT52C": 2,
+      "B081YDLHQT": 2,
+      "B09LH64L8G": 2
+    },
+    "notes": "'Professional but comfortable business casual' is semantic for chino trousers.",
+    "dense_only": true
+  },
+  {
+    "id": "q047",
+    "query": "elegant but comfortable dress for an anniversary dinner reservation",
+    "type": "exploratory",
+    "relevance": {
+      "B07DY3H2XX": 2,
+      "B07WJGPBDN": 1,
+      "B07PTR4KR9": 0,
+      "B07CG5QBYS": 2,
+      "B0C344XSC2": 1,
+      "B09LH9BJDT": 2,
+      "B08316CVB1": 2,
+      "B09HTSPGFZ": 2,
+      "B06XC14XWY": 1,
+      "B081YDLHQT": 1,
+      "B01LYAUFRV": 2
+    },
+    "notes": "'Anniversary dinner elegant yet comfortable' semantic match to bodycon cocktail dress."
+  },
+  {
+    "id": "q048",
+    "query": "post-workout recovery gear to reduce leg soreness and swelling",
+    "type": "exploratory",
+    "relevance": {
+      "B06W57G8QX": 2,
+      "B09QFJGKM5": 2
+    },
+    "notes": "'Reduce leg soreness and swelling post-workout' maps to compression socks via dense retrieval.",
+    "dense_only": true
+  },
+  {
+    "id": "q049",
+    "query": "accessories and bags for a summer music festival weekend",
+    "type": "exploratory",
+    "relevance": {
+      "B09TXPYLQF": 2,
+      "B08GPZL157": 1,
+      "B084RR9N7B": 1,
+      "B088WGPYV6": 2,
+      "B0BG5H84CZ": 0,
+      "B07PP273L2": 2,
+      "B08BXHHGD8": 2,
+      "B07RQSBN8K": 2,
+      "B07XQZ6G68": 2,
+      "B07KFHVL6H": 2,
+      "B09HH5WNRW": 0,
+      "B07KFG5HNQ": 2,
+      "B08L7CSLQP": 2
+    },
+    "notes": "'Festival weekend accessories' maps to mini backpack + headwrap + face mask."
+  },
+  {
+    "id": "q050",
+    "query": "what to wear for a 5K charity run with friends",
+    "type": "exploratory",
+    "relevance": {
+      "B0BYCZ2W78": 2,
+      "B08F1V3KB9": 2,
+      "B07S8KMCQW": 1,
+      "B06W57G8QX": 1,
+      "B08K41D6BF": 0,
+      "B07DBX6HPK": 2,
+      "B07QJ9DR2X": 2,
+      "B086WKFPD5": 2,
+      "B08BXHHGD8": 2,
+      "B0924VW6MS": 2,
+      "B097BMDMKB": 2,
+      "B08XBYZ78P": 2,
+      "B07WT3GSSL": 2,
+      "B09SWS5LC7": 2
+    },
+    "notes": "'5K charity run' maps to UPF shirt, jogger pants, tank top, and compression socks."
+  },
+  {
+    "id": "q051",
+    "query": "men's fleece hoodie under $35 with moisture wicking",
+    "type": "attribute",
+    "relevance": {
+      "B09KHSM7BB": 2,
+      "B009R09Z8W": 2
+    },
+    "notes": "Price constraint + material feature; BM25 handles 'fleece hoodie' well."
+  },
+  {
+    "id": "q052",
+    "query": "women's high waist yoga pants with side pockets under $25",
+    "type": "attribute",
+    "relevance": {
+      "B08F1V3KB9": 2,
+      "B095NW2T8S": 2,
+      "B0B16Q1854": 1
+    },
+    "notes": "Price + feature constraint; both Oalka and RIOJOY fit at ~$22-23."
+  },
+  {
+    "id": "q053",
+    "query": "compression socks with 15-20 mmHg graduated compression under $15",
+    "type": "attribute",
+    "relevance": {
+      "B06W57G8QX": 2,
+      "B09QFJGKM5": 2
+    },
+    "notes": "Technical spec + price filter; BM25 wins on mmHg numeric match."
+  },
+  {
+    "id": "q054",
+    "query": "95% cotton polyester blend women's casual swing dress machine washable",
+    "type": "attribute",
+    "relevance": {
+      "B07WJGPBDN": 2,
+      "B087R3DFRJ": 1,
+      "B07WKLGK7B": 2,
+      "B07SQVMC98": 0,
+      "B07T1ZPNV3": 0,
+      "B07SNBKXQR": 0,
+      "B07SK1QQMY": 0,
+      "B07SNB9FTL": 0,
+      "B098QDMNB1": 2,
+      "B07ZGJD2XV": 0,
+      "B07XC45GWH": 0,
+      "B07XC44M21": 0
+    },
+    "notes": "Material composition query; BM25 should find the cotton blend dress."
+  },
+  {
+    "id": "q055",
+    "query": "moisture-wicking men's athletic compression tank top 3 pack",
+    "type": "attribute",
+    "relevance": {
+      "B07BM9GWG7": 2,
+      "B09MJ6NSNM": 1,
+      "B01H0X4WXK": 1
+    },
+    "notes": "Multi-pack + performance feature; BM25 matches 'compression' + 'tank top'."
+  },
+  {
+    "id": "q056",
+    "query": "95% rayon spandex women's boho floral maxi dress",
+    "type": "attribute",
+    "relevance": {
+      "B07CQ84KLT": 2
+    },
+    "notes": "Material + style; rayon maxi dress with polka dot pattern."
+  },
+  {
+    "id": "q057",
+    "query": "100% polyester drawstring women's jogger pants with stretch",
+    "type": "attribute",
+    "relevance": {
+      "B09VM4FZ6W": 2,
+      "B0B16Q1854": 1
+    },
+    "notes": "Material + closure type; exact match in product description."
+  },
+  {
+    "id": "q058",
+    "query": "non-slip grip safety tights for toddler girls winter",
+    "type": "attribute",
+    "relevance": {
+      "B086SHHWRH": 2
+    },
+    "notes": "Safety feature + age group + season; 'non-slip grip' is in the LA ACTIVE description."
+  },
+  {
+    "id": "q059",
+    "query": "waterproof touchscreen winter gloves -30 degrees cold proof",
+    "type": "attribute",
+    "relevance": {
+      "B07VPGY6FX": 2
+    },
+    "notes": "Temperature rating + touchscreen feature; very specific attribute query."
+  },
+  {
+    "id": "q060",
+    "query": "women's sherpa zip-up fleece jacket faux fuzzy bomber coat",
+    "type": "attribute",
+    "relevance": {
+      "B07VDCS9FW": 2,
+      "B09C8LRXN4": 1
+    },
+    "notes": "Material + silhouette + closure type; BM25 handles 'sherpa fleece zip-up' well."
+  },
+  {
+    "id": "q061",
+    "query": "skull print face mask motorcycle bandana neck gaiter scarf",
+    "type": "attribute",
+    "relevance": {
+      "B084RR9N7B": 2
+    },
+    "notes": "Print + multi-use product; 'skull face mask bandana' are in the title."
+  },
+  {
+    "id": "q062",
+    "query": "90% polyester spandex bodycon work party dress half sleeve bow",
+    "type": "attribute",
+    "relevance": {
+      "B07DY3H2XX": 2,
+      "B07WJGPBDN": 1
+    },
+    "notes": "Material + style details; exact composition in YACUN product description."
+  },
+  {
+    "id": "q063",
+    "query": "men's slim fit tapered chino trousers with stretch cotton",
+    "type": "attribute",
+    "relevance": {
+      "B07L5JNZFP": 2,
+      "B07L57BTZP": 2,
+      "B09HTYWHRC": 2,
+      "B08KSW317T": 2,
+      "B08YYL3HK5": 0,
+      "B098QDS5GC": 0,
+      "B08KSTRFBT": 0,
+      "B08G11FDMR": 1,
+      "B087CJR8YK": 1,
+      "B087CJTJ7L": 1
+    },
+    "notes": "Fit + material + style; 'slim fit chino' is a distinctive keyword."
+  },
+  {
+    "id": "q064",
+    "query": "glow in the dark interactive t-shirt for birthday party festival",
+    "type": "attribute",
+    "relevance": {
+      "B089YV34P1": 2
+    },
+    "notes": "Novelty feature; 'glow in the dark' is in the product title."
+  },
+  {
+    "id": "q065",
+    "query": "women's 3 pack compression long sleeve athletic running t-shirt 90% polyester",
+    "type": "attribute",
+    "relevance": {
+      "B0B2KL8C8Q": 2,
+      "B0928FSGGD": 2,
+      "B09M6X79V9": 1
+    },
+    "notes": "Pack + material + activity; both NELEUS compression LS products qualify."
+  },
+  {
+    "id": "q066",
+    "query": "women's two piece tracksuit jogging set under $40",
+    "type": "attribute",
+    "relevance": {
+      "B0BG5PWPN5": 2,
+      "B0B3DJBN32": 2
+    },
+    "notes": "Set + price constraint; both EOSIEDUR ($36.99) and Nimsruc ($33.99) qualify."
+  },
+  {
+    "id": "q067",
+    "query": "small mini backpack purse 8 liters for everyday carry",
+    "type": "attribute",
+    "relevance": {
+      "B09TXPYLQF": 2
+    },
+    "notes": "Size specification; HotStyle BESTIE is explicitly 8 liters in the description."
+  },
+  {
+    "id": "q068",
+    "query": "men's UPF 50 moisture-wicking long sleeve outdoor shirt 2 pack",
+    "type": "attribute",
+    "relevance": {
+      "B0BYCZ2W78": 2
+    },
+    "notes": "UPF rating + multi-pack + use case; exact feature set matches DEVOPS."
+  },
+  {
+    "id": "q069",
+    "query": "orthopedic arch support slippers for men with removable insoles plantar fasciitis",
+    "type": "attribute",
+    "relevance": {
+      "B09Y3TXYF1": 2
+    },
+    "notes": "Medical feature + target condition; 'plantar fasciitis' is in the Orthofeet description."
+  },
+  {
+    "id": "q070",
+    "query": "nursing maternity bra 3 pack with one-hand front clasp for breastfeeding",
+    "type": "attribute",
+    "relevance": {
+      "B082W1BRXK": 2
+    },
+    "notes": "Multi-pack + functional feature; 'one-hand access nursing clasp' is in description."
+  },
+  {
+    "id": "q071",
+    "query": "lightweight rubber flip flops quick dry travel shower sandals",
+    "type": "attribute",
+    "relevance": {
+      "B0C3G9447V": 2
+    },
+    "notes": "Material + feature; 'closed-cell EVA quick dry travel' is in Vertico description."
+  },
+  {
+    "id": "q072",
+    "query": "men's 3/4 sleeve raglan baseball tee shirt cotton polyester",
+    "type": "attribute",
+    "relevance": {
+      "B0767RRMH8": 2
+    },
+    "notes": "Sleeve style + product type; '3/4 sleeve raglan baseball tee' is distinctive."
+  },
+  {
+    "id": "q073",
+    "query": "100% cotton adjustable nurse or chef working cap with sweat-absorbing band",
+    "type": "attribute",
+    "relevance": {
+      "B08HM3Y85H": 2
+    },
+    "notes": "Material + use case; QBA cap description explicitly mentions elastic bandage."
+  },
+  {
+    "id": "q074",
+    "query": "Disney character graphic t-shirts for girls multipack Frozen Princess Moana",
+    "type": "attribute",
+    "relevance": {
+      "B07PHW2CWH": 2
+    },
+    "notes": "Brand + character names; BM25 wins on character name keywords."
+  },
+  {
+    "id": "q075",
+    "query": "women's ruched bodycon midi dress casual sundress sleeveless",
+    "type": "attribute",
+    "relevance": {
+      "B07WJGPBDN": 2,
+      "B087R3DFRJ": 1,
+      "B07WKLGK7B": 1,
+      "B095K9SF3K": 1,
+      "B09R3VXC75": 2,
+      "B07H8XPT2H": 2,
+      "B074DRDKT9": 2,
+      "B0759X43Y3": 2,
+      "B07RXV5H81": 1,
+      "B0B9QSXKVT": 1,
+      "B074DR3LVL": 2,
+      "B07NHWGBBV": 2
+    },
+    "notes": "Silhouette + length + feature combo; 'ruched' is a distinctive styling term."
+  },
+  {
+    "id": "q076",
+    "query": "silky durag for 360 waves with long tail straps",
+    "type": "attribute",
+    "relevance": {
+      "B07XK91C3T": 2,
+      "B07XDKBCXZ": 1
+    },
+    "notes": "Product + use case; 'durag 360 waves long tail' matches both products."
+  },
+  {
+    "id": "q077",
+    "query": "men's lightweight zip-up windbreaker jacket 100% polyester black",
+    "type": "attribute",
+    "relevance": {
+      "B07J5XH426": 2
+    },
+    "notes": "Color + material + closure type; BM25 should match 'windbreaker polyester'."
+  },
+  {
+    "id": "q078",
+    "query": "women's elastic waist striped beach casual shorts polyester spandex",
+    "type": "attribute",
+    "relevance": {
+      "B0853371FL": 2,
+      "B09VM4FZ6W": 1
+    },
+    "notes": "Material + print + style; SweatyRocks beach shorts match exactly."
+  },
+  {
+    "id": "q079",
+    "query": "no-show ankle athletic socks with strategic cushioning and moisture wicking",
+    "type": "attribute",
+    "relevance": {
+      "B07XS893GL": 2,
+      "B06W57G8QX": 1
+    },
+    "notes": "Design + feature; Under Armour HeatGear description mentions strategic cushioning."
+  },
+  {
+    "id": "q080",
+    "query": "jersey stretch headwrap turbans for hair care and style women",
+    "type": "attribute",
+    "relevance": {
+      "B08GPZL157": 2
+    },
+    "notes": "Material + multi-purpose use; HOMELEX jersey knit headwraps."
+  },
+  {
+    "id": "q081",
+    "query": "I want the opposite of a formal evening gown — still wearable for a night out",
+    "type": "edge",
+    "relevance": {
+      "B07CQ84KLT": 2,
+      "B07WJGPBDN": 2,
+      "B087R3DFRJ": 1,
+      "B091B1R94F": 0,
+      "B07RCZ3YZ9": 0,
+      "B09M8LRV87": 1,
+      "B01MXDLQJ0": 2,
+      "B01MRH1NRB": 2,
+      "B091JXZJ7X": 0,
+      "B09JLW26L4": 1,
+      "B07YW5DRDD": 1,
+      "B0946HRNZ3": 2
+    },
+    "notes": "Inverted constraint: 'opposite of formal gown' = casual/midi dress. BM25 cannot handle negation.",
+    "dense_only": true
+  },
+  {
+    "id": "q082",
+    "query": "my legs swell and ache after sitting at a desk for eight hours",
+    "type": "edge",
+    "relevance": {
+      "B06W57G8QX": 2,
+      "B09QFJGKM5": 2
+    },
+    "notes": "Implicit constraint: symptom description (leg swelling at desk) implies compression socks. BM25 has no relevant keywords.",
+    "dense_only": true
+  },
+  {
+    "id": "q083",
+    "query": "gym clothes that look presentable enough to run errands or grab coffee right after",
+    "type": "edge",
+    "relevance": {
+      "B081XYDBL2": 2,
+      "B08F1V3KB9": 1,
+      "B0BG5PWPN5": 1,
+      "B08B9QPRBG": 1,
+      "B08B8ZRSGP": 1,
+      "B088ZR3Q86": 1,
+      "B0887ZJ79Y": 2,
+      "B0BYJMG265": 2,
+      "B08KGBM73Z": 2,
+      "B0BYJHP21S": 1
+    },
+    "notes": "Athleisure implicit need; 'gym to errands' requires semantic understanding of versatility.",
+    "dense_only": true
+  },
+  {
+    "id": "q084",
+    "query": "I need a top that won't show sweat marks during an important work presentation",
+    "type": "edge",
+    "relevance": {
+      "B09M6X79V9": 2,
+      "B07S8KMCQW": 1,
+      "B0BYCZ2W78": 1,
+      "B0767N5NQ5": 0,
+      "B08B8ZRSGP": 1,
+      "B09GPSZJYK": 0,
+      "B07BJ9G6Q9": 0,
+      "B09FLBDXP2": 0,
+      "B08B9QPRBG": 1,
+      "B07QWPKS8J": 1,
+      "B08FWNCL4N": 2,
+      "B094CK9H5G": 0,
+      "B07MBK8QV8": 0
+    },
+    "notes": "Implicit: 'won't show sweat' = moisture-wicking / dark color. BM25 misses entirely.",
+    "dense_only": true
+  },
+  {
+    "id": "q085",
+    "query": "pants I can keep wearing comfortably after eating a big lunch while working from home",
+    "type": "edge",
+    "relevance": {
+      "B09MJTRDCW": 2,
+      "B09VM4FZ6W": 2,
+      "B0B16Q1854": 1
+    },
+    "notes": "Implicit: 'comfortable after eating + WFH' = elastic waist / stretchy pants. Purely semantic.",
+    "dense_only": true
+  },
+  {
+    "id": "q086",
+    "query": "my toddler is learning to walk and keeps slipping on hardwood floors",
+    "type": "edge",
+    "relevance": {
+      "B086SHHWRH": 2
+    },
+    "notes": "Implicit need: 'toddler slipping on hardwood' = non-slip grip tights. BM25 misses all keywords.",
+    "dense_only": true
+  },
+  {
+    "id": "q087",
+    "query": "I need something with a pocket that can hold my phone and keys while I run",
+    "type": "edge",
+    "relevance": {
+      "B07GKLQ5KV": 2,
+      "B08F1V3KB9": 2,
+      "B095NW2T8S": 1,
+      "B09KNL82LM": 2,
+      "B08HQBHMM1": 1,
+      "B07FNH3WBK": 1,
+      "B08TB9J6KH": 2,
+      "B07V3DCM4P": 2,
+      "B08QCV6Q73": 1,
+      "B08KH3YRZZ": 2,
+      "B09K4XG235": 1,
+      "B08YYL3HK5": 2
+    },
+    "notes": "Functional need (phone/keys pocket for running); maps to capris/joggers with side pockets.",
+    "dense_only": true
+  },
+  {
+    "id": "q088",
+    "query": "keep my ears and hands warm while cycling to work in November",
+    "type": "edge",
+    "relevance": {
+      "B07VPGY6FX": 2,
+      "B08HM3Y85H": 1
+    },
+    "notes": "Winter commute accessories: 'cycling to work in November' → gloves + hat. Semantic leap required.",
+    "dense_only": true
+  },
+  {
+    "id": "q089",
+    "query": "something versatile enough for pool, beach, and a seafood dinner the same evening",
+    "type": "edge",
+    "relevance": {
+      "B08B12FQXD": 2,
+      "B07CQ84KLT": 1,
+      "B0853371FL": 1,
+      "B08BHP1XFN": 1,
+      "B07F6C34KF": 2,
+      "B085XPGKJP": 2,
+      "B0948XN6T1": 2,
+      "B0BG5H84CZ": 2,
+      "B097M4MPHR": 2,
+      "B0BC4DGCY6": 2,
+      "B07R1XGJZ2": 2,
+      "B07N1JKFZM": 2
+    },
+    "notes": "Multi-venue constraint: beach-to-dinner; lightweight dress is the connecting semantic thread."
+  },
+  {
+    "id": "q090",
+    "query": "clothes that still feel comfortable after overindulging at Thanksgiving dinner",
+    "type": "edge",
+    "relevance": {
+      "B09VM4FZ6W": 2,
+      "B09MJTRDCW": 2,
+      "B0B16Q1854": 1,
+      "B07W6CV5R8": 2,
+      "B08FC9M4KS": 1,
+      "B08MKL4VN5": 2,
+      "B08DKWGZBR": 0,
+      "B07GJ1PDS7": 2,
+      "B09BCC94S2": 2,
+      "B08GKH1F6R": 2,
+      "B08G8CP21H": 0,
+      "B09DD5BKPX": 1
+    },
+    "notes": "Humorous implicit constraint: 'overindulging = need stretchy pants'. Pure semantic.",
+    "dense_only": true
+  },
+  {
+    "id": "q091",
+    "query": "gym clothes for someone who absolutely hates tight or restrictive clothing",
+    "type": "edge",
+    "relevance": {
+      "B09KHSM7BB": 2,
+      "B0B16Q1854": 1,
+      "B09C8LRXN4": 1
+    },
+    "notes": "Anti-preference: 'hates tight clothing' = loose/relaxed fit activewear. BM25 misses negation.",
+    "dense_only": true
+  },
+  {
+    "id": "q092",
+    "query": "matching activewear set that a mother and teenage daughter could both wear",
+    "type": "edge",
+    "relevance": {
+      "B09M6X79V9": 2,
+      "B0BG5PWPN5": 1,
+      "B081XYDBL2": 1,
+      "B07TDJGVPT": 2,
+      "B08B63FGSD": 2,
+      "B08B64QVY8": 2,
+      "B07JX4RXXX": 2,
+      "B09FXHJ88D": 2,
+      "B08KGBM73Z": 1,
+      "B09BFMCRZG": 2,
+      "B09H5ZXWD5": 1,
+      "B08RHX7875": 2
+    },
+    "notes": "Generational fit constraint: versatile activewear suitable for multiple age groups.",
+    "dense_only": true
+  },
+  {
+    "id": "q093",
+    "query": "dress that works for a movie premiere but also a night out at a rooftop bar",
+    "type": "edge",
+    "relevance": {
+      "B07DY3H2XX": 2,
+      "B07WJGPBDN": 1,
+      "B09GXKWLPR": 2,
+      "B07QGWHC71": 2,
+      "B0BG5H84CZ": 1,
+      "B097M4MPHR": 1,
+      "B098B5LFP3": 2,
+      "B09HTSPGFZ": 2,
+      "B0727W6MT9": 2,
+      "B0948XN6T1": 2,
+      "B09Y1MBMSH": 0,
+      "B08JGDRVHL": 0
+    },
+    "notes": "Multi-occasion: premiere + rooftop bar implies slightly formal but not gown.",
+    "dense_only": true
+  },
+  {
+    "id": "q094",
+    "query": "what should I wear on a camping trip to prevent getting dangerously cold overnight",
+    "type": "edge",
+    "relevance": {
+      "B07VPGY6FX": 2,
+      "B07J5XH426": 2,
+      "B09KHSM7BB": 1,
+      "B07Y82NYHP": 2,
+      "B08M3CMCKZ": 2,
+      "B07YJVGTMX": 2,
+      "B07NLF8NGF": 2,
+      "B08LQ5RX47": 1,
+      "B07JQ7T96H": 0,
+      "B098B4MG4M": 2,
+      "B0069B1ITG": 2,
+      "B09CGSB7W2": 2
+    },
+    "notes": "Safety-framed query: 'prevent getting cold camping' = thermal/insulating gear. Semantic.",
+    "dense_only": true
+  },
+  {
+    "id": "q095",
+    "query": "activewear that makes my waist look slimmer and lifts my glutes",
+    "type": "edge",
+    "relevance": {
+      "B081XYDBL2": 2,
+      "B0BVMLJTFS": 2,
+      "B07GKLQ5KV": 1,
+      "B095NW2T8S": 1
+    },
+    "notes": "Body-shaping implicit need: 'slim waist + lift glutes' = tummy control + butt-lifting leggings.",
+    "dense_only": true
+  },
+  {
+    "id": "q096",
+    "query": "light summer outfit that won't embarrassingly become see-through in sunlight",
+    "type": "edge",
+    "relevance": {
+      "B07CQ84KLT": 2,
+      "B08B12FQXD": 1,
+      "B07QML2FDR": 2,
+      "B08XMCJK51": 0,
+      "B07PS2X9CC": 2,
+      "B08T6Q6KDQ": 2,
+      "B07TMY1J24": 2,
+      "B07VPB2JQ1": 1,
+      "B0BN6Y5N5L": 2,
+      "B07N1JKFZM": 2,
+      "B077MPJ9N6": 0,
+      "B088JVSWSC": 0
+    },
+    "notes": "Opacity concern: 'not see-through' is an implicit fabric quality. Dense must find relevant fabrics.",
+    "dense_only": true
+  },
+  {
+    "id": "q097",
+    "query": "workout clothes that keep everything in place during jumping jacks and burpees",
+    "type": "edge",
+    "relevance": {
+      "B081XYDBL2": 2,
+      "B0BVMLJTFS": 1,
+      "B09M6X79V9": 1,
+      "B088ZR3Q86": 2,
+      "B08CZQ75DV": 2,
+      "B0BL6TDRBB": 1,
+      "B08BHV7NV3": 2,
+      "B07BR6GW6H": 2,
+      "B08VDK4RYF": 2,
+      "B09N8PP2GC": 2,
+      "B0922Z2GNQ": 1,
+      "B08DKT1T3B": 2,
+      "B086W3BRFZ": 2
+    },
+    "notes": "High-impact support: 'everything in place during jumping' implies compression + high-waist.",
+    "dense_only": true
+  },
+  {
+    "id": "q098",
+    "query": "women's pants with pockets actually large enough to fit a phone and not just decorative",
+    "type": "edge",
+    "relevance": {
+      "B07GKLQ5KV": 2,
+      "B08F1V3KB9": 2,
+      "B08B12FQXD": 1
+    },
+    "notes": "Sarcastic constraint: 'not just decorative pockets' is colloquial. 90 Degree capris explicitly mention smartphone pockets.",
+    "dense_only": true
+  },
+  {
+    "id": "q099",
+    "query": "athleisure that looks too put-together to be workout clothes but is actually gym-ready",
+    "type": "edge",
+    "relevance": {
+      "B0BG5PWPN5": 2,
+      "B0B3DJBN32": 2,
+      "B09KHSM7BB": 1,
+      "B08DKT1T3B": 1,
+      "B07YFRBZWL": 1,
+      "B07BR6GW6H": 2,
+      "B08F1V3KB9": 1,
+      "B09N8PP2GC": 1,
+      "B09K4XG235": 2,
+      "B0BVMLJTFS": 2,
+      "B0BYJHP21S": 0
+    },
+    "notes": "Athleisure paradox: 'looks non-athletic but IS athletic'. Requires semantic understanding of athleisure.",
+    "dense_only": true
+  },
+  {
+    "id": "q100",
+    "query": "I run hot but need to dress appropriately for a freezing cold office all day",
+    "type": "edge",
+    "relevance": {
+      "B09M6X79V9": 2,
+      "B06W57G8QX": 1,
+      "B0BYCZ2W78": 1,
+      "B097LHMPL3": 2,
+      "B07FPMX4B5": 0,
+      "B098B4MG4M": 1,
+      "B07YXD4STK": 2,
+      "B091D1HF3Q": 2,
+      "B07G37FXJ4": 0,
+      "B08LQ5RX47": 0,
+      "B081H7WBVR": 0,
+      "B08RC7GPDB": 2,
+      "B0069B1ITG": 1
+    },
+    "notes": "Temperature paradox: 'runs hot but cold office' = lightweight moisture-wicking base layer. Semantic.",
+    "dense_only": true
+  }
+]

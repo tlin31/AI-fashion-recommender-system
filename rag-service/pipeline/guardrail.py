@@ -24,7 +24,12 @@ logger = logging.getLogger(__name__)
 
 # System prompt is a constant — never interpolate user input into it.
 _SYSTEM_PROMPT = (
-    "Classify: is this query about fashion, clothing, or accessories? "
+    "Classify: is this query about fashion, clothing, footwear, accessories, "
+    "activewear, sportswear, compression gear, bags, jewellery, or any wearable "
+    "product — including queries that describe a use case, occasion, symptom, or "
+    "activity where clothing or wearables would be the answer "
+    "(e.g. 'my legs swell at my desk', 'something for hiking in the cold', "
+    "'gift for a fitness friend', 'toddler keeps slipping')? "
     "Reply YES or NO only."
 )
 
