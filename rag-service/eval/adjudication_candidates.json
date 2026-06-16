@@ -1,0 +1,2135 @@
+[
+  {
+    "id": "q021",
+    "query": "something cozy for lounging at home on weekend mornings",
+    "type": "exploratory",
+    "dense_only": true,
+    "current_relevance": {
+      "B07XDZ73Z9": 2,
+      "B09MJTRDCW": 2,
+      "B09KHSM7BB": 1,
+      "B009R09Z8W": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B091B1R94F",
+        "name": "Ekouaer Womens Sleeveless Long Nightgown Summer Slip Night Gowns Dress Soft Sleepshirt Chemise Pajamas",
+        "category": "dress",
+        "price": null,
+        "description": "Ekouaer Womens Sleeveless Long Nightgown Summer Slip Night Gowns Dress Soft Sleepshirt Chemise Pajamas SOFT FABRIC - Ekouaer sleepwear is made of soft cotton fabric, which is breathable and easy on the skin and sooo comfortable to sleep and lounging. Imported Pull On closure Hand Wash Only LONG NIGH",
+        "your_label": 0
+      },
+      {
+        "product_id": "B08MSTMW2F",
+        "name": "Terry Bathrobes Cotton Unisex,Men,Women,Lightweight,Side Pocket,Soft,Absorbent",
+        "category": "robe",
+        "price": null,
+        "description": "Terry Bathrobes Cotton Unisex,Men,Women,Lightweight,Side Pocket,Soft,Absorbent Cotton Tie closure Machine Wash SOFT & ABSORBENT: Our 100% Premium Long-Staple Combed Cotton is specially combed to remove all but the finest and longest fibers, making these bathrobes the ultimate in luxury. Softer and m",
+        "your_label": 1
+      },
+      {
+        "product_id": "B091JXZJ7X",
+        "name": "Envlon Womens Nightgowns Sleeveless Sleepwear Soft Tank Sleep Dress Comfy Nightshirt Lounge Night Wear for Women",
+        "category": "tank",
+        "price": null,
+        "description": "Envlon Womens Nightgowns Sleeveless Sleepwear Soft Tank Sleep Dress Comfy Nightshirt Lounge Night Wear for Women 91%viscose， 9%spandex Imported Pull On closure ♥🌈Soft Modal Fabric - Made from 95% Rayon & 5% Spandex, this womens comfy sleep dress is comfortably breathable,smooth and easy on the skin,",
+        "your_label": 0
+      },
+      {
+        "product_id": "B0B8Q689XG",
+        "name": "U.S. Polo Assn. Womens Jogger Lounge Pants – Pajama Pants for Women",
+        "category": "polo",
+        "price": 14.95,
+        "description": "U.S. Polo Assn. Womens Jogger Lounge Pants – Pajama Pants for Women 95% Polyester, 5% Spandex Imported Pull-On closure Machine Wash Pull-on jogger pajama pant features a medium rise and tapered leg that gathers at the ankle. Hem stays off the feet for a clean look Stretchy poly knit fabric feels coz",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0163KOAHO",
+        "name": "Leisureland Men's Towel Wrap, Waffle Wrap for Bath, Spa, Gym",
+        "category": "wrap",
+        "price": 23.96,
+        "description": "Leisureland Men's Towel Wrap, Waffle Wrap for Bath, Spa, Gym SOFT & BREATHABLE - Waffle texture made with 60% cotton terry, 40% poly, perfect for lounging in the evening SIMPLE & ADJUSTABLE - Comfortable elastic waist means it's just like your favorite pair of sweats, and adjustable hook and loop cl",
+        "your_label": 1
+      },
+      {
+        "product_id": "B086W3BRFZ",
+        "name": "Jetjoy Seamless Leggings for Women Yoga Pants Sport Workout Sexy Tights High Waisted Gym Exercise Capri Leggings",
+        "category": "leggings",
+        "price": null,
+        "description": "Jetjoy Seamless Leggings for Women Yoga Pants Sport Workout Sexy Tights High Waisted Gym Exercise Capri Leggings ★These seamless workout leggings are designed with soft, stretchy, has slightly compression, and moisture-wicking. If you are looking for tight fit breathable high waisted training leggin",
+        "your_label": 1
+      },
+      {
+        "product_id": "B09BCGXG46",
+        "name": "ZERDOCEAN Women's Plus Size Fleece Lined Sweatpants Warm Fleece Joggers Pants Active Track Pant with Pockets",
+        "category": "joggers",
+        "price": 21.99,
+        "description": "ZERDOCEAN Women's Plus Size Fleece Lined Sweatpants Warm Fleece Joggers Pants Active Track Pant with Pockets Fabric: 60% Cotton, 35% Polyester, 5% Spandex; LINING: 100% Polyester Drawstring closure Machine Wash Winter warm fleece lined solid color sweatpants workout pants, it's mid-weight heavy cott",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08LD62DCF",
+        "name": "Women Pajama Set 2 Piece Nightwear Short Sleeve Top and Pants with Pockets Sleepwear Pjs Sets",
+        "category": "pants",
+        "price": null,
+        "description": "Women Pajama Set 2 Piece Nightwear Short Sleeve Top and Pants with Pockets Sleepwear Pjs Sets Drawstring closure Excellent Material: This pajama set for women are made of soft, breathable, and non-irritating fabric, these jammies also come with a strong sweat absorption, a great benefit for someone ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07ZKSCD7J",
+        "name": "evershare Women Harem Pants Yoga Pants Wide Leg Comfy Loose Straight Lounge Running Workout Legging, Dark Gray",
+        "category": "pants",
+        "price": 19.99,
+        "description": "evershare Women Harem Pants Yoga Pants Wide Leg Comfy Loose Straight Lounge Running Workout Legging, Dark Gray Elastic closure Hand Wash Only Please see our descriptions to choose size: S (Waist-25.2’’-29.1’’Length-39’’); M (Waist-26.8’’-31.5’’Length-40.6’’); L (Waist-28.3’’-33.9’’’Length-42.1’’); X",
+        "your_label": 1
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q024",
+    "query": "comfortable outfit for an eight-hour long haul flight",
+    "type": "exploratory",
+    "dense_only": true,
+    "current_relevance": {
+      "B0B16Q1854": 2,
+      "B09VM4FZ6W": 2,
+      "B09MJTRDCW": 1,
+      "B07XDZ73Z9": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B01GU34AU6",
+        "name": "speerise Women Long Sleeve Bodycon High Waist Jumpsuit Rompers Bodysuit One Piece Outfit",
+        "category": "jumpsuit",
+        "price": 29.99,
+        "description": "speerise Women Long Sleeve Bodycon High Waist Jumpsuit Rompers Bodysuit One Piece Outfit Import Pull On closure Hand Wash Only Solid color, comfortable to wear, slim fit, casual club rompers jumpsuits Scoop neck unitard, one piece bodycon jumpsuit, long sleeve, high waist catsuit Made of customized ",
+        "your_label": 0
+      },
+      {
+        "product_id": "B016CTV268",
+        "name": "Sleep Headphone Stereo Headphone + Soft Fleece Earmuffs Most Comfortable Headphones for Sleeping - Perfect for Air Traveling Accessories",
+        "category": "fleece",
+        "price": null,
+        "description": "Sleep Headphone Stereo Headphone + Soft Fleece Earmuffs Most Comfortable Headphones for Sleeping - Perfect for Air Traveling Accessories",
+        "your_label": 1
+      },
+      {
+        "product_id": "B09FXHJ88D",
+        "name": "Ekouaer Women's Sweatsuits Sets Long Sleeve 2 Piece Outfits Set Soft Tracksuit Jogger Set with Pockets",
+        "category": "tracksuit",
+        "price": 28.99,
+        "description": "Ekouaer Women's Sweatsuits Sets Long Sleeve 2 Piece Outfits Set Soft Tracksuit Jogger Set with Pockets 95% Polyester, 5% Spandex Imported Pull On closure Machine Wash Comfy Material: 95% polyester+5% spandex. This womens two piece outfit sets fabric is soft with microelastic, which is very cozy to w",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08516JL48",
+        "name": "Mallimoda Women Sweatsuits Outfit 2 Pieces Tracksuit Long Sleeve Sweatshirt Hoodies Set",
+        "category": "sweatshirt",
+        "price": null,
+        "description": "Mallimoda Women Sweatsuits Outfit 2 Pieces Tracksuit Long Sleeve Sweatshirt Hoodies Set 100% Polyester; Machine washable softly Pull On closure Hand Wash Only Women casual 2 pieces outfit long sleeve solid color pullover sweatsuit hoodies loose workout outfit lightweight crop top and elastic waist s",
+        "your_label": 2
+      },
+      {
+        "product_id": "B077XMN5B6",
+        "name": "Tigerdoe Stewardess Hat – Flight Attendant Costume – Air Hostess – Cabin Crew – 3 Pc – Women’s Costumes",
+        "category": "hat",
+        "price": 17.99,
+        "description": "Tigerdoe Stewardess Hat – Flight Attendant Costume – Air Hostess – Cabin Crew – 3 Pc – Women’s Costumes Costume set includes; navy blue stewardess hat, white gloves and an eagle gold pin. All Aboard! This adorable high-quality flight attendant costume set is a one size fits most adults and teens. Gr",
+        "your_label": 0
+      },
+      {
+        "product_id": "B09LH9BJDT",
+        "name": "Hotouch Women Long Sleeve Midi Dress Empire Waist Dress",
+        "category": "dress",
+        "price": null,
+        "description": "Hotouch Women Long Sleeve Midi Dress Empire Waist Dress 95% rayon , 5% spandex Machine Wash 【Features】: A line, Round neck ,casual style,3/4 sleeve, loose fit ,swing hem and pleated t-shirt flowy dress, simple and classy design; we love loose long dresses because they make us look more aristocratic ",
+        "your_label": 1
+      },
+      {
+        "product_id": "B091B1R94F",
+        "name": "Ekouaer Womens Sleeveless Long Nightgown Summer Slip Night Gowns Dress Soft Sleepshirt Chemise Pajamas",
+        "category": "dress",
+        "price": null,
+        "description": "Ekouaer Womens Sleeveless Long Nightgown Summer Slip Night Gowns Dress Soft Sleepshirt Chemise Pajamas SOFT FABRIC - Ekouaer sleepwear is made of soft cotton fabric, which is breathable and easy on the skin and sooo comfortable to sleep and lounging. Imported Pull On closure Hand Wash Only LONG NIGH",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07V4J6HJ9",
+        "name": "Yogipace Petite/Regular/Tall Women's 7/8 On The Fly Pants Drawstring Casual Lounge Joggers Travel Sweatpants,Black,24\",Size M",
+        "category": "joggers",
+        "price": null,
+        "description": "Yogipace Petite/Regular/Tall Women's 7/8 On The Fly Pants Drawstring Casual Lounge Joggers Travel Sweatpants,Black,24\",Size M",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07PBRN5DV",
+        "name": "+MD Women's 8-15mmHg Graduated Compression Leggings Medical Quality Ladies Footless Support Tights",
+        "category": "leggings",
+        "price": 17.99,
+        "description": "+MD Women's 8-15mmHg Graduated Compression Leggings Medical Quality Ladies Footless Support Tights Pull-On closure Machine Wash Material: 82.9% Nylon, 17.1% Spandex. Soft, stretchy, and breathable, this legging will make you feel comfortable all day. Variaty of colors for you to choose.These compres",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08MVQ62Z4",
+        "name": "Seatsuits for Women Casual Long Sleeve Hoodie Workout Pants Tracksuit Set Jogging Suits Two Piece Outfits Green/Grey XL",
+        "category": "tracksuit",
+        "price": null,
+        "description": "Seatsuits for Women Casual Long Sleeve Hoodie Workout Pants Tracksuit Set Jogging Suits Two Piece Outfits Green/Grey XL",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q028",
+    "query": "gift ideas for a fitness-obsessed friend who loves working out",
+    "type": "exploratory",
+    "dense_only": true,
+    "current_relevance": {
+      "B09M6X79V9": 2,
+      "B095NW2T8S": 1,
+      "B06W57G8QX": 1,
+      "B07S8KMCQW": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B01MUAYFHU",
+        "name": "Lolly Llama Titanium Never Tarnish Workout Necklace Trendy Weightlifting Jewelry Necklace with I Choose Strength Charm",
+        "category": "necklace",
+        "price": null,
+        "description": "Lolly Llama Titanium Never Tarnish Workout Necklace Trendy Weightlifting Jewelry Necklace with I Choose Strength Charm BREAK RESISTANT CHAIN - Chains are made with break resistant titanium material that is strong and durable. FITNESS INSPIRED - This necklace not only includes strong and durable mate",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07VNVW9L5",
+        "name": "RIOJOY Womens Yoga Pants Workout Leggings 4 Way Stretch Tummy Control Hight Waist Tights",
+        "category": "leggings",
+        "price": null,
+        "description": "RIOJOY Womens Yoga Pants Workout Leggings 4 Way Stretch Tummy Control Hight Waist Tights elastic closure Machine Wash ❤️【FEATURES FOR YOGA LEGGINGS】--Slim fit,breathable,durable,moisture wicking,quick-dry,comfortable,flexible.Super soft 4 way stretch fabric for comfort and performance. ❤️【TUMMY CONT",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0C6JBL42K",
+        "name": "Extra Firm Footless Graduated Compression Microfiber Leggings Opaque Tights for Women (20-30 mmHg) with Control Top",
+        "category": "leggings",
+        "price": 32.99,
+        "description": "Extra Firm Footless Graduated Compression Microfiber Leggings Opaque Tights for Women (20-30 mmHg) with Control Top Pull On closure 𝗨𝗟𝗧𝗜𝗠𝗔𝗧𝗘 𝗖𝗢𝗠𝗣𝗥𝗘𝗦𝗦𝗜𝗢𝗡 - Our specifically designed footless leg compression leggings are graduated for higher compression at the lower leg and looser at the top to give y",
+        "your_label": 2
+      },
+      {
+        "product_id": "B01N985HDE",
+        "name": "Lolly Llama Titanium Never Tarnish Workout Necklace Trendy Weightlifting Jewelry Necklace with Strong is Beautiful Charm",
+        "category": "necklace",
+        "price": null,
+        "description": "Lolly Llama Titanium Never Tarnish Workout Necklace Trendy Weightlifting Jewelry Necklace with Strong is Beautiful Charm BREAK RESISTANT CHAIN - Chains are made with break resistant titanium material that is strong and durable. FITNESS INSPIRED - This necklace not only includes strong and durable ma",
+        "your_label": 2
+      },
+      {
+        "product_id": "B097BMDMKB",
+        "name": "QGGQDD Joggers for Women - Sweatpants with Pockets Yoga Lounge Black Workout Pants",
+        "category": "joggers",
+        "price": 15.99,
+        "description": "QGGQDD Joggers for Women - Sweatpants with Pockets Yoga Lounge Black Workout Pants 92% Polyester, 8% Spandex Delivering Naked Feeling Imported Drawstring closure Machine Wash Comfy & Lightweight: QGGQDD’s jogger pants, selected from premium fabric, lend you a super soft touch feeling and embrace you",
+        "your_label": 2
+      },
+      {
+        "product_id": "B00OQC64VW",
+        "name": "Zittop Fashion Infinite Bracelet Leather Knit Rope Letter Love Direction Heartpunk Charms",
+        "category": "top",
+        "price": 3.99,
+        "description": "Zittop Fashion Infinite Bracelet Leather Knit Rope Letter Love Direction Heartpunk Charms Length：7 inch Treat yourself to this extraordinary bracelet or make a beloved person happy. This bracelet will make a fantastic accessory to every outfit being an elegant eyecatcher. Unique And Handmade Design：",
+        "your_label": 0
+      },
+      {
+        "product_id": "B0816989ZN",
+        "name": "Beach Lover Bracelet Gift Beach Jewelry Bracelet Bracelet Stainless Steel Bangle Birthday Christmas Graduation Gift for Women Girl Teens Beach Lover",
+        "category": "tee",
+        "price": 10.98,
+        "description": "Beach Lover Bracelet Gift Beach Jewelry Bracelet Bracelet Stainless Steel Bangle Birthday Christmas Graduation Gift for Women Girl Teens Beach Lover Beach Lover gift：The Beach Bracelet is the perfect way to show your love of the beach!Such a unique and beautiful way to relive your memories of the be",
+        "your_label": 0
+      },
+      {
+        "product_id": "B09Z62696J",
+        "name": "YLCCYABC 12 Color Elastic Rubber Bracelet Silicone Wristband Exquisite Packaging Silicone Bracelet, Suitable for Female Male Teenagers Gift (12 pieces/box)",
+        "category": "tee",
+        "price": null,
+        "description": "YLCCYABC 12 Color Elastic Rubber Bracelet Silicone Wristband Exquisite Packaging Silicone Bracelet, Suitable for Female Male Teenagers Gift (12 pieces/box) Try to think? Love it when you receive \"it\". Or have a customer service ready to help you out when something goes wrong. This is more important ",
+        "your_label": 1
+      },
+      {
+        "product_id": "B09FXLWP9P",
+        "name": "PinkPatty Women's 2 Piece Outfits Sleeveless High Waist Elastic Wide Leg Pant Sets Loungewear Casual Loose Summer Tracksuit",
+        "category": "tracksuit",
+        "price": 29.99,
+        "description": "PinkPatty Women's 2 Piece Outfits Sleeveless High Waist Elastic Wide Leg Pant Sets Loungewear Casual Loose Summer Tracksuit Polyester Imported Drawstring closure Hand Wash Only Material:2 piece outfits for women fall made by high quality polyester fabric which is very soft and comfortable. Design:wo",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q030",
+    "query": "something stylish but comfortable for a casual date night in autumn",
+    "type": "exploratory",
+    "dense_only": false,
+    "current_relevance": {
+      "B07WJGPBDN": 2,
+      "B07DY3H2XX": 1,
+      "B0BGQ3MBH3": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B01JW6CJBU",
+        "name": "ASMAX HaoDuoYi Womens Classic Overall Suspender A Line Pleated Mini Dress",
+        "category": "dress",
+        "price": null,
+        "description": "ASMAX HaoDuoYi Womens Classic Overall Suspender A Line Pleated Mini Dress Pull On closure Hand Wash Only Material:96% Polyester+4% Spandex Very stretchy and comfortable that feels as good as it looks.Shows your personality and become the focus of the public at the same time. Occasion: Casual Autumn ",
+        "your_label": 1
+      },
+      {
+        "product_id": "B0BFKH4JMV",
+        "name": "BAQIFEN Women's Casual Crewneck Long Sleeve Sweatshirt Fashion Pullover Side Split Tops",
+        "category": "sweatshirt",
+        "price": 30.99,
+        "description": "BAQIFEN Women's Casual Crewneck Long Sleeve Sweatshirt Fashion Pullover Side Split Tops 43%Cotton, 57%Polyester Pull On closure Machine Wash 【Material】:43%Cotton,57%Polyester.Stretchy and soft fabric,perfect for spring,autumn,winter 【Features】: Long sleeve tops,color block,crew neck,side splits,casu",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BG5H84CZ",
+        "name": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress",
+        "category": "dress",
+        "price": 7.09,
+        "description": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress ✦ Expedited Shipping:3-5 Days. Standard shipping: 7-20 Days. ☆ Today's Deal --Save 70% each on Promotion Applied offered by U6J438VS when you purchase 1 or more. Button closure",
+        "your_label": 1
+      },
+      {
+        "product_id": "B095PZB2HK",
+        "name": "Gemira Hoodie Sweatshirts for Women Junior Girls Fashion Japanese Kawaii T-Shirts Casual Cute Dinosaur Print Tee Tops Blouse",
+        "category": "sweatshirt",
+        "price": 16.29,
+        "description": "Gemira Hoodie Sweatshirts for Women Junior Girls Fashion Japanese Kawaii T-Shirts Casual Cute Dinosaur Print Tee Tops Blouse 100% Polyester Pull On closure Womens Tops 2020 - Note: Our sizes are ASIAN SIZE, THE SIZE RUN SMALL, Please CHECK your size with our SIZE CHART in the picture before you buy ",
+        "your_label": 1
+      },
+      {
+        "product_id": "B09LH9BJDT",
+        "name": "Hotouch Women Long Sleeve Midi Dress Empire Waist Dress",
+        "category": "dress",
+        "price": null,
+        "description": "Hotouch Women Long Sleeve Midi Dress Empire Waist Dress 95% rayon , 5% spandex Machine Wash 【Features】: A line, Round neck ,casual style,3/4 sleeve, loose fit ,swing hem and pleated t-shirt flowy dress, simple and classy design; we love loose long dresses because they make us look more aristocratic ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BPXTWWVW",
+        "name": "EONPOW Warm Autumn and Winter Scarf, Unisex Pure Color Winter Neck Warm Knitting Yarn Scarf",
+        "category": "scarf",
+        "price": 10.99,
+        "description": "EONPOW Warm Autumn and Winter Scarf, Unisex Pure Color Winter Neck Warm Knitting Yarn Scarf Acrylic fibers Imported Pull On closure Hand Wash Only The Winter Scarf Dimensions:185×35 CM Warm Knitting Yarn Scarf Material: Acrylic fibers Unisex winter scarf suit for most formal and casual wear, especia",
+        "your_label": 1
+      },
+      {
+        "product_id": "B09JLW26L4",
+        "name": "Womens 2 Piece Skirt Sets Outfits Casual Crop Top Ruched Bodycon Skirt Birthday Night Out Sets",
+        "category": "crop top",
+        "price": 37.89,
+        "description": "Womens 2 Piece Skirt Sets Outfits Casual Crop Top Ruched Bodycon Skirt Birthday Night Out Sets Polyester Pull On closure Hand Wash Only Style: Sexy maxi dresses for women would be welcomed in club,will show off your best features this evening party,chiced its way through the club night when you danc",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07YXD4STK",
+        "name": "Alexander + David Womens Casual Cowl Pullover Turtle Neck - Sweater Oversized W Long Sleeves",
+        "category": "pullover",
+        "price": null,
+        "description": "Alexander + David Womens Casual Cowl Pullover Turtle Neck - Sweater Oversized W Long Sleeves Hand Wash Only EXTRA SOFT COWL NECK SWEATER: This sweater is made from a Viscose blend that is super soft to the touch. Wearing it is a delight that will make you want to never take it off. The special twist",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07Q3M8WST",
+        "name": "WOCACHI Women Mini Dresses Turtleneck Cotton Linen Beach Sleeveless Floral Dress Ruffle Flowy Swing Tunic Sundresses",
+        "category": "turtleneck",
+        "price": null,
+        "description": "WOCACHI Women Mini Dresses Turtleneck Cotton Linen Beach Sleeveless Floral Dress Ruffle Flowy Swing Tunic Sundresses Linen,Cotton,Corduroy Hand Wash Only ✤✤✤IMPORTANT: Dear Customer: Please don't use the amazon size chart,as our size chart is different the Amazon size chart. For correct fit, please ",
+        "your_label": 1
+      },
+      {
+        "product_id": "B09LH64L8G",
+        "name": "Hotouch Women 3/4 Sleeve Mauve Dress Long Sleeve Midi Dress (Mauve2 XL) X-Large",
+        "category": "dress",
+        "price": null,
+        "description": "Hotouch Women 3/4 Sleeve Mauve Dress Long Sleeve Midi Dress (Mauve2 XL) X-Large 95% rayon , 5% spandex Machine Wash 【Features】: A line, Round neck ,casual style,3/4 sleeve, loose fit ,swing hem and pleated t-shirt flowy dress, simple and classy design; we love loose long dresses because they make us",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q031",
+    "query": "smart casual look for business casual office environment",
+    "type": "exploratory",
+    "dense_only": true,
+    "current_relevance": {
+      "B07L5JNZFP": 2,
+      "B0B16Q1854": 1,
+      "B07DY3H2XX": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B0947173ZT",
+        "name": "Tapata Women's 20.5'' Bootcut Capri Dress Pants Flared Cropped Office Pants with High Waist Business Casual Career Pants",
+        "category": "dress",
+        "price": null,
+        "description": "Tapata Women's 20.5'' Bootcut Capri Dress Pants Flared Cropped Office Pants with High Waist Business Casual Career Pants 62% Rayon, 33% Nylon, 5% Spandex COZY & STRETCHY PONTE FABRIC: These capri office pants are well made from the knit ponte fabric with a plain texture. Material blended with spande",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0B51LW4K2",
+        "name": "Sherosa Pink Shirts for Women Dressy Casual 3/4 Sleeve V Neck Blouses Tunics Tops for Leggings S",
+        "category": "leggings",
+        "price": 12.98,
+        "description": "Sherosa Pink Shirts for Women Dressy Casual 3/4 Sleeve V Neck Blouses Tunics Tops for Leggings S Pull On closure Hand Wash Only Features:3/4 sleeve shirts for women v neck,pleated on front and the back part,A-line design,irregular curved high and low streamline hem,business casual tops for women off",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07YXD4STK",
+        "name": "Alexander + David Womens Casual Cowl Pullover Turtle Neck - Sweater Oversized W Long Sleeves",
+        "category": "pullover",
+        "price": null,
+        "description": "Alexander + David Womens Casual Cowl Pullover Turtle Neck - Sweater Oversized W Long Sleeves Hand Wash Only EXTRA SOFT COWL NECK SWEATER: This sweater is made from a Viscose blend that is super soft to the touch. Wearing it is a delight that will make you want to never take it off. The special twist",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07RXLM8W7",
+        "name": "Zshujun Women's Vintage Classic Floral Formal Office Work Dresses Casual Knee-Length Bodycon Pencil Sheath Dress 1189",
+        "category": "dress",
+        "price": null,
+        "description": "Zshujun Women's Vintage Classic Floral Formal Office Work Dresses Casual Knee-Length Bodycon Pencil Sheath Dress 1189 Pull On closure Machine Wash",
+        "your_label": 2
+      },
+      {
+        "product_id": "B081YDLHQT",
+        "name": "Longwu Women's Loose Casual Front Tie Long Sleeve Bandage Dress for Party/Work/Lounge Wear",
+        "category": "dress",
+        "price": null,
+        "description": "Longwu Women's Loose Casual Front Tie Long Sleeve Bandage Dress for Party/Work/Lounge Wear Polyster Made in USA or Imported Tie closure Hand Wash Only 【US SIZE】Size Information(Inch):S(US 4-6)--bust:38.2\", dress length:32.5\", sleeve length:23.6\" M(US 8-10)--bust:40.2\", dress length:33\", sleeve lengt",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09QMF1G4K",
+        "name": "PINSV Women's Stretchy Bootcut Pull On Dress Pants Office Casual Work Pants Blue XL",
+        "category": "dress",
+        "price": null,
+        "description": "PINSV Women's Stretchy Bootcut Pull On Dress Pants Office Casual Work Pants Blue XL",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07CG5QBYS",
+        "name": "MCKOL Women Cocktail Cap Sleeve V Neck Striped Elegant Flare Dress",
+        "category": "dress",
+        "price": null,
+        "description": "MCKOL Women Cocktail Cap Sleeve V Neck Striped Elegant Flare Dress Zipper closure Machine Wash A Line/Cap Sleeve/Knee Length/Empire Waist/V Neck/Color Block/Left Side Hidden Zipper,/Patchwork/Slim Fit/Dressy Dress/Vintage Dress/Casual Dress/Fit and Flare Elegant V Neck color block flattering dress i",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07H4JP7SH",
+        "name": "Marycrafts Women's Work Office Business Square Neck Sheath Midi Dress 18 Glitter Black",
+        "category": "dress",
+        "price": null,
+        "description": "Marycrafts Women's Work Office Business Square Neck Sheath Midi Dress 18 Glitter Black",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07NKGGCX8",
+        "name": "YATHON Black Floral Print Casual Dresses for Women Vintage Classic Fit and Flare Swing A line Party Work Business Church Semi Formal Evening Dress",
+        "category": "dress",
+        "price": null,
+        "description": "YATHON Black Floral Print Casual Dresses for Women Vintage Classic Fit and Flare Swing A line Party Work Business Church Semi Formal Evening Dress Zipper closure",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q033",
+    "query": "back to school outfit ideas for young kids",
+    "type": "exploratory",
+    "dense_only": false,
+    "current_relevance": {
+      "B07PHW2CWH": 2,
+      "B086SHHWRH": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B0B2ZVBS68",
+        "name": "Max Cosplay Costume Jacket Halloween Outfit Set School Team Uniform with Scrunchie",
+        "category": "jacket",
+        "price": 39.99,
+        "description": "Max Cosplay Costume Jacket Halloween Outfit Set School Team Uniform with Scrunchie Max Cosplay Costume Jacket Halloween Outfit for Tween/Teens/Women/Unisex. Material: Made of high quality stretchy fabric, breathable and soft to skin. Occasions: Great gift for your friends and families who loves ST4.",
+        "your_label": 0
+      },
+      {
+        "product_id": "B085L298KP",
+        "name": "YOUNGER TREE Kids Toddler Baby Girls Summer Romper Outfit Stripe Overall Bodysuit Jumpsuit Cropped Trousers Clothes",
+        "category": "jumpsuit",
+        "price": null,
+        "description": "YOUNGER TREE Kids Toddler Baby Girls Summer Romper Outfit Stripe Overall Bodysuit Jumpsuit Cropped Trousers Clothes ✿ high quality Onesies outfit for baby girls, also is a good idea to being sister outfit ! ✿ Cute stripe print backless romper,Your baby will more cute and attractive ! ✿ Cotton blend ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08XKFG4BF",
+        "name": "Kids Girl Skirt and Crop Top Set Butterfly Print Short Sleeve T Shirt and Skirts Summer Clothes Set",
+        "category": "crop top",
+        "price": null,
+        "description": "Kids Girl Skirt and Crop Top Set Butterfly Print Short Sleeve T Shirt and Skirts Summer Clothes Set Polyester / Pull On closure Hand Wash Only Material: shirt is made of cotton and skirt is made of polyester and spandex, breathable and soft Cute tops: lovely butterfly print, classic crewneck, short ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07TDJGVPT",
+        "name": "TiaoBug Kids Girls Crop Tops with Athletic Leggings Tracksuit Gymnastic Active Workout Set Two Piece Dance Outfit",
+        "category": "leggings",
+        "price": 12.95,
+        "description": "TiaoBug Kids Girls Crop Tops with Athletic Leggings Tracksuit Gymnastic Active Workout Set Two Piece Dance Outfit Polyester, Spandex Pull On closure Hand Wash Only Gymnastics outfit is made of polyester and spandex material, hand wash Size Table means age ranges for girls, but they are for general g",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08X2CNH7S",
+        "name": "Listenwind Fashion Toddler Baby Girl Clothes Ruffle T-Shirt Top and Jeans Short Sets Kids Girl 2pcs Outfits",
+        "category": "t-shirt",
+        "price": 14.99,
+        "description": "Listenwind Fashion Toddler Baby Girl Clothes Ruffle T-Shirt Top and Jeans Short Sets Kids Girl 2pcs Outfits Cotton blend Pull On closure Hand Wash Only Material: Toddler girl fashion clothes, White shirt top made of cotton fabric, Jeans shorts made of soft denim. Skin-frindly and b reathable fabric,",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0749HKVXR",
+        "name": "WINZIK Little Baby Boy Girl Kids Jacket Outfit Spring Autumn PU Faux Leather Lapel Zipper Outerwear Coat Halloween Costume",
+        "category": "jacket",
+        "price": 22.55,
+        "description": "WINZIK Little Baby Boy Girl Kids Jacket Outfit Spring Autumn PU Faux Leather Lapel Zipper Outerwear Coat Halloween Costume Denim 进口 Zipper closure Hand Wash Only ⭐FASHION DESIGN OUTERWEAR JACKET COAT⭐ These outfit features classical motorcycle jacket style with lapel collar design for little baby ki",
+        "your_label": 2
+      },
+      {
+        "product_id": "B098BNWD94",
+        "name": "CoComelon Toddler Winter Hat and Snow Gloves for Toddler Set with Cute Mittens and Soft Beanie Adorable Outdoor Wear",
+        "category": "glove",
+        "price": 14.99,
+        "description": "CoComelon Toddler Winter Hat and Snow Gloves for Toddler Set with Cute Mittens and Soft Beanie Adorable Outdoor Wear 100% Acrylic Imported Hand Wash Only Stay Warmer on Winter Sing-Alongs – This hat glove set for boys and girls features classic CoComelon characters and colors to keep them feeling wa",
+        "your_label": 1
+      },
+      {
+        "product_id": "B08923HLW5",
+        "name": "Toddler Kids Baby Girl Leopard Print Shorts Outfits T-Shirt Tops Sweat Shorts Sets Sports Clothes",
+        "category": "t-shirt",
+        "price": null,
+        "description": "Toddler Kids Baby Girl Leopard Print Shorts Outfits T-Shirt Tops Sweat Shorts Sets Sports Clothes Pull On closure &#127932Material:Cotton blend,soft handling,comfortable and breathable to wearing,no any not irritating to your baby's skin. &#127932 Simple and comfortable design fashion kids leopard o",
+        "your_label": 2
+      },
+      {
+        "product_id": "B081G7JFR6",
+        "name": "Leggings Depot Kids Ultra Soft Basic Solid Ankle Length Leggings Pants for School or Play",
+        "category": "leggings",
+        "price": null,
+        "description": "Leggings Depot Kids Ultra Soft Basic Solid Ankle Length Leggings Pants for School or Play Pull On closure Machine Wash Ultra Soft Premium Fabric(92% Polyester 8% Spandex) - Our kids leggings are made in our buttery smooth brushed polyester and spandex blend. It’ll stretch in all directions without b",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q037",
+    "query": "what to wear at the beach all day from swimming to dinner",
+    "type": "exploratory",
+    "dense_only": false,
+    "current_relevance": {
+      "B08B12FQXD": 2,
+      "B0853371FL": 2,
+      "B0C3G9447V": 1,
+      "B07CQ84KLT": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B08BHP1XFN",
+        "name": "Vulken Extra Large Thick Hooded Beach Towel Changing Robe. Surf Poncho Women for Easy Change in Public. Quick Dry Microfiber Toweling for The Beach, Pool, Lake, Water Park. S/M",
+        "category": "robe",
+        "price": 29.99,
+        "description": "Vulken Extra Large Thick Hooded Beach Towel Changing Robe. Surf Poncho Women for Easy Change in Public. Quick Dry Microfiber Toweling for The Beach, Pool, Lake, Water Park. S/M ALL-IN-ONE GARMENT FOR WATER ACTIVITIES - Tailored to your needs to allow changing underneath comfortably, to dry off and k",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07QRRR7KD",
+        "name": "Womens Casual Summer Beach Dress Boho Floral Swing Mini Shift Dress Sundress Bikini Cover Up White",
+        "category": "dress",
+        "price": null,
+        "description": "Womens Casual Summer Beach Dress Boho Floral Swing Mini Shift Dress Sundress Bikini Cover Up White",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07R1XGJZ2",
+        "name": "Imagine Women's Summer Dress Strapless Floral Print Bohemian Casual Beach Dress Cover Ups for Swimwear Women, #Red2, X-Large",
+        "category": "dress",
+        "price": null,
+        "description": "Imagine Women's Summer Dress Strapless Floral Print Bohemian Casual Beach Dress Cover Ups for Swimwear Women, #Red2, X-Large",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09JWJ5L8S",
+        "name": "BB&KK Kaftan Beach Dresses for Women Sexy Swimsuit Cover Up Plus Size Boho Floral Off Shoulder Flowy Maxi Maternity Long Batwing Sleeve White",
+        "category": "dress",
+        "price": null,
+        "description": "BB&KK Kaftan Beach Dresses for Women Sexy Swimsuit Cover Up Plus Size Boho Floral Off Shoulder Flowy Maxi Maternity Long Batwing Sleeve White Pull On closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B06XG1C9CN",
+        "name": "Avidqueen Women's Sexy Lace Crochet Swimsuit Bikini Cover Up Beach Dress",
+        "category": "dress",
+        "price": null,
+        "description": "Avidqueen Women's Sexy Lace Crochet Swimsuit Bikini Cover Up Beach Dress Lace Pull On closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BG5H84CZ",
+        "name": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress",
+        "category": "dress",
+        "price": 7.09,
+        "description": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress ✦ Expedited Shipping:3-5 Days. Standard shipping: 7-20 Days. ☆ Today's Deal --Save 70% each on Promotion Applied offered by U6J438VS when you purchase 1 or more. Button closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B085XPGKJP",
+        "name": "Kawai Peach Women's Cotton Floral Embroidered Long Dress Kimono Beach Cover ups",
+        "category": "dress",
+        "price": 21.99,
+        "description": "Kawai Peach Women's Cotton Floral Embroidered Long Dress Kimono Beach Cover ups Pull On closure Hand Wash Only ★【Comfortable Materials】★ : Made of high-quality material. Breathable, very soft, fatastic touching for your skin, fabulous weight, and take up very small space in your bag or suitcase ★【Ex",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07PJXX8XV",
+        "name": "Summer Maxi Dress for Women Photoshoot Long Floral Beach Off Shoulder Bridesmaid Maternity Dresses",
+        "category": "dress",
+        "price": null,
+        "description": "Summer Maxi Dress for Women Photoshoot Long Floral Beach Off Shoulder Bridesmaid Maternity Dresses Hand Wash Only Feature:Sexy off the shoulder,flower print,elastic sleeve and waist,Front slit,maxi length,lining inside Occasion:Beach,wedding guest,birthday,engagement,water session,evening party,hawa",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BC4DGCY6",
+        "name": "Floerns Women's Two Piece Outfit Floral Off Shoulder Drawstring Crop Top and Skirt Set",
+        "category": "crop top",
+        "price": 38.99,
+        "description": "Floerns Women's Two Piece Outfit Floral Off Shoulder Drawstring Crop Top and Skirt Set 100% Viscose Drawstring closure Hand Wash Only Fabric has no stretch, waist and back part has elasticity Skirt may run a bit short; recommend wear a nubra with the top Floral, off shoulder, drawstring front and sl",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q039",
+    "query": "complete gym bag essentials for starting a new fitness routine",
+    "type": "exploratory",
+    "dense_only": true,
+    "current_relevance": {
+      "B09M6X79V9": 2,
+      "B07S8KMCQW": 2,
+      "B081XYDBL2": 1,
+      "B06W57G8QX": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B073FBTG4L",
+        "name": "INOXTO Fitness Sport Small Gym Bag with Shoes Compartment Waterproof Travel Duffel Bag for Women and Men",
+        "category": "shoe",
+        "price": null,
+        "description": "INOXTO Fitness Sport Small Gym Bag with Shoes Compartment Waterproof Travel Duffel Bag for Women and Men Zipper closure LARGE CAPACITY + MULTI COMPARTMENT—— The 35L sports gym bag (size is 17.7\" L x 10.6\" H x 10.6 \"W) has enough space to put your clothes, shoes, books, umbrella, water bottles, wash ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B087LZHG4B",
+        "name": "COOFANDY Men's Gym Workout Shorts Bodybuilding Lifting Pants Athletic Training Running Jogger with Phone Pockets",
+        "category": "pants",
+        "price": null,
+        "description": "COOFANDY Men's Gym Workout Shorts Bodybuilding Lifting Pants Athletic Training Running Jogger with Phone Pockets 65%cotton, 30% polyester, 5%spandex Drawstring closure Machine Wash Men's workout short is made of cotton sweat fabric enhanced with technology, which keeps your skin comfortable and lets",
+        "your_label": 2
+      },
+      {
+        "product_id": "B001CLGS6G",
+        "name": "Logo Brands NCAA Athletic Duffel Gym Bag, One Size, Multicolor",
+        "category": "athletic",
+        "price": null,
+        "description": "Logo Brands NCAA Athletic Duffel Gym Bag, One Size, Multicolor Embroidered Logo Separate shoe compartments Dual handles and removable shoulder strap Large compartment for clothes with a separate pocket for shoes Large front pocket includes holders for pens, ID, and coins Embroidered team logo on fro",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07KRZLC2Q",
+        "name": "unitron world Gym Bag for Women Men Duffle Bag for Women Duffel Bag for Men Weekender Bag for Women Dance Bag Small Gym Bag Shoe Bag Sports Bag with Shoe Compartment Small Duffle Bag for Women",
+        "category": "shoe",
+        "price": null,
+        "description": "unitron world Gym Bag for Women Men Duffle Bag for Women Duffel Bag for Men Weekender Bag for Women Dance Bag Small Gym Bag Shoe Bag Sports Bag with Shoe Compartment Small Duffle Bag for Women Zipper closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07FXNN21Y",
+        "name": "Women's Hobo Handbags,Tote Shopping Bag For Women,Gym Tote Bags,Travel Tote Bags,Shoulder Bag for Gym Beach Travel Daily Bags",
+        "category": "handbag",
+        "price": null,
+        "description": "Women's Hobo Handbags,Tote Shopping Bag For Women,Gym Tote Bags,Travel Tote Bags,Shoulder Bag for Gym Beach Travel Daily Bags Dimensions:18.9 x 12.6 x 12.6inch (48x32x32CM);weight:0.24kg. Material: Outer: Made from 60% cotton+40% Durable water resistant eco-friendly polyester fabric to combine the b",
+        "your_label": 1
+      },
+      {
+        "product_id": "B097W1RSM1",
+        "name": "High Energy Long Sleeve Workout Shirts for Men 4 Pack Moisture Wicking Dry Fit for Running Sports and Gym Fitness",
+        "category": "shirt",
+        "price": 31.99,
+        "description": "High Energy Long Sleeve Workout Shirts for Men 4 Pack Moisture Wicking Dry Fit for Running Sports and Gym Fitness Pull On closure Machine Wash Sport-Ready Long Sleeve Workout Shirts - These moisture-wicking workout shirts for men feature long, stretch-fit sleeves and a more form-fitting torso to sup",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BYJMG265",
+        "name": "GYMTIER Alpha - Bodybuilding T-Shirt | Men's Gym T-Shirt Training Clothing",
+        "category": "t-shirt",
+        "price": null,
+        "description": "GYMTIER Alpha - Bodybuilding T-Shirt | Men's Gym T-Shirt Training Clothing 100% Cotton Button closure Machine Wash Fun motivational workout T-Shirts to get you pumped in the gym. Our graphic tees are printed in house in our northern UK studio. The chest and shoulder area have a snug fit while the bo",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BYJHP21S",
+        "name": "GYMTIER Unleash The Beast Gym T-Shirt - Bodybuilding Workout Training Top",
+        "category": "t-shirt",
+        "price": 28.44,
+        "description": "GYMTIER Unleash The Beast Gym T-Shirt - Bodybuilding Workout Training Top 100% Cotton Pull On closure Machine Wash Fun motivational workout T-Shirts to get you pumped in the gym. Our graphic tees are printed in house in our northern UK studio. The chest and shoulder area have a snug fit while the bo",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0887ZJ79Y",
+        "name": "Joggers for Men – Men’s Gym Sweatpants – Stylish Fitness Relaxed Fit Joggers",
+        "category": "joggers",
+        "price": 20.99,
+        "description": "Joggers for Men – Men’s Gym Sweatpants – Stylish Fitness Relaxed Fit Joggers Polyester Fleece Drawstring closure <p><strong>Move at your Own Pace: </strong>Nothing stands in your way now that you have the Brooklyn + Jax sweatpants for men! This super cozy and comfortable pair of gym pants was design",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q046",
+    "query": "professional yet comfortable look for a business casual environment",
+    "type": "exploratory",
+    "dense_only": true,
+    "current_relevance": {
+      "B07L5JNZFP": 2,
+      "B0B16Q1854": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B0947173ZT",
+        "name": "Tapata Women's 20.5'' Bootcut Capri Dress Pants Flared Cropped Office Pants with High Waist Business Casual Career Pants",
+        "category": "dress",
+        "price": null,
+        "description": "Tapata Women's 20.5'' Bootcut Capri Dress Pants Flared Cropped Office Pants with High Waist Business Casual Career Pants 62% Rayon, 33% Nylon, 5% Spandex COZY & STRETCHY PONTE FABRIC: These capri office pants are well made from the knit ponte fabric with a plain texture. Material blended with spande",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07XZ8NKX4",
+        "name": "BUREI Mens Watches Stainless Steel Wristwatch with Day Date Waterproof Analog Quartz Fashion Business Dress Watches for Men",
+        "category": "tee",
+        "price": 19.22,
+        "description": "BUREI Mens Watches Stainless Steel Wristwatch with Day Date Waterproof Analog Quartz Fashion Business Dress Watches for Men ⌚Clssic Watches : Perfect combination of business casual and popular fashion; Super easy to read, Reliable 3-Hand featuring a white Dial with 12 Hour big arabic number Markers.",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07YXD4STK",
+        "name": "Alexander + David Womens Casual Cowl Pullover Turtle Neck - Sweater Oversized W Long Sleeves",
+        "category": "pullover",
+        "price": null,
+        "description": "Alexander + David Womens Casual Cowl Pullover Turtle Neck - Sweater Oversized W Long Sleeves Hand Wash Only EXTRA SOFT COWL NECK SWEATER: This sweater is made from a Viscose blend that is super soft to the touch. Wearing it is a delight that will make you want to never take it off. The special twist",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BVMGLR2Z",
+        "name": "TAPULCO Mens Summer Quick Dry Golf Shirts Breathable Lightweight Casual Sports Polo Daily T-Shirts",
+        "category": "t-shirt",
+        "price": 19.99,
+        "description": "TAPULCO Mens Summer Quick Dry Golf Shirts Breathable Lightweight Casual Sports Polo Daily T-Shirts 95% Polyester, 5% Spandex Imported Pull On closure QUICK-DRY AND SWEAT-WICKING: 95% Polyester / 5% Spandex. Breathable and Wrinkle Free. Wicks away moisture and dries remarkably fast by incorporating s",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07CG5QBYS",
+        "name": "MCKOL Women Cocktail Cap Sleeve V Neck Striped Elegant Flare Dress",
+        "category": "dress",
+        "price": null,
+        "description": "MCKOL Women Cocktail Cap Sleeve V Neck Striped Elegant Flare Dress Zipper closure Machine Wash A Line/Cap Sleeve/Knee Length/Empire Waist/V Neck/Color Block/Left Side Hidden Zipper,/Patchwork/Slim Fit/Dressy Dress/Vintage Dress/Casual Dress/Fit and Flare Elegant V Neck color block flattering dress i",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07X8DT52C",
+        "name": "Women Casual Business Suit Blazer Jacket 3/4 Sleeve Open Front Cardigan Leopard L",
+        "category": "cardigan",
+        "price": null,
+        "description": "Women Casual Business Suit Blazer Jacket 3/4 Sleeve Open Front Cardigan Leopard L Polyester lining Button closure Hand Wash Only",
+        "your_label": 2
+      },
+      {
+        "product_id": "B081YDLHQT",
+        "name": "Longwu Women's Loose Casual Front Tie Long Sleeve Bandage Dress for Party/Work/Lounge Wear",
+        "category": "dress",
+        "price": null,
+        "description": "Longwu Women's Loose Casual Front Tie Long Sleeve Bandage Dress for Party/Work/Lounge Wear Polyster Made in USA or Imported Tie closure Hand Wash Only 【US SIZE】Size Information(Inch):S(US 4-6)--bust:38.2\", dress length:32.5\", sleeve length:23.6\" M(US 8-10)--bust:40.2\", dress length:33\", sleeve lengt",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09LH64L8G",
+        "name": "Hotouch Women 3/4 Sleeve Mauve Dress Long Sleeve Midi Dress (Mauve2 XL) X-Large",
+        "category": "dress",
+        "price": null,
+        "description": "Hotouch Women 3/4 Sleeve Mauve Dress Long Sleeve Midi Dress (Mauve2 XL) X-Large 95% rayon , 5% spandex Machine Wash 【Features】: A line, Round neck ,casual style,3/4 sleeve, loose fit ,swing hem and pleated t-shirt flowy dress, simple and classy design; we love loose long dresses because they make us",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q047",
+    "query": "elegant but comfortable dress for an anniversary dinner reservation",
+    "type": "exploratory",
+    "dense_only": false,
+    "current_relevance": {
+      "B07DY3H2XX": 2,
+      "B07WJGPBDN": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B07PTR4KR9",
+        "name": "Paxuan Women Rhinestone Crystal Wedding Bridal Choker Necklace Earrings Bracelet Jewelry Sets",
+        "category": "bra",
+        "price": 18.99,
+        "description": "Paxuan Women Rhinestone Crystal Wedding Bridal Choker Necklace Earrings Bracelet Jewelry Sets ♥Specification♥: Brand Name: Paxuan. Material: Silver Plated Copper Base + Rhinestones. Size: 10 Rows Y Choker Necklace: 8.66'' + 9'' Extension. 3 Rows Choker Necklace: 13’’ + 4.3’’ Extension. Earrings: 3.7",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07CG5QBYS",
+        "name": "MCKOL Women Cocktail Cap Sleeve V Neck Striped Elegant Flare Dress",
+        "category": "dress",
+        "price": null,
+        "description": "MCKOL Women Cocktail Cap Sleeve V Neck Striped Elegant Flare Dress Zipper closure Machine Wash A Line/Cap Sleeve/Knee Length/Empire Waist/V Neck/Color Block/Left Side Hidden Zipper,/Patchwork/Slim Fit/Dressy Dress/Vintage Dress/Casual Dress/Fit and Flare Elegant V Neck color block flattering dress i",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0C344XSC2",
+        "name": "DRESSTELLS Vintage Tea Dress for Women, Swing Chic Dress, 3/4 Sleeves & Stretchy",
+        "category": "dress",
+        "price": 29.99,
+        "description": "DRESSTELLS Vintage Tea Dress for Women, Swing Chic Dress, 3/4 Sleeves & Stretchy 94% Nylon, 6% Spandex Imported Zipper closure Women Tea Dresses - This adorable swing dress is perfect for daily work, which will help you balance your weekend fun and work needs. Tea length, 3/4 sleeve, a-line shape, s",
+        "your_label": 1
+      },
+      {
+        "product_id": "B09LH9BJDT",
+        "name": "Hotouch Women Long Sleeve Midi Dress Empire Waist Dress",
+        "category": "dress",
+        "price": null,
+        "description": "Hotouch Women Long Sleeve Midi Dress Empire Waist Dress 95% rayon , 5% spandex Machine Wash 【Features】: A line, Round neck ,casual style,3/4 sleeve, loose fit ,swing hem and pleated t-shirt flowy dress, simple and classy design; we love loose long dresses because they make us look more aristocratic ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08316CVB1",
+        "name": "InsNova Women’s Long Sleeve Velvet Bodycon Wrap Cocktail Dress for Wedding Guest",
+        "category": "dress",
+        "price": null,
+        "description": "InsNova Women’s Long Sleeve Velvet Bodycon Wrap Cocktail Dress for Wedding Guest 95% Polyester, 5% Spandex Pull On closure Feature: V- Neckline, 3/4 Sleeve, Midi Knee Length Style: Elegant, Smart Casual. Solid Color: Dark Green, Burgundy Stunning, lightweight stretch velvet falls from sexy V-necklin",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09HTSPGFZ",
+        "name": "Maxi Dresses for Women Sexy One Shoulder Backless Elegant Split Bodycon Evening Party Cocktail Floor Length Mermaid Dress",
+        "category": "dress",
+        "price": null,
+        "description": "Maxi Dresses for Women Sexy One Shoulder Backless Elegant Split Bodycon Evening Party Cocktail Floor Length Mermaid Dress Hand Wash Only",
+        "your_label": 2
+      },
+      {
+        "product_id": "B06XC14XWY",
+        "name": "WOOSEA Elegant 3/4 Sleeve Full Flroal Lace Short Cocktail Dress",
+        "category": "dress",
+        "price": null,
+        "description": "WOOSEA Elegant 3/4 Sleeve Full Flroal Lace Short Cocktail Dress 100% Polyester Pull On closure",
+        "your_label": 1
+      },
+      {
+        "product_id": "B081YDLHQT",
+        "name": "Longwu Women's Loose Casual Front Tie Long Sleeve Bandage Dress for Party/Work/Lounge Wear",
+        "category": "dress",
+        "price": null,
+        "description": "Longwu Women's Loose Casual Front Tie Long Sleeve Bandage Dress for Party/Work/Lounge Wear Polyster Made in USA or Imported Tie closure Hand Wash Only 【US SIZE】Size Information(Inch):S(US 4-6)--bust:38.2\", dress length:32.5\", sleeve length:23.6\" M(US 8-10)--bust:40.2\", dress length:33\", sleeve lengt",
+        "your_label": 1
+      },
+      {
+        "product_id": "B01LYAUFRV",
+        "name": "Hotouch Women's Elegant Round Neck 3/4 Sleeve Midi Dress",
+        "category": "dress",
+        "price": null,
+        "description": "Hotouch Women's Elegant Round Neck 3/4 Sleeve Midi Dress",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q049",
+    "query": "accessories and bags for a summer music festival weekend",
+    "type": "exploratory",
+    "dense_only": false,
+    "current_relevance": {
+      "B09TXPYLQF": 2,
+      "B08GPZL157": 1,
+      "B084RR9N7B": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B088WGPYV6",
+        "name": "Clarisbelle Unisex Face Scarf Cover Mask Sun Dust Shield Bandanas for Fishing Cycling Running",
+        "category": "scarf",
+        "price": null,
+        "description": "Clarisbelle Unisex Face Scarf Cover Mask Sun Dust Shield Bandanas for Fishing Cycling Running MATERIAL - 100% Microfiber Polyester. Machine Washable, Wash in Cold Water and Dry On Low Heat. Pull On closure MULTIFUNCTIONAL BANDANAS - This Bandana Makes a Great Gift for Anyone. It Keeps Hair out of th",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BG5H84CZ",
+        "name": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress",
+        "category": "dress",
+        "price": 7.09,
+        "description": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress ✦ Expedited Shipping:3-5 Days. Standard shipping: 7-20 Days. ☆ Today's Deal --Save 70% each on Promotion Applied offered by U6J438VS when you purchase 1 or more. Button closure",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07PP273L2",
+        "name": "Vorspack 2 Pack TPU Clear Cross-Body Purse Stadium Approves Clear Bag with Inner Pocket and Adjustable Strap for Sports Event Concert Festival - Black",
+        "category": "purse",
+        "price": null,
+        "description": "Vorspack 2 Pack TPU Clear Cross-Body Purse Stadium Approves Clear Bag with Inner Pocket and Adjustable Strap for Sports Event Concert Festival - Black Pvc",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08BXHHGD8",
+        "name": "USA American Flag Bandanas for Men Women Seamless Scarf Headband Outdoor Sweatband Headwear",
+        "category": "scarf",
+        "price": null,
+        "description": "USA American Flag Bandanas for Men Women Seamless Scarf Headband Outdoor Sweatband Headwear Click The \"Customize Now\" Button,Two Styles Of Texas State Flag Bandana Design For You To Choose.Material: Soft, Breathable Quick-drying 100% Microfiber Polyester.Handy Measure: 50x25cm/20x10inch.This Fits Te",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07RQSBN8K",
+        "name": "Clear Crossbody Purse Bag, Clear Stadium Bag with Adjustable Shoulder Straps",
+        "category": "purse",
+        "price": null,
+        "description": "Clear Crossbody Purse Bag, Clear Stadium Bag with Adjustable Shoulder Straps",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07XQZ6G68",
+        "name": "SUNEEY Music Charms 70pcs Multistyle Musical Instrument Notes Symbols Pendants DIY for Necklace Bracelet Earrings Jewelry Making and Crafting Antique Silver",
+        "category": "bra",
+        "price": null,
+        "description": "SUNEEY Music Charms 70pcs Multistyle Musical Instrument Notes Symbols Pendants DIY for Necklace Bracelet Earrings Jewelry Making and Crafting Antique Silver Material: Alloy, 100% brand new and high quality. Quantity: Set of 70 (14 different styles, 5 each). Size: 0.79\" - 1.25\" (20 - 32 mm). Color: a",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07KFHVL6H",
+        "name": "Clear Bag, Clear Purse Stadium Approved for PGA Clear Crossbody Bag for Concert",
+        "category": "purse",
+        "price": null,
+        "description": "Clear Bag, Clear Purse Stadium Approved for PGA Clear Crossbody Bag for Concert",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09HH5WNRW",
+        "name": "HOOLYUK Pop Purse for Girls, Pop Shoulder Bag Fidget Toys Pack, Pop Fidget Messenger Bag Suffers Party Favors, Rainbow Silicone Sensory Crossbody Handbag Novelty Easter Party Favors Gift for Kids.",
+        "category": "handbag",
+        "price": null,
+        "description": "HOOLYUK Pop Purse for Girls, Pop Shoulder Bag Fidget Toys Pack, Pop Fidget Messenger Bag Suffers Party Favors, Rainbow Silicone Sensory Crossbody Handbag Novelty Easter Party Favors Gift for Kids. silicone",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07KFG5HNQ",
+        "name": "Clear Purse, Clear Bag Stadium Approved for PGA, Durable Clear Crossbody Bag for Women Man Work Concert School with Adjustable Strap",
+        "category": "purse",
+        "price": null,
+        "description": "Clear Purse, Clear Bag Stadium Approved for PGA, Durable Clear Crossbody Bag for Women Man Work Concert School with Adjustable Strap",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08L7CSLQP",
+        "name": "Biruil Men Women Face Bandana Scarf Ear Loops Balaclava Neck Gaiters for Dust Wind Riding Mask",
+        "category": "scarf",
+        "price": null,
+        "description": "Biruil Men Women Face Bandana Scarf Ear Loops Balaclava Neck Gaiters for Dust Wind Riding Mask 【Face Scarf Bandana with Ear Loops】Size:19.7inch X 9.8inch (LXW); High stretchable Balaclava for head circumference is about 21.25inch-25inch; Weight: 33.5g / 1.18oz ONE SIZE FITS MOST: Men’s bandana featu",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q050",
+    "query": "what to wear for a 5K charity run with friends",
+    "type": "exploratory",
+    "dense_only": false,
+    "current_relevance": {
+      "B0BYCZ2W78": 2,
+      "B08F1V3KB9": 2,
+      "B07S8KMCQW": 1,
+      "B06W57G8QX": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B08K41D6BF",
+        "name": "Kids Dress up 5PCS Superhero Cape and Wristband Bracelet boy Girl Birthday Party Cloth Gift.… (Superhero cloak women 5 pack)",
+        "category": "dress",
+        "price": null,
+        "description": "Kids Dress up 5PCS Superhero Cape and Wristband Bracelet boy Girl Birthday Party Cloth Gift.… (Superhero cloak women 5 pack) Satin",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07DBX6HPK",
+        "name": "VFIVE UNFOUR Unisex Velvet Velour Running Gym Jogging Stripe Pants Blue XL",
+        "category": "pants",
+        "price": null,
+        "description": "VFIVE UNFOUR Unisex Velvet Velour Running Gym Jogging Stripe Pants Blue XL",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07QJ9DR2X",
+        "name": "Mens Headbands 3 or 5 Pack-Women's Sweatband Workout Headwrap for Running, Yoga, Fitness, Performance Stretch & Moisture Wicking",
+        "category": "headband",
+        "price": null,
+        "description": "Mens Headbands 3 or 5 Pack-Women's Sweatband Workout Headwrap for Running, Yoga, Fitness, Performance Stretch & Moisture Wicking 89% Coolmax Polyester 11% Lycra Spandex.Soft handle,good weat absorption,good breathability and cpmfort. High elaseicity wear comfortable.Not tight,not restrained. Easy wa",
+        "your_label": 2
+      },
+      {
+        "product_id": "B086WKFPD5",
+        "name": "Christian Shirts for Women - Way Maker Miracle Worker Light in The Darkness - Vintage Letter Print Prayer T-Shirt",
+        "category": "t-shirt",
+        "price": 12.59,
+        "description": "Christian Shirts for Women - Way Maker Miracle Worker Light in The Darkness - Vintage Letter Print Prayer T-Shirt 100% Polyester Pull On closure women's casual loose pocket long dress short sleeve split maxi dresses women's summer casual t shirt dresses short sleeve swing dress with pockets high wai",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08BXHHGD8",
+        "name": "USA American Flag Bandanas for Men Women Seamless Scarf Headband Outdoor Sweatband Headwear",
+        "category": "scarf",
+        "price": null,
+        "description": "USA American Flag Bandanas for Men Women Seamless Scarf Headband Outdoor Sweatband Headwear Click The \"Customize Now\" Button,Two Styles Of Texas State Flag Bandana Design For You To Choose.Material: Soft, Breathable Quick-drying 100% Microfiber Polyester.Handy Measure: 50x25cm/20x10inch.This Fits Te",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0924VW6MS",
+        "name": "Women’s UPF 50+UV Protection Long Sleeve Hoodie Shirt Quick Dry Fishing Hiking Running T-Shirts",
+        "category": "t-shirt",
+        "price": 11.99,
+        "description": "Women’s UPF 50+UV Protection Long Sleeve Hoodie Shirt Quick Dry Fishing Hiking Running T-Shirts Polyester,Elastane Pull On closure Machine Wash Womens fishing shirt is made of 92% Polyester, 8% Elastane. Technical fabric effectively accelerates moisture wicking away from your skin to keep you cool a",
+        "your_label": 2
+      },
+      {
+        "product_id": "B097BMDMKB",
+        "name": "QGGQDD Joggers for Women - Sweatpants with Pockets Yoga Lounge Black Workout Pants",
+        "category": "joggers",
+        "price": 15.99,
+        "description": "QGGQDD Joggers for Women - Sweatpants with Pockets Yoga Lounge Black Workout Pants 92% Polyester, 8% Spandex Delivering Naked Feeling Imported Drawstring closure Machine Wash Comfy & Lightweight: QGGQDD’s jogger pants, selected from premium fabric, lend you a super soft touch feeling and embrace you",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08XBYZ78P",
+        "name": "Dri-Fit Long Sleeve T Shirts for Men-4 Pack- Moisture Wicking, Quick Dry Tees",
+        "category": "tee",
+        "price": 33.99,
+        "description": "Dri-Fit Long Sleeve T Shirts for Men-4 Pack- Moisture Wicking, Quick Dry Tees 100% Polyester Imported Pull On closure Machine Wash THE PERFECT DRY FIT FOR YOUR DAILY ACTIVITIES: Looking for quality activewear in your exercise & fitness apparel? Make yourself comfortable during your daily workout, li",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07WT3GSSL",
+        "name": "Arm Sleeves for Men and Women Compression UV Sun Protection - Basketball Running",
+        "category": "compression",
+        "price": null,
+        "description": "Arm Sleeves for Men and Women Compression UV Sun Protection - Basketball Running",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09SWS5LC7",
+        "name": "NELEUS Women's Athletic Sweatshirts Long Sleeve Running Shirts Workout Pullover Hoodies",
+        "category": "sweatshirt",
+        "price": 41.86,
+        "description": "NELEUS Women's Athletic Sweatshirts Long Sleeve Running Shirts Workout Pullover Hoodies 90% Polyester, 10% Spandex Pull On closure Hand Wash Only Check the size chart of the third picture to select the appropriate size Dry Fit fabric wicks sweat & dries quickly, keeps you airy with no odor issues Pe",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q054",
+    "query": "95% cotton polyester blend women's casual swing dress machine washable",
+    "type": "attribute",
+    "dense_only": false,
+    "current_relevance": {
+      "B07WJGPBDN": 2,
+      "B087R3DFRJ": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B07WKLGK7B",
+        "name": "Missufe Women's Long Sleeve Ruched Casual Sundress Midi Bodycon Sheath Dress",
+        "category": "dress",
+        "price": null,
+        "description": "Missufe Women's Long Sleeve Ruched Casual Sundress Midi Bodycon Sheath Dress 95% Cotton, 5% Polyester Pull On closure Machine Wash",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07SQVMC98",
+        "name": "KORSIS Women's Long Sleeve Pleated Loose Swing Casual Dress with Pockets DarkGreen 2XL",
+        "category": "dress",
+        "price": null,
+        "description": "KORSIS Women's Long Sleeve Pleated Loose Swing Casual Dress with Pockets DarkGreen 2XL 95% rayon , 5% spandex Hand Wash Only",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07T1ZPNV3",
+        "name": "MINTLIMIT Womens Floral Print Mini Dress V Neck Short Sleeve Boho Swing Dresses",
+        "category": "dress",
+        "price": null,
+        "description": "MINTLIMIT Womens Floral Print Mini Dress V Neck Short Sleeve Boho Swing Dresses 95% Polyester, 5% Spandex Hand Wash Only",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07SNBKXQR",
+        "name": "KORSIS Women's Long Sleeve Pleated Loose Swing Casual Dress with Pockets Mauve M",
+        "category": "dress",
+        "price": null,
+        "description": "KORSIS Women's Long Sleeve Pleated Loose Swing Casual Dress with Pockets Mauve M 95% rayon , 5% spandex Hand Wash Only",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07SK1QQMY",
+        "name": "KORSIS Women's Long Sleeve Pleated Loose Swing Casual Dress with Pockets DarkGreen XL",
+        "category": "dress",
+        "price": null,
+        "description": "KORSIS Women's Long Sleeve Pleated Loose Swing Casual Dress with Pockets DarkGreen XL 95% rayon , 5% spandex Hand Wash Only",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07SNB9FTL",
+        "name": "KORSIS Women's Long Sleeve Pleated Loose Swing Casual Dress Flower Wine Red XS",
+        "category": "dress",
+        "price": null,
+        "description": "KORSIS Women's Long Sleeve Pleated Loose Swing Casual Dress Flower Wine Red XS 95% rayon , 5% spandex Hand Wash Only",
+        "your_label": 0
+      },
+      {
+        "product_id": "B098QDMNB1",
+        "name": "Romwe Casual Ruffle Sleeve A Line Swing Dress for Women Skater Party Dresses",
+        "category": "dress",
+        "price": null,
+        "description": "Romwe Casual Ruffle Sleeve A Line Swing Dress for Women Skater Party Dresses 95% Polyester, 5% Spandex Zipper closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07ZGJD2XV",
+        "name": "POPYOUNG Women's Long Sleeve T Shirt Dresses Casual Swing Dress M, Yellow",
+        "category": "dress",
+        "price": null,
+        "description": "POPYOUNG Women's Long Sleeve T Shirt Dresses Casual Swing Dress M, Yellow 95% rayon , 5% spandex",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07XC45GWH",
+        "name": "POPYOUNG Women's Long Sleeve T Shirt Dresses Casual Swing Dress 2XL, Purple Grey",
+        "category": "dress",
+        "price": null,
+        "description": "POPYOUNG Women's Long Sleeve T Shirt Dresses Casual Swing Dress 2XL, Purple Grey 95% rayon , 5% spandex",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07XC44M21",
+        "name": "POPYOUNG Women's Spring Long Sleeve Plus Size T Shirt Dresses Casual Swing Dress 2XL, Acid Blue",
+        "category": "dress",
+        "price": null,
+        "description": "POPYOUNG Women's Spring Long Sleeve Plus Size T Shirt Dresses Casual Swing Dress 2XL, Acid Blue 95% rayon , 5% spandex",
+        "your_label": 0
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q063",
+    "query": "men's slim fit tapered chino trousers with stretch cotton",
+    "type": "attribute",
+    "dense_only": false,
+    "current_relevance": {
+      "B07L5JNZFP": 2
+    },
+    "candidates": [
+      {
+        "product_id": "B07L57BTZP",
+        "name": "Yazubi Men's Trousers Chino Pants Kyle Slim - Tapered Casual",
+        "category": "trousers",
+        "price": null,
+        "description": "Yazubi Men's Trousers Chino Pants Kyle Slim - Tapered Casual 98% Cotton, 2% Elastane Zipper closure Machine Wash FIT: Slim Fit - normal rise, normal shape, slim leg COMFORT: The blend of 98% cotton and 2% spandex ensures comfortable mobility with maximum comfort, making the casual chinos by YZB even",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09HTYWHRC",
+        "name": "HENGAO Men's Casual Slim Fit Stretch Plaid Chino Pants, 926 Deep Blue, 38",
+        "category": "pants",
+        "price": null,
+        "description": "HENGAO Men's Casual Slim Fit Stretch Plaid Chino Pants, 926 Deep Blue, 38 98% Cotton, 2% Spandex",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08KSW317T",
+        "name": "MECH-ENG Tapered Jogger Pants for Men Tack Sweatpants Casual Slim Fit Workout Trousers with Zipper Pockets",
+        "category": "trousers",
+        "price": 21.99,
+        "description": "MECH-ENG Tapered Jogger Pants for Men Tack Sweatpants Casual Slim Fit Workout Trousers with Zipper Pockets 65% Cotton, 35% Polyester 进口 Drawstring closure 【Note The Size】*Find your size in our size chart before you order. If you prefer loose fit,go up a size. 【Item Material】*Cotton blend material pa",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08YYL3HK5",
+        "name": "KEFITEVD Men's Cotton 3/4 Joggers Pants Workout Gym Shorts Running Capris with Zipper Pockets",
+        "category": "joggers",
+        "price": 24.98,
+        "description": "KEFITEVD Men's Cotton 3/4 Joggers Pants Workout Gym Shorts Running Capris with Zipper Pockets Lightweight quality cotton blend offers extrme comfort and stretchy. Adjustable waistband with drawcord for a better fit. Side zipper pockets deep enough for holding 5.5\" mobile phone. Slim fit tapered leg ",
+        "your_label": 0
+      },
+      {
+        "product_id": "B098QDS5GC",
+        "name": "Wangdo Men's Tapered Sweatpants,Slim Fit Joggers Workout Athletic Gym Pants with Zipper Pockets",
+        "category": "joggers",
+        "price": 23.96,
+        "description": "Wangdo Men's Tapered Sweatpants,Slim Fit Joggers Workout Athletic Gym Pants with Zipper Pockets Drawstring closure Machine Wash 【COMFORTABLE MATERIAL】 These joggers pants made of Cotton -polyester,Soft fabric, comfortable tailored fit. If you like to be looser, please choose next size. 【TWO DEEP POC",
+        "your_label": 0
+      },
+      {
+        "product_id": "B08KSTRFBT",
+        "name": "MECH-ENG Tapered Casual Jogger Pants for Men Workout Sweatpants Classic Trousers with Pockets",
+        "category": "trousers",
+        "price": null,
+        "description": "MECH-ENG Tapered Casual Jogger Pants for Men Workout Sweatpants Classic Trousers with Pockets 65% Cotton, 35% Polyester 进口 Drawstring closure 【Note The Size】*Find your size in our size chart before you order. If you prefer loose fit,go up a size. 【Item Material】*Cotton blend material pants, breathab",
+        "your_label": 0
+      },
+      {
+        "product_id": "B08G11FDMR",
+        "name": "YuKaiChen Mens Shorts Casual Slim Fit Comfy Chino Golf Short Gray 34",
+        "category": "shorts",
+        "price": null,
+        "description": "YuKaiChen Mens Shorts Casual Slim Fit Comfy Chino Golf Short Gray 34 100% Cotton Button closure Machine Wash",
+        "your_label": 1
+      },
+      {
+        "product_id": "B087CJR8YK",
+        "name": "YuKaiChen Mens Shorts Casual Slim Fit Comfy Chino Golf Short Khaki 32",
+        "category": "shorts",
+        "price": null,
+        "description": "YuKaiChen Mens Shorts Casual Slim Fit Comfy Chino Golf Short Khaki 32 100% Cotton Button closure Machine Wash",
+        "your_label": 1
+      },
+      {
+        "product_id": "B087CJTJ7L",
+        "name": "YuKaiChen Mens Shorts Casual Slim Fit Comfy Chino Golf Short ArmyGreen 36",
+        "category": "shorts",
+        "price": null,
+        "description": "YuKaiChen Mens Shorts Casual Slim Fit Comfy Chino Golf Short ArmyGreen 36 100% Cotton Button closure Machine Wash",
+        "your_label": 1
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q075",
+    "query": "women's ruched bodycon midi dress casual sundress sleeveless",
+    "type": "attribute",
+    "dense_only": false,
+    "current_relevance": {
+      "B07WJGPBDN": 2,
+      "B087R3DFRJ": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B07WKLGK7B",
+        "name": "Missufe Women's Long Sleeve Ruched Casual Sundress Midi Bodycon Sheath Dress",
+        "category": "dress",
+        "price": null,
+        "description": "Missufe Women's Long Sleeve Ruched Casual Sundress Midi Bodycon Sheath Dress 95% Cotton, 5% Polyester Pull On closure Machine Wash",
+        "your_label": 1
+      },
+      {
+        "product_id": "B095K9SF3K",
+        "name": "Drimmaks Women's Summer Casual Dress Florals Buttons Down Ruched Sweetheart Neck Sleeveless Midi Sundress",
+        "category": "dress",
+        "price": null,
+        "description": "Drimmaks Women's Summer Casual Dress Florals Buttons Down Ruched Sweetheart Neck Sleeveless Midi Sundress Hand Wash Only",
+        "your_label": 1
+      },
+      {
+        "product_id": "B09R3VXC75",
+        "name": "ZileZile Women's Sexy Bodycon Sleeveless Backless Ruched lace-up Cocktail Party Dresses Club Dress White",
+        "category": "dress",
+        "price": null,
+        "description": "ZileZile Women's Sexy Bodycon Sleeveless Backless Ruched lace-up Cocktail Party Dresses Club Dress White Drawstring closure Hand Wash Only",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07H8XPT2H",
+        "name": "Haola Womens Ruched Bodycon T Shirt Dress Casual Short Sleeve Irregular Party Mini Dress Pink L",
+        "category": "dress",
+        "price": null,
+        "description": "Haola Womens Ruched Bodycon T Shirt Dress Casual Short Sleeve Irregular Party Mini Dress Pink L Zipper closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B074DRDKT9",
+        "name": "TOB Women's Sexy Bodycon Sleeveless Basic Criss Cross Lace Up Club Midi Dress Royal Blue",
+        "category": "dress",
+        "price": null,
+        "description": "TOB Women's Sexy Bodycon Sleeveless Basic Criss Cross Lace Up Club Midi Dress Royal Blue Drawstring closure Hand Wash Only",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0759X43Y3",
+        "name": "TOB Women's Sexy Bodycon Sleeveless Basic Criss Cross Lace Up Club Midi Dress Yellow",
+        "category": "dress",
+        "price": null,
+        "description": "TOB Women's Sexy Bodycon Sleeveless Basic Criss Cross Lace Up Club Midi Dress Yellow Drawstring closure Hand Wash Only",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07RXV5H81",
+        "name": "Women's Bodycon Dress Midi Work Casual Floral Prints Pencil Dresses with Belt Medium Purple",
+        "category": "dress",
+        "price": null,
+        "description": "Women's Bodycon Dress Midi Work Casual Floral Prints Pencil Dresses with Belt Medium Purple Tie closure",
+        "your_label": 1
+      },
+      {
+        "product_id": "B0B9QSXKVT",
+        "name": "Missufe Tie Dye Tshirt Ruched Dress Women's Long Sleeve Bodycon Casual Knee Length Casual Dresses",
+        "category": "dress",
+        "price": null,
+        "description": "Missufe Tie Dye Tshirt Ruched Dress Women's Long Sleeve Bodycon Casual Knee Length Casual Dresses Machine Wash",
+        "your_label": 1
+      },
+      {
+        "product_id": "B074DR3LVL",
+        "name": "TOB Women's Sexy Bodycon Sleeveless Basic Criss Cross Lace Up Club Midi Dress Wine Red",
+        "category": "dress",
+        "price": null,
+        "description": "TOB Women's Sexy Bodycon Sleeveless Basic Criss Cross Lace Up Club Midi Dress Wine Red Drawstring closure Machine Wash",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07NHWGBBV",
+        "name": "TOB Women's Sexy Adjustable Ruched Spaghetti Strap Sleeveless Club Bodycon Mini Dress Black",
+        "category": "dress",
+        "price": null,
+        "description": "TOB Women's Sexy Adjustable Ruched Spaghetti Strap Sleeveless Club Bodycon Mini Dress Black Hand Wash Only",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q081",
+    "query": "I want the opposite of a formal evening gown — still wearable for a night out",
+    "type": "edge",
+    "dense_only": true,
+    "current_relevance": {
+      "B07CQ84KLT": 2,
+      "B07WJGPBDN": 2,
+      "B087R3DFRJ": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B091B1R94F",
+        "name": "Ekouaer Womens Sleeveless Long Nightgown Summer Slip Night Gowns Dress Soft Sleepshirt Chemise Pajamas",
+        "category": "dress",
+        "price": null,
+        "description": "Ekouaer Womens Sleeveless Long Nightgown Summer Slip Night Gowns Dress Soft Sleepshirt Chemise Pajamas SOFT FABRIC - Ekouaer sleepwear is made of soft cotton fabric, which is breathable and easy on the skin and sooo comfortable to sleep and lounging. Imported Pull On closure Hand Wash Only LONG NIGH",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07RCZ3YZ9",
+        "name": "PajamaGram Long Flannel Nightgown Women - Christmas Nightgown, Plaid",
+        "category": "pajama",
+        "price": 50.99,
+        "description": "PajamaGram Long Flannel Nightgown Women - Christmas Nightgown, Plaid 100% Cotton Machine Wash Roomy fit - Our PJs are designed to be relaxed & generously oversized. You may find they run large. We recommend if you are between sizes, you size down one size smaller. See size chart below. Warm 100% cot",
+        "your_label": 0
+      },
+      {
+        "product_id": "B09M8LRV87",
+        "name": "Mother of The Bride Dresses Chiffon Formal Evening Dress Appliques Mauve 18W",
+        "category": "dress",
+        "price": null,
+        "description": "Mother of The Bride Dresses Chiffon Formal Evening Dress Appliques Mauve 18W",
+        "your_label": 1
+      },
+      {
+        "product_id": "B01MXDLQJ0",
+        "name": "Astylish Womens Evening Dress Off Shoulder Flouncing Mermaid Formal Prom Gowns Small Black",
+        "category": "dress",
+        "price": null,
+        "description": "Astylish Womens Evening Dress Off Shoulder Flouncing Mermaid Formal Prom Gowns Small Black Zipper closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B01MRH1NRB",
+        "name": "Astylish Womens Evening Dress Off Shoulder Flouncing Mermaid Formal Prom Gowns Medium Black",
+        "category": "dress",
+        "price": null,
+        "description": "Astylish Womens Evening Dress Off Shoulder Flouncing Mermaid Formal Prom Gowns Medium Black Zipper closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B091JXZJ7X",
+        "name": "Envlon Womens Nightgowns Sleeveless Sleepwear Soft Tank Sleep Dress Comfy Nightshirt Lounge Night Wear for Women",
+        "category": "tank",
+        "price": null,
+        "description": "Envlon Womens Nightgowns Sleeveless Sleepwear Soft Tank Sleep Dress Comfy Nightshirt Lounge Night Wear for Women 91%viscose， 9%spandex Imported Pull On closure ♥🌈Soft Modal Fabric - Made from 95% Rayon & 5% Spandex, this womens comfy sleep dress is comfortably breathable,smooth and easy on the skin,",
+        "your_label": 0
+      },
+      {
+        "product_id": "B09JLW26L4",
+        "name": "Womens 2 Piece Skirt Sets Outfits Casual Crop Top Ruched Bodycon Skirt Birthday Night Out Sets",
+        "category": "crop top",
+        "price": 37.89,
+        "description": "Womens 2 Piece Skirt Sets Outfits Casual Crop Top Ruched Bodycon Skirt Birthday Night Out Sets Polyester Pull On closure Hand Wash Only Style: Sexy maxi dresses for women would be welcomed in club,will show off your best features this evening party,chiced its way through the club night when you danc",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07YW5DRDD",
+        "name": "FAIRY COUPLE Women`s Floor-Length V Neck Sequin Formal Prom Evening Dress S Champagne",
+        "category": "dress",
+        "price": null,
+        "description": "FAIRY COUPLE Women`s Floor-Length V Neck Sequin Formal Prom Evening Dress S Champagne",
+        "your_label": 1
+      },
+      {
+        "product_id": "B0946HRNZ3",
+        "name": "HAOKEKE Women's Formal Lace Party Dress Half Sleeves Slim Waist Mid Calf Lace Midi Evening Dress Blue XXL",
+        "category": "dress",
+        "price": null,
+        "description": "HAOKEKE Women's Formal Lace Party Dress Half Sleeves Slim Waist Mid Calf Lace Midi Evening Dress Blue XXL 100% Polyester Pull On closure",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q084",
+    "query": "I need a top that won't show sweat marks during an important work presentation",
+    "type": "edge",
+    "dense_only": true,
+    "current_relevance": {
+      "B09M6X79V9": 2,
+      "B07S8KMCQW": 1,
+      "B0BYCZ2W78": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B0767N5NQ5",
+        "name": "Arctic Cool Instant Cooling Sweatband - Moisture Wicking Cooling Headband for Men & Women - Sweat Absorbing & Cooling for Working Out, Running, Exercise, Yoga, Tennis, Basketball or Physical Activity",
+        "category": "headband",
+        "price": null,
+        "description": "Arctic Cool Instant Cooling Sweatband - Moisture Wicking Cooling Headband for Men & Women - Sweat Absorbing & Cooling for Working Out, Running, Exercise, Yoga, Tennis, Basketball or Physical Activity MORE THAN MOISTURE WICKING - Wearing this instant cooling headband not only keeps sweat and hair out",
+        "your_label": 0
+      },
+      {
+        "product_id": "B08B8ZRSGP",
+        "name": "Mens Active T-Shirt - Quick-Dry Athletic Workout Training Stretch Crew Neck Short Sleeve Top 5 Pack",
+        "category": "t-shirt",
+        "price": 23.09,
+        "description": "Mens Active T-Shirt - Quick-Dry Athletic Workout Training Stretch Crew Neck Short Sleeve Top 5 Pack 100% Polyester Pull On closure Machine Wash Comfortable Active Men’s Shirts - Having the right activewear helps you make the most out of your workout. That's why we designed our men's athletic shirts ",
+        "your_label": 1
+      },
+      {
+        "product_id": "B09GPSZJYK",
+        "name": "Tommie Copper Core Compression Half Finger Gloves, Unisex, Men & Women, 4D Stretch, Sweat Wicking Breathable Gloves for Hand Stiffness, Swelling & Joint Support",
+        "category": "compression",
+        "price": 29.5,
+        "description": "Tommie Copper Core Compression Half Finger Gloves, Unisex, Men & Women, 4D Stretch, Sweat Wicking Breathable Gloves for Hand Stiffness, Swelling & Joint Support 86% Nylon, 14% Lycra Spandex USE CASE: These comfortable compression gloves are perfect are perfect for tiresome hands. Plus, the half-fing",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07BJ9G6Q9",
+        "name": "The Elixir Arm Sleeves UV Sun Protective Arm Compression Cover Warmer Cooler",
+        "category": "compression",
+        "price": 9.99,
+        "description": "The Elixir Arm Sleeves UV Sun Protective Arm Compression Cover Warmer Cooler 1 Pair/Set, UV Protection: 99.8%, High Tech 3D Weaving Design (Model: E3D Series) Cooler than Bare Skin. Perfect for All Outdoor & Indoor Activities even Work-space SEAMLESS: No Needlework Inside & Knit Finishing - Extreaml",
+        "your_label": 0
+      },
+      {
+        "product_id": "B09FLBDXP2",
+        "name": "VIMOV Mens Headband - Sports Sweatband for Running, Cycling, Yoga, Basketball - Stretchy Moisture Wicking Hairband, 2 Pack, Black",
+        "category": "headband",
+        "price": 7.99,
+        "description": "VIMOV Mens Headband - Sports Sweatband for Running, Cycling, Yoga, Basketball - Stretchy Moisture Wicking Hairband, 2 Pack, Black &#9733 Keeps Sweat away from Eyes: Even you're a sweaty man, the sports headband will stop the sweat from coming into your eyes. There is no burning eyes anymore due to s",
+        "your_label": 0
+      },
+      {
+        "product_id": "B08B9QPRBG",
+        "name": "Mens Active T-Shirt - Quick-Dry Athletic Workout Training Stretch V-Neck Short Sleeve Top 5 Pack",
+        "category": "t-shirt",
+        "price": 32.99,
+        "description": "Mens Active T-Shirt - Quick-Dry Athletic Workout Training Stretch V-Neck Short Sleeve Top 5 Pack 100% Polyester Pull On closure Machine Wash Comfortable Active Men’s Shirts - Having the right activewear helps you make the most out of your workout. That's why we designed our men's athletic shirts wit",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07QWPKS8J",
+        "name": "Waist Trainer Hot Sweat Vest for Men Body Shaper Tank Top Neoprene Sauna Vest Slimming Shapewear Compression Vest(Medium) Black",
+        "category": "vest",
+        "price": null,
+        "description": "Waist Trainer Hot Sweat Vest for Men Body Shaper Tank Top Neoprene Sauna Vest Slimming Shapewear Compression Vest(Medium) Black Hand Wash Only",
+        "your_label": 1
+      },
+      {
+        "product_id": "B08FWNCL4N",
+        "name": "LANCS Women Waist Cincher Trainer Neoprene Sauna Sweat Suit Vest Weight Loss Tank Top Shapewear with Adjustable Belt",
+        "category": "vest",
+        "price": null,
+        "description": "LANCS Women Waist Cincher Trainer Neoprene Sauna Sweat Suit Vest Weight Loss Tank Top Shapewear with Adjustable Belt ▶LANCS WAIST TRAINER WARM TIPS◀ Please measure your waistline (1 inch above navel) and refer the left size chart to choose your best size. Any idea about our women sweat vest, please ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B094CK9H5G",
+        "name": "Fesciory Adjustable Working Caps with Button & Sweatband, Women Ponytail Pouch Hats, Long Hair",
+        "category": "hat",
+        "price": 17.95,
+        "description": "Fesciory Adjustable Working Caps with Button & Sweatband, Women Ponytail Pouch Hats, Long Hair 100% Cotton Imported Buckle closure 【Quality Material】Our working caps are made of high-quality cotton fabric, they are soft, light, comfortable, breathable and fast dry. They are skin-friendly, more suita",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07MBK8QV8",
+        "name": "Headbands for Women | Workout, Running, Yoga, Wide Sports Head Bands | Headband Protects with UPF 50+, Keeps Sweat from Dripping in Eyes & is Non-Slip",
+        "category": "headband",
+        "price": null,
+        "description": "Headbands for Women | Workout, Running, Yoga, Wide Sports Head Bands | Headband Protects with UPF 50+, Keeps Sweat from Dripping in Eyes & is Non-Slip WILL THIS HEADBAND [KEEP SWEAT FROM DRIPPING IN MY EYES?]: YES! Our absorbent, lightweight headbands are perfect for athletes! You’ll never lose focu",
+        "your_label": 0
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q087",
+    "query": "I need something with a pocket that can hold my phone and keys while I run",
+    "type": "edge",
+    "dense_only": true,
+    "current_relevance": {
+      "B07GKLQ5KV": 2,
+      "B08F1V3KB9": 2,
+      "B095NW2T8S": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B09KNL82LM",
+        "name": "Little Donkey Andy Men's Lightweight Fleece Lined Softshell Vest Windproof Sleeveless Jacket for Hiking Travel Golf",
+        "category": "jacket",
+        "price": 44.99,
+        "description": "Little Donkey Andy Men's Lightweight Fleece Lined Softshell Vest Windproof Sleeveless Jacket for Hiking Travel Golf UPDATE! The reflective strip on the shoulder and back provide greater visibility on low-light conditions. MATERIAL - 95% Polyester+5% Spandex; 3-layers construction fabric: TPU membran",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08HQBHMM1",
+        "name": "CUGOAO Fleece Lined Leggings with Pockets High Waisted Thermal Warm Workout Leggings Tights Winter Warm Yoga Pants for Women",
+        "category": "leggings",
+        "price": null,
+        "description": "CUGOAO Fleece Lined Leggings with Pockets High Waisted Thermal Warm Workout Leggings Tights Winter Warm Yoga Pants for Women 77% nylon, 23% Elastic closure Thermal and stretch fabric-Our winter leggings for women are made of super comfy fleece lining and 4-Way Stretchy,Breathable and moisture-wickin",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07FNH3WBK",
+        "name": "TAILONG Women Athletic Skirt with Shorts Ladies Sports Apparel Workout Clothes Running Skorts for Tennis, Golf, Yoga",
+        "category": "skirt",
+        "price": null,
+        "description": "TAILONG Women Athletic Skirt with Shorts Ladies Sports Apparel Workout Clothes Running Skorts for Tennis, Golf, Yoga Nylon + Spandex Pull On closure Secure & Comfortable Wear. The sports skirt is featured as outer skirt and inner mesh shorts. With double layers and triangle shaped skirt which avoids",
+        "your_label": 1
+      },
+      {
+        "product_id": "B08TB9J6KH",
+        "name": "Wanty Cell Phone Bag - Small Crossbody Bag, Cell Phone Purse Smartphone Wallet with Shoulder Strap for Women",
+        "category": "purse",
+        "price": 9.99,
+        "description": "Wanty Cell Phone Bag - Small Crossbody Bag, Cell Phone Purse Smartphone Wallet with Shoulder Strap for Women Neoprene MAIN MATERIAL - The Cell phone bag Made of Neoprene and metal zips, durable, Dimensions: 7.5\" L x 5.1\" W x 0.8\"H, Adjustable shoulder Strap: 28\" - 52\", make it either a crossbody bag",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07V3DCM4P",
+        "name": "Lixada Mens Running Shorts 2-in-1 Quick Dry Breathable Elastic Workout Shorts with Inside Phone Pocket/Zipper Side Pockets/Waist Pockets for Boxing Traning Jogging Exercise",
+        "category": "shorts",
+        "price": null,
+        "description": "Lixada Mens Running Shorts 2-in-1 Quick Dry Breathable Elastic Workout Shorts with Inside Phone Pocket/Zipper Side Pockets/Waist Pockets for Boxing Traning Jogging Exercise Polyester Fabric + Spandex Imported Drawstring closure Hand Wash Only 【HIGH QUALITY MATERIAL, DURABLE & LIGHTWEIGHT】 - Our runn",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08QCV6Q73",
+        "name": "EZRUN Men's Mountain Bike Shorts Loose Fit Cycling Shorts 3D Padded MTB Bike Shorts Water Ressistant Lightweight",
+        "category": "shorts",
+        "price": null,
+        "description": "EZRUN Men's Mountain Bike Shorts Loose Fit Cycling Shorts 3D Padded MTB Bike Shorts Water Ressistant Lightweight Zipper closure Machine Wash 95% Polyester,5% Elastane 【3D Padded Underwear】The interior is equipped with 3D padded underwear to provide the most comfortable riding experience.The lining h",
+        "your_label": 1
+      },
+      {
+        "product_id": "B08KH3YRZZ",
+        "name": "DELUXITY Lightweight Leather Phone Purse, Small Crossbody Bag Mini Cell Phone Pouch Shoulder Bag with 3 Compartment for Women",
+        "category": "purse",
+        "price": null,
+        "description": "DELUXITY Lightweight Leather Phone Purse, Small Crossbody Bag Mini Cell Phone Pouch Shoulder Bag with 3 Compartment for Women Leather STYLISH & FUNCTIONAL: This stylish small size three compartment crossbody purse features adjustable long shoulder strap with 3 section zipper closure that can be worn",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09K4XG235",
+        "name": "GYM RAINBOW Women's Lightweight Running Jackets Cottony-Soft 4-Way Stretch Zip up Slim Fit Workout Yoga Athletic Jacket",
+        "category": "jacket",
+        "price": 41.99,
+        "description": "GYM RAINBOW Women's Lightweight Running Jackets Cottony-Soft 4-Way Stretch Zip up Slim Fit Workout Yoga Athletic Jacket 87% Nylon, 13% LYCRA Imported Zipper closure Machine Wash 【Running Jackets for Women】: Feel ready for any workout in a full zip, high neck jacket with a cuff thumbhole detail to pr",
+        "your_label": 1
+      },
+      {
+        "product_id": "B08YYL3HK5",
+        "name": "KEFITEVD Men's Cotton 3/4 Joggers Pants Workout Gym Shorts Running Capris with Zipper Pockets",
+        "category": "joggers",
+        "price": 24.98,
+        "description": "KEFITEVD Men's Cotton 3/4 Joggers Pants Workout Gym Shorts Running Capris with Zipper Pockets Lightweight quality cotton blend offers extrme comfort and stretchy. Adjustable waistband with drawcord for a better fit. Side zipper pockets deep enough for holding 5.5\" mobile phone. Slim fit tapered leg ",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q089",
+    "query": "something versatile enough for pool, beach, and a seafood dinner the same evening",
+    "type": "edge",
+    "dense_only": false,
+    "current_relevance": {
+      "B08B12FQXD": 2,
+      "B07CQ84KLT": 1,
+      "B0853371FL": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B08BHP1XFN",
+        "name": "Vulken Extra Large Thick Hooded Beach Towel Changing Robe. Surf Poncho Women for Easy Change in Public. Quick Dry Microfiber Toweling for The Beach, Pool, Lake, Water Park. S/M",
+        "category": "robe",
+        "price": 29.99,
+        "description": "Vulken Extra Large Thick Hooded Beach Towel Changing Robe. Surf Poncho Women for Easy Change in Public. Quick Dry Microfiber Toweling for The Beach, Pool, Lake, Water Park. S/M ALL-IN-ONE GARMENT FOR WATER ACTIVITIES - Tailored to your needs to allow changing underneath comfortably, to dry off and k",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07F6C34KF",
+        "name": "foci cozi Mesh X-Large Tank Beach Bag,White Reusable Shopping Bag,Grocery Picnic Pool",
+        "category": "tank",
+        "price": 12.99,
+        "description": "foci cozi Mesh X-Large Tank Beach Bag,White Reusable Shopping Bag,Grocery Picnic Pool Mesh,Nylon Mesh,Nylon lining Open Top closure Large Capacity：XLarge Tank beach bag with size 26\"L x 7.8\"W x 15\"H. This Larfe mesh beach bag has large space for towels, toys, shampoo, shoes, water bottles, glasses, ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B085XPGKJP",
+        "name": "Kawai Peach Women's Cotton Floral Embroidered Long Dress Kimono Beach Cover ups",
+        "category": "dress",
+        "price": 21.99,
+        "description": "Kawai Peach Women's Cotton Floral Embroidered Long Dress Kimono Beach Cover ups Pull On closure Hand Wash Only ★【Comfortable Materials】★ : Made of high-quality material. Breathable, very soft, fatastic touching for your skin, fabulous weight, and take up very small space in your bag or suitcase ★【Ex",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0948XN6T1",
+        "name": "KUIIHUAZ Women Summer Short Sleeve Tunic Dress V Neck Casual Tie Dye Floral Print Ruffle Pleated Flowy Swing Shift Dresses",
+        "category": "tunic",
+        "price": 25.99,
+        "description": "KUIIHUAZ Women Summer Short Sleeve Tunic Dress V Neck Casual Tie Dye Floral Print Ruffle Pleated Flowy Swing Shift Dresses 100% Cotton Imported Tie closure Material - The Womens Summer Dresses Adopts High Quality Fabric Blend Outer Fabric, Soft And Breathable Will Offer You First-Class Comfort; With",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BG5H84CZ",
+        "name": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress",
+        "category": "dress",
+        "price": 7.09,
+        "description": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress ✦ Expedited Shipping:3-5 Days. Standard shipping: 7-20 Days. ☆ Today's Deal --Save 70% each on Promotion Applied offered by U6J438VS when you purchase 1 or more. Button closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B097M4MPHR",
+        "name": "CHUNTIANRAN Women's 2023 Casual Loose Maxi Dress Summer Short Sleeve Beach Long Sundress T Shirts Dresses with Pockets",
+        "category": "dress",
+        "price": 34.98,
+        "description": "CHUNTIANRAN Women's 2023 Casual Loose Maxi Dress Summer Short Sleeve Beach Long Sundress T Shirts Dresses with Pockets Cotton Blend 进口 Tie closure Hand Wash Only Dress Design: Womens 2023 Rainbow Dye Tie Long Maxi Dress,Funny Letter Print Sayings T Shirts Dresses, Summer Casual Loose Plain Mini Dres",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BC4DGCY6",
+        "name": "Floerns Women's Two Piece Outfit Floral Off Shoulder Drawstring Crop Top and Skirt Set",
+        "category": "crop top",
+        "price": 38.99,
+        "description": "Floerns Women's Two Piece Outfit Floral Off Shoulder Drawstring Crop Top and Skirt Set 100% Viscose Drawstring closure Hand Wash Only Fabric has no stretch, waist and back part has elasticity Skirt may run a bit short; recommend wear a nubra with the top Floral, off shoulder, drawstring front and sl",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07R1XGJZ2",
+        "name": "Imagine Women's Summer Dress Strapless Floral Print Bohemian Casual Beach Dress Cover Ups for Swimwear Women, #Red2, X-Large",
+        "category": "dress",
+        "price": null,
+        "description": "Imagine Women's Summer Dress Strapless Floral Print Bohemian Casual Beach Dress Cover Ups for Swimwear Women, #Red2, X-Large",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07N1JKFZM",
+        "name": "Zonsaoja Women's Strapless Dress Mini Floral Print Summer Tube Top Dresses Beach",
+        "category": "dress",
+        "price": null,
+        "description": "Zonsaoja Women's Strapless Dress Mini Floral Print Summer Tube Top Dresses Beach 100% Cotton 【Strapless】：Tube Top Dresses For Women ,A-Line, smocked,ruffled hem is a good cover for the belly and hips.Strapless,Off the shoulder.Beach Mini Dress Perfectly showing your neck and collarbone, make your le",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q090",
+    "query": "clothes that still feel comfortable after overindulging at Thanksgiving dinner",
+    "type": "edge",
+    "dense_only": true,
+    "current_relevance": {
+      "B09VM4FZ6W": 2,
+      "B09MJTRDCW": 2,
+      "B0B16Q1854": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B07W6CV5R8",
+        "name": "Women Thanksgiving Shirt Grateful Thankful Blessed Arrow Letter Printed Casual O-Neck T-Shirt Tee",
+        "category": "t-shirt",
+        "price": null,
+        "description": "Women Thanksgiving Shirt Grateful Thankful Blessed Arrow Letter Printed Casual O-Neck T-Shirt Tee cotton blend Dry Clean Only ✿ Material: Cotton Blend, Soft And Comfortable to Wear. ✿ Grateful Thankful Blessed T-Shirt Cute Graphics Grateful Tee Thanksgiving Christmas Shirt Festival Gift Idea. ✿ This",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08FC9M4KS",
+        "name": "MK Shop Limited Women Thankful Blessed Thanksgiving Print T-Shirt Casual Splicing Raglan 3/4 Sleeve Tee Top Blouse",
+        "category": "t-shirt",
+        "price": null,
+        "description": "MK Shop Limited Women Thankful Blessed Thanksgiving Print T-Shirt Casual Splicing Raglan 3/4 Sleeve Tee Top Blouse Line Dry Material:Cotton Blended, Stretchy, Comfortable, Soft, Breathable on Skin Feature:Thankful Blessed Letters Print T-Shirt, Thanksgiving Splicing Raglan 3/4 Sleeve Shirt, Women Ca",
+        "your_label": 1
+      },
+      {
+        "product_id": "B08MKL4VN5",
+        "name": "Gobble Gobble Y'all Thanksgiving Turkey T-Shirts Women Plaid Long Sleeve Splicing Tops Blouse",
+        "category": "t-shirt",
+        "price": null,
+        "description": "Gobble Gobble Y'all Thanksgiving Turkey T-Shirts Women Plaid Long Sleeve Splicing Tops Blouse 100% Cotton Pull On closure Dry Clean Only ✿ Material: the Plaid sleeve is Polyester fiber, clothes are cotton and polyester ✿ Gobble Gobble Yall Thanksgiving Funny Shirt Turkey Day Plaid Splicing Casual T-",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08DKWGZBR",
+        "name": "Thanksgiving Day Cute Turkey Pumpkin Face Mask Reusable Cloth Cloth Fashion Scarves Comfortable With 2 Filter",
+        "category": "pump",
+        "price": null,
+        "description": "Thanksgiving Day Cute Turkey Pumpkin Face Mask Reusable Cloth Cloth Fashion Scarves Comfortable With 2 Filter Cloth,Polyester Ear Loop closure Style: Earloop Material: Polyester",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07GJ1PDS7",
+        "name": "Happy Fall Y'all Shirt Halloween Women Letter Print Funny Graphic Tee Casual Short Sleeve T-Shirt Tops",
+        "category": "t-shirt",
+        "price": 6.99,
+        "description": "Happy Fall Y'all Shirt Halloween Women Letter Print Funny Graphic Tee Casual Short Sleeve T-Shirt Tops 100% Cotton Blend Pull On closure Machine Wash ✿ Material: Cotton Blend, Soft And Comfortable to Wear. ✿ Happy Fall Y'all Halloween Thanksgiving Shirt Tops Women Letter Printed Short Sleeve Trend T",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09BCC94S2",
+        "name": "Halloween Pumpkin Shirt Women Fall Funny Graphic Tee V-Neck Short Sleeve T-Shirts Tops Blouse",
+        "category": "t-shirt",
+        "price": null,
+        "description": "Halloween Pumpkin Shirt Women Fall Funny Graphic Tee V-Neck Short Sleeve T-Shirts Tops Blouse cotton blend algod n mistura de o baumwollmischung Pull On closure Machine Wash ✿ Material: Cotton Blend, Soft And Comfortable to Wear. ✿ Cute Pumpkin Thanksgiving T-Shirt Tee- Great Gift for Mom Grandmothe",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08GKH1F6R",
+        "name": "Pumpkin Shirt Women Halloween Cute Graphic Fall Gift Tees Casual Short Sleeve Holiday Shirts Top",
+        "category": "tee",
+        "price": null,
+        "description": "Pumpkin Shirt Women Halloween Cute Graphic Fall Gift Tees Casual Short Sleeve Holiday Shirts Top Machine Wash Material: Cotton Blend, Soft And Comfortable to Wear. Halloween Tee Shirt, Cute Pumpkin Thanksgiving T-Shirt Tee- Great Gift for Mom Grandmother Aunt for Fall Autumn Thanksgiving or Christma",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08G8CP21H",
+        "name": "FUNEIA 16 Pairs Fall Leather Earrings for Women Lightweight Pumpkin Sunflower Maple Leaf Leopard Plaid Faux Leather Drop Dangle Earrings Set Thanksgiving Accessory",
+        "category": "pump",
+        "price": null,
+        "description": "FUNEIA 16 Pairs Fall Leather Earrings for Women Lightweight Pumpkin Sunflower Maple Leaf Leopard Plaid Faux Leather Drop Dangle Earrings Set Thanksgiving Accessory",
+        "your_label": 0
+      },
+      {
+        "product_id": "B09DD5BKPX",
+        "name": "Blekii Matching Family Christmas Pajamas Xmas Holiday Sleepwear Jammies Printed Top and Red Plaid Pants Long Sleeve PJs Set",
+        "category": "pants",
+        "price": null,
+        "description": "Blekii Matching Family Christmas Pajamas Xmas Holiday Sleepwear Jammies Printed Top and Red Plaid Pants Long Sleeve PJs Set Cotton Blend Pull On closure Machine Wash",
+        "your_label": 1
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q093",
+    "query": "dress that works for a movie premiere but also a night out at a rooftop bar",
+    "type": "edge",
+    "dense_only": true,
+    "current_relevance": {
+      "B07DY3H2XX": 2,
+      "B07WJGPBDN": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B09GXKWLPR",
+        "name": "Women's Shiny Glitter One Shoulder Night-Out Club Party Dress Gold M",
+        "category": "dress",
+        "price": null,
+        "description": "Women's Shiny Glitter One Shoulder Night-Out Club Party Dress Gold M Pull On closure",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07QGWHC71",
+        "name": "PORRCEY Women's Sexy hot Diamond Craft Long-Sleeved Dress Body Party Club Night Out Dresses",
+        "category": "dress",
+        "price": null,
+        "description": "PORRCEY Women's Sexy hot Diamond Craft Long-Sleeved Dress Body Party Club Night Out Dresses",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0BG5H84CZ",
+        "name": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress",
+        "category": "dress",
+        "price": 7.09,
+        "description": "FABIURT Boho Dress for Women, Women's Summer Casual Graphic Halter Neck Mini Dress Sleeveless Cocktail Beach Party Sundress ✦ Expedited Shipping:3-5 Days. Standard shipping: 7-20 Days. ☆ Today's Deal --Save 70% each on Promotion Applied offered by U6J438VS when you purchase 1 or more. Button closure",
+        "your_label": 1
+      },
+      {
+        "product_id": "B097M4MPHR",
+        "name": "CHUNTIANRAN Women's 2023 Casual Loose Maxi Dress Summer Short Sleeve Beach Long Sundress T Shirts Dresses with Pockets",
+        "category": "dress",
+        "price": 34.98,
+        "description": "CHUNTIANRAN Women's 2023 Casual Loose Maxi Dress Summer Short Sleeve Beach Long Sundress T Shirts Dresses with Pockets Cotton Blend 进口 Tie closure Hand Wash Only Dress Design: Womens 2023 Rainbow Dye Tie Long Maxi Dress,Funny Letter Print Sayings T Shirts Dresses, Summer Casual Loose Plain Mini Dres",
+        "your_label": 1
+      },
+      {
+        "product_id": "B098B5LFP3",
+        "name": "Womens Long Sleeve Camouflage Print Dress Loose Swing Maxi Shirt Dresses Party Evening Dress",
+        "category": "dress",
+        "price": 30.99,
+        "description": "Womens Long Sleeve Camouflage Print Dress Loose Swing Maxi Shirt Dresses Party Evening Dress 70% polyester Imported Elastic closure Material: Polyester, soft fabric make you more beautiful, fashion, sexy and elegant. Features: Button up dresses, button down collar t shirt dress boyfriend, camo print",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09HTSPGFZ",
+        "name": "Maxi Dresses for Women Sexy One Shoulder Backless Elegant Split Bodycon Evening Party Cocktail Floor Length Mermaid Dress",
+        "category": "dress",
+        "price": null,
+        "description": "Maxi Dresses for Women Sexy One Shoulder Backless Elegant Split Bodycon Evening Party Cocktail Floor Length Mermaid Dress Hand Wash Only",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0727W6MT9",
+        "name": "Glamorous Evening Dresses Deep V-Neck A-Line Beaded Bodice with Slit Tulle Prom Dresses Long Vestido de Fiesta Grey-US6",
+        "category": "vest",
+        "price": null,
+        "description": "Glamorous Evening Dresses Deep V-Neck A-Line Beaded Bodice with Slit Tulle Prom Dresses Long Vestido de Fiesta Grey-US6",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0948XN6T1",
+        "name": "KUIIHUAZ Women Summer Short Sleeve Tunic Dress V Neck Casual Tie Dye Floral Print Ruffle Pleated Flowy Swing Shift Dresses",
+        "category": "tunic",
+        "price": 25.99,
+        "description": "KUIIHUAZ Women Summer Short Sleeve Tunic Dress V Neck Casual Tie Dye Floral Print Ruffle Pleated Flowy Swing Shift Dresses 100% Cotton Imported Tie closure Material - The Womens Summer Dresses Adopts High Quality Fabric Blend Outer Fabric, Soft And Breathable Will Offer You First-Class Comfort; With",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09Y1MBMSH",
+        "name": "AOVDE Women's Two Piece Outfits Summer Dresses Boho One Shoulder Tube Tops Elastic Waist A Line Maxi Skirt Sets",
+        "category": "dress",
+        "price": 36.99,
+        "description": "AOVDE Women's Two Piece Outfits Summer Dresses Boho One Shoulder Tube Tops Elastic Waist A Line Maxi Skirt Sets 100%CEY Imported Drawstring closure Machine Wash Sized Guide: S=US 4-6,M=US 8-10,L=US 12-14,XL=US 16-18. Women's 2 Piece Outfit with a tube crop tops and long skirt. Easy to dress up or do",
+        "your_label": 0
+      },
+      {
+        "product_id": "B08JGDRVHL",
+        "name": "Leadtex Women's 1920s Fringed Flapper Dresses Costume Dress with Feather Headband,Beaded Necklace Black 8-10",
+        "category": "dress",
+        "price": 19.99,
+        "description": "Leadtex Women's 1920s Fringed Flapper Dresses Costume Dress with Feather Headband,Beaded Necklace Black 8-10 Material:Vintage roaring 20s Fringe Dress Great Gatsby for flapper women,made of 100% Spandex and soft fringe, and sequins; comfortable and breathable. This roaring 20's flapper dress comes w",
+        "your_label": 0
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q094",
+    "query": "what should I wear on a camping trip to prevent getting dangerously cold overnight",
+    "type": "edge",
+    "dense_only": true,
+    "current_relevance": {
+      "B07VPGY6FX": 2,
+      "B07J5XH426": 2,
+      "B09KHSM7BB": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B07Y82NYHP",
+        "name": "StyleZ 2PCS Unisex Balaclava 3 Hole Face Mask Pink&White Knitted Ski Snowboard Hat Cap Beanie for Winter Outdoor Sports",
+        "category": "beanie",
+        "price": 13.49,
+        "description": "StyleZ 2PCS Unisex Balaclava 3 Hole Face Mask Pink&White Knitted Ski Snowboard Hat Cap Beanie for Winter Outdoor Sports ➽Fits for most heads and faces of general measurement including men, women, children, with stretchable fabric which can suit you well. ➽The mask designed including 3 holes: 2 in th",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08M3CMCKZ",
+        "name": "Fvviia 2 Pieces 3 Hole Knitted Face Cover Double Thermal Windproof Winter Ski Mask for Outdoor Sports",
+        "category": "thermal",
+        "price": 9.99,
+        "description": "Fvviia 2 Pieces 3 Hole Knitted Face Cover Double Thermal Windproof Winter Ski Mask for Outdoor Sports Imported Elastic closure Machine Wash 3-Hole Face Cover Design-Winter balaclava full face mask with 1 mouth,2 eyes holes design,warm mask will avoid cold air attacks and keeps your head warm,can't w",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07YJVGTMX",
+        "name": "IKALI Boy Girl Packable Down Jackets, Spring Hood Coat, Lightweight Outerwear (2-12Y)",
+        "category": "jacket",
+        "price": null,
+        "description": "IKALI Boy Girl Packable Down Jackets, Spring Hood Coat, Lightweight Outerwear (2-12Y) Hand Wash Only 🐬【Stylish & Multi-color】Our waistcoat features sandwich quilting, zip-front closure, two slant pockets. universal color, cute and easy matching, rainbow color reflects the beautiful possibility of a ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07NLF8NGF",
+        "name": "Icebreaker Merino Adult Chase Beanie Hats for Men, Women, - Light, Stretchy Winter Hat with Cuff for Running, Hiking, Training - Odor-Resistant Beanies, Black",
+        "category": "beanie",
+        "price": 25.0,
+        "description": "Icebreaker Merino Adult Chase Beanie Hats for Men, Women, - Light, Stretchy Winter Hat with Cuff for Running, Hiking, Training - Odor-Resistant Beanies, Black Merino,Wool Imported Pull On closure READY FOR COLD WEATHER: Enjoy any cold weather pursuit with the Icebreaker Merino Chase Beanies for men ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08LQ5RX47",
+        "name": "3 Piece Winter Beanie Hat Touchscreen Gloves Scarf Warm Set for Men Women",
+        "category": "scarf",
+        "price": 6.99,
+        "description": "3 Piece Winter Beanie Hat Touchscreen Gloves Scarf Warm Set for Men Women Hand Wash Only Comfortable to wear: our winter set is made of soft knitted fabric, soft and skin-friendly, comfortable and warm, with good elasticity for easy on and off, the scarf is a neck warmer that can be pulled up over t",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07JQ7T96H",
+        "name": "Arctic Cool Instant Cooling UPF 50+ UV Protection Neck Gaiter, Face Mask, Headband | 12-in-1 Excellent Sun Protection for Fishing, Boating, Face Protection, Gardening, Working",
+        "category": "headband",
+        "price": 6.94,
+        "description": "Arctic Cool Instant Cooling UPF 50+ UV Protection Neck Gaiter, Face Mask, Headband | 12-in-1 Excellent Sun Protection for Fishing, Boating, Face Protection, Gardening, Working ✔ MORE THAN MOISTURE WICKING - As you begin to sweat, the advanced HydroFreeze X fabric wicks moisture away from your skin w",
+        "your_label": 0
+      },
+      {
+        "product_id": "B098B4MG4M",
+        "name": "Ceafer Wool Socks for Women Warm Thermal Outdoor Sports Hiking Trekking Skiing Socks Women",
+        "category": "thermal",
+        "price": null,
+        "description": "Ceafer Wool Socks for Women Warm Thermal Outdoor Sports Hiking Trekking Skiing Socks Women 65% polyester/15% wool/15% nylon/5% spandex AMAZING WARM EVEN IN EXTREME TEMPERATURES: NO MORE COLD FEET! Our Super Thick Wool Socks are Extra warm for the coldest winter weather. Heavily Fluffy Wool Lined Ins",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0069B1ITG",
+        "name": "Ergodyne womens 2-layer Thermal Mouthpiece - Cotton Face Mask, Black, One Size US",
+        "category": "thermal",
+        "price": 5.61,
+        "description": "Ergodyne womens 2-layer Thermal Mouthpiece - Cotton Face Mask, Black, One Size US Hook and Loop closure Machine Wash 2-LAYER THERMAL MOUTHPIECE - Attaches to all N-Ferno Winter Liners (sold separately) with hook and loop attachment straps for full-face coverage OUTER SHELL - 100% cotton twill WARM L",
+        "your_label": 2
+      },
+      {
+        "product_id": "B09CGSB7W2",
+        "name": "Keevoom Men's Waterproof Ski Jacket Winter Warm Snow Coat Windproof Mountain Raincoat Snowboarding Hooded Jackets for Mens",
+        "category": "raincoat",
+        "price": 37.99,
+        "description": "Keevoom Men's Waterproof Ski Jacket Winter Warm Snow Coat Windproof Mountain Raincoat Snowboarding Hooded Jackets for Mens 100% Polyester Imported Polyester lining Zipper closure Hand Wash or Machine Wash Detachable Hood, Comfortable & Durable: The ski jacket has adjustable storm hood and cuffs help",
+        "your_label": 2
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q096",
+    "query": "light summer outfit that won't embarrassingly become see-through in sunlight",
+    "type": "edge",
+    "dense_only": true,
+    "current_relevance": {
+      "B07CQ84KLT": 2,
+      "B08B12FQXD": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B07QML2FDR",
+        "name": "Womens Casual Summer Beach Dress Boho Floral Swing Mini Shift Dress Sundress Bikini Cover Ups Light Green",
+        "category": "dress",
+        "price": null,
+        "description": "Womens Casual Summer Beach Dress Boho Floral Swing Mini Shift Dress Sundress Bikini Cover Ups Light Green",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08XMCJK51",
+        "name": "Comhats Packable UPF Straw Sunhat Women Summer Beach Wide Brim Fedora Travel Hat",
+        "category": "hat",
+        "price": null,
+        "description": "Comhats Packable UPF Straw Sunhat Women Summer Beach Wide Brim Fedora Travel Hat 80% Paper Straw/20% Polyester Drawstring closure Size Adjustable - Medium best fits for 56-58CM 22\"-22.8\"; B.There is a built in drawstring inside the sweatband of the hat so you can adjust it to fit your head. Foldable",
+        "your_label": 0
+      },
+      {
+        "product_id": "B07PS2X9CC",
+        "name": "HUHOT Sundresses for Women Casual Summer Short Sleeve Round Neck Floral Casual Skater Dress (Print 20, XX-Large)",
+        "category": "dress",
+        "price": null,
+        "description": "HUHOT Sundresses for Women Casual Summer Short Sleeve Round Neck Floral Casual Skater Dress (Print 20, XX-Large) 95% Cotton, 5% Spandex",
+        "your_label": 2
+      },
+      {
+        "product_id": "B08T6Q6KDQ",
+        "name": "SheIn Women's Summer Floral Print Cami Top and Shorts Pajamas Set Light Blue Floral Medium",
+        "category": "shorts",
+        "price": null,
+        "description": "SheIn Women's Summer Floral Print Cami Top and Shorts Pajamas Set Light Blue Floral Medium",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07TMY1J24",
+        "name": "Kids Toddler Baby Girls Summer Dress Outfits Ruffle Strap Sunflower Print Tutu Skirt Sunsuit Beachwear Clothes Set",
+        "category": "dress",
+        "price": null,
+        "description": "Kids Toddler Baby Girls Summer Dress Outfits Ruffle Strap Sunflower Print Tutu Skirt Sunsuit Beachwear Clothes Set",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07VPB2JQ1",
+        "name": "Aokelily Sun Hats Outdoor UPF 50+ Waterproof Sun Caps UV 360 Solar Protection Quick-Drying",
+        "category": "hat",
+        "price": 9.99,
+        "description": "Aokelily Sun Hats Outdoor UPF 50+ Waterproof Sun Caps UV 360 Solar Protection Quick-Drying 100% Polyester Buckle closure Hand Wash Only 【UPF 50+ UV PROTECTION】High-tech fabrics were used, UPF 50+ sun protection to keep delicate skin on the neck ears and face safe from harmful rays,It protects skin f",
+        "your_label": 1
+      },
+      {
+        "product_id": "B0BN6Y5N5L",
+        "name": "Women Summer Sleeve Pocket Teacher Outfit Midi Knee Casual Dress Leopard Brown L",
+        "category": "dress",
+        "price": null,
+        "description": "Women Summer Sleeve Pocket Teacher Outfit Midi Knee Casual Dress Leopard Brown L",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07N1JKFZM",
+        "name": "Zonsaoja Women's Strapless Dress Mini Floral Print Summer Tube Top Dresses Beach",
+        "category": "dress",
+        "price": null,
+        "description": "Zonsaoja Women's Strapless Dress Mini Floral Print Summer Tube Top Dresses Beach 100% Cotton 【Strapless】：Tube Top Dresses For Women ,A-Line, smocked,ruffled hem is a good cover for the belly and hips.Strapless,Off the shoulder.Beach Mini Dress Perfectly showing your neck and collarbone, make your le",
+        "your_label": 2
+      },
+      {
+        "product_id": "B077MPJ9N6",
+        "name": "ZOOCCHINI UPF50+ Baby Sun Hats, Sun Protection Fabric, BPA Free, Chlorine and Salt Water Resistant, Toddler Sun Hat for Boys and Girls 3-24 Months",
+        "category": "hat",
+        "price": 11.49,
+        "description": "ZOOCCHINI UPF50+ Baby Sun Hats, Sun Protection Fabric, BPA Free, Chlorine and Salt Water Resistant, Toddler Sun Hat for Boys and Girls 3-24 Months UPF50+ Sun Protection Fabric Drawstring closure Machine Wash PROTECTION FROM SUN & WATER: Certified UPF 50+ – the highest grade of UPF protection; Chlori",
+        "your_label": 0
+      },
+      {
+        "product_id": "B088JVSWSC",
+        "name": "Baby Sun Hat Girls Floppy Bucket Hat Summer Toddler Outdoor Cap for Swim Beach",
+        "category": "hat",
+        "price": 11.99,
+        "description": "Baby Sun Hat Girls Floppy Bucket Hat Summer Toddler Outdoor Cap for Swim Beach 100% Polyester Drawstring closure Machine Wash EXCELLENT SUN PROTECTION - No more sunburn! Keep your little girl's delicate skin safe in the sun with this cute baby girl hat. Wide brim creates pretty ideal shade on toddle",
+        "your_label": 0
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  },
+  {
+    "id": "q100",
+    "query": "I run hot but need to dress appropriately for a freezing cold office all day",
+    "type": "edge",
+    "dense_only": true,
+    "current_relevance": {
+      "B09M6X79V9": 2,
+      "B06W57G8QX": 1,
+      "B0BYCZ2W78": 1
+    },
+    "candidates": [
+      {
+        "product_id": "B097LHMPL3",
+        "name": "Actloe Women Casual Fuzzy Hoodie Pullover Sweatshirt Cozy Outwear with Pockets",
+        "category": "sweatshirt",
+        "price": null,
+        "description": "Actloe Women Casual Fuzzy Hoodie Pullover Sweatshirt Cozy Outwear with Pockets Casual hooded long sleeve quality fleeze sweatshirt 1/4 zipper front, loose fit style with pockets Comfortable material, keep you warm in cold weather Suitable occasions: Office wear, Daily wear, Party Package content: 1 ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07FPMX4B5",
+        "name": "elegantstunning Fingerless Knitted Gloves with Thumb Hole Women Men Winter Fashion Solid Crochet",
+        "category": "glove",
+        "price": 6.89,
+        "description": "elegantstunning Fingerless Knitted Gloves with Thumb Hole Women Men Winter Fashion Solid Crochet Acrylic Pull On closure Hand Wash Only ♥ SIZE - These fingerless gloves for women are perfect for women of all ages and personality types. One size fits most. Reference Length - Style A/B: about 7.8 in. ",
+        "your_label": 0
+      },
+      {
+        "product_id": "B098B4MG4M",
+        "name": "Ceafer Wool Socks for Women Warm Thermal Outdoor Sports Hiking Trekking Skiing Socks Women",
+        "category": "thermal",
+        "price": null,
+        "description": "Ceafer Wool Socks for Women Warm Thermal Outdoor Sports Hiking Trekking Skiing Socks Women 65% polyester/15% wool/15% nylon/5% spandex AMAZING WARM EVEN IN EXTREME TEMPERATURES: NO MORE COLD FEET! Our Super Thick Wool Socks are Extra warm for the coldest winter weather. Heavily Fluffy Wool Lined Ins",
+        "your_label": 1
+      },
+      {
+        "product_id": "B07YXD4STK",
+        "name": "Alexander + David Womens Casual Cowl Pullover Turtle Neck - Sweater Oversized W Long Sleeves",
+        "category": "pullover",
+        "price": null,
+        "description": "Alexander + David Womens Casual Cowl Pullover Turtle Neck - Sweater Oversized W Long Sleeves Hand Wash Only EXTRA SOFT COWL NECK SWEATER: This sweater is made from a Viscose blend that is super soft to the touch. Wearing it is a delight that will make you want to never take it off. The special twist",
+        "your_label": 2
+      },
+      {
+        "product_id": "B091D1HF3Q",
+        "name": "HEAT HOLDERS Mens Long Sleeve Warm Thick Thermal Long Sleeve Base Layer Shirt",
+        "category": "shirt",
+        "price": 34.99,
+        "description": "HEAT HOLDERS Mens Long Sleeve Warm Thick Thermal Long Sleeve Base Layer Shirt 53% Polyester, 47% Cotton Pull On closure Machine Wash 👍 LONG BODY LENGTH - This thermal top has a longer body length so you can tuck it easily under your clothes 👍 0.45 TOG RATING - This long sleeve top has a comfortable ",
+        "your_label": 2
+      },
+      {
+        "product_id": "B07G37FXJ4",
+        "name": "Flammi Women's Knit Fingerless Gloves Cashmere Mittens Warm Thumb Hole Gloves",
+        "category": "glove",
+        "price": null,
+        "description": "Flammi Women's Knit Fingerless Gloves Cashmere Mittens Warm Thumb Hole Gloves Cashmere Pull On closure CASHMERE KNITTED GLOVES, VERY WARM AND SOFT: Quality knitted texture, feels very comfortable. Very soft touch, tight knitting, stretches very well, slim fit, warm but not bulky. Plain gloves, solid",
+        "your_label": 0
+      },
+      {
+        "product_id": "B08LQ5RX47",
+        "name": "3 Piece Winter Beanie Hat Touchscreen Gloves Scarf Warm Set for Men Women",
+        "category": "scarf",
+        "price": 6.99,
+        "description": "3 Piece Winter Beanie Hat Touchscreen Gloves Scarf Warm Set for Men Women Hand Wash Only Comfortable to wear: our winter set is made of soft knitted fabric, soft and skin-friendly, comfortable and warm, with good elasticity for easy on and off, the scarf is a neck warmer that can be pulled up over t",
+        "your_label": 0
+      },
+      {
+        "product_id": "B081H7WBVR",
+        "name": "SKYDEER 3M Thinsulate Thermal Winter Work Gloves with Windproof Premium Genuine Deerskin Suede Leather (Unisex)",
+        "category": "thermal",
+        "price": 24.99,
+        "description": "SKYDEER 3M Thinsulate Thermal Winter Work Gloves with Windproof Premium Genuine Deerskin Suede Leather (Unisex) Full Natural deerskin suede leather 100% Natural deerskin suede leather Pull On closure Hand Wash Only [ Full Premium Genuine Deerskin Suede ] - The whole glove is made by genuine deerskin",
+        "your_label": 0
+      },
+      {
+        "product_id": "B08RC7GPDB",
+        "name": "RYNX Heated Vest for Women Men,USB Charging Warming Lightweight Heated Jacket for Outdoor Activities(Not include Powerbank)",
+        "category": "jacket",
+        "price": null,
+        "description": "RYNX Heated Vest for Women Men,USB Charging Warming Lightweight Heated Jacket for Outdoor Activities(Not include Powerbank) Zipper closure Machine Wash 【8 Heating Panels & 3 Temperature Control】-The 2020 newly released heated vest has totally 8 heat panels, Divide into 3 areas and control the temper",
+        "your_label": 2
+      },
+      {
+        "product_id": "B0069B1ITG",
+        "name": "Ergodyne womens 2-layer Thermal Mouthpiece - Cotton Face Mask, Black, One Size US",
+        "category": "thermal",
+        "price": 5.61,
+        "description": "Ergodyne womens 2-layer Thermal Mouthpiece - Cotton Face Mask, Black, One Size US Hook and Loop closure Machine Wash 2-LAYER THERMAL MOUTHPIECE - Attaches to all N-Ferno Winter Liners (sold separately) with hook and loop attachment straps for full-face coverage OUTER SHELL - 100% cotton twill WARM L",
+        "your_label": 1
+      }
+    ],
+    "notes": "Label each candidate 0/1/2. Then copy labeled IDs into golden_queries.json under 'relevance'."
+  }
+]
