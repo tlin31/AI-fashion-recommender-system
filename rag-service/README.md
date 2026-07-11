@@ -319,6 +319,29 @@ python eval/run_eval.py --golden-set eval/golden_queries.json
 # Check for quality regression against the stored baseline
 python eval/check_regression.py --threshold 0.05
 
-# Load test
-locust -f eval/locustfile.py --host http://localhost:8002
+# Load test (headless, 3 min per level, results saved to eval/load_test_u*.csv)
+locust -f eval/locustfile.py --host http://localhost:8002 --users 1  --spawn-rate 1  --run-time 3m --headless --csv eval/load_test_u1
+locust -f eval/locustfile.py --host http://localhost:8002 --users 5  --spawn-rate 5  --run-time 3m --headless --csv eval/load_test_u5
+locust -f eval/locustfile.py --host http://localhost:8002 --users 10 --spawn-rate 10 --run-time 3m --headless --csv eval/load_test_u10
+locust -f eval/locustfile.py --host http://localhost:8002 --users 20 --spawn-rate 20 --run-time 3m --headless --csv eval/load_test_u20
 ```
+
+---
+
+## Load Test Results (baseline, 2026-07-11)
+
+Tested against 100 golden queries (prevents Redis cache inflation from a small fixed set).
+All runs: 0% failure rate. Full pipeline active: BM25 + Milvus + cross-encoder + GPT-4o-mini.
+
+| Concurrent Users | Requests | Fail% | p50 (ms) | p95 (ms) | p99 (ms) | Avg (ms) | RPS  |
+|-----------------:|---------:|------:|---------:|---------:|---------:|---------:|-----:|
+| 1                | 27       | 0%    | 4,100    | 9,700    | 12,000   | 4,570    | 0.15 |
+| 5                | 153      | 0%    | 3,300    | 6,800    | 9,800    | 3,787    | 0.86 |
+| 10               | 323      | 0%    | 3,300    | 6,400    | 8,200    | 3,509    | 1.81 |
+| 20               | 605      | 0%    | 3,600    | 7,000    | 8,700    | 3,865    | 3.40 |
+
+**Observations:**
+- **Bottleneck is OpenAI API latency (~3–4 s/call), not local infra.** p50 stays flat across all concurrency levels because requests fan out to OpenAI independently.
+- **p99 improves as concurrency rises** (12 s → 8.7 s) due to Redis cache hits warming up across the 100-query pool.
+- **RPS scales linearly** (0.15 → 3.40 for 1 → 20 users) — no saturation point reached at 20 users.
+- Degradation point was not hit; push to 50–100 users to find the ceiling in a production environment.
