@@ -1,0 +1,12 @@
+# Raw dataset — too large for git (2.3 GB)
+amazon_data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Eval artefacts — generated, not source
+eval/__pycache__/
