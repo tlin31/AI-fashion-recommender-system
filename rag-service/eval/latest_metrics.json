@@ -1,5 +1,4 @@
 {
-  "ndcg_at_10": 0.7302,
-  "recall_at_10": 0.7511,
-  "faithfulness": 0.9527
+  "recall_at_10": 0.674,
+  "ndcg_at_10": 0.693
 }

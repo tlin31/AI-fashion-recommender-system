@@ -209,10 +209,12 @@ Returns the status of each downstream dependency.
 | `REDIS_URL` | `redis://localhost:6379` | Embedding cache (TTL 1 hour). Service starts without Redis — caching is silently disabled. |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Only needed for `POST /ingest`. Not required for queries. |
 | `KAFKA_INGEST_TOPIC` | `rag-ingest` | Kafka topic for async ingestion events |
-| `CRAG_HIGH_THRESHOLD` | `0.75` | Cosine score above this → synthesize directly (no retry) |
-| `CRAG_LOW_THRESHOLD` | `0.45` | Cosine score below this → fall back to trending products |
-| `CRAG_MAX_RETRIES` | `2` | Maximum query-rewrite retries before falling back |
+| `CRAG_HIGH_THRESHOLD` | `0.45` | Grade above this → synthesize directly (no retry) |
+| `CRAG_LOW_THRESHOLD` | `0.43` | Grade below this → return `best_effort` candidates (real results, weak signal — **not** trending) |
+| `CRAG_MAX_RETRIES` | `2` | Maximum query-rewrite retries before returning best effort |
 | `CRAG_TIME_BUDGET_S` | `3.5` | Wall-clock cap on the CRAG loop in seconds |
+
+CRAG thresholds were selected empirically — see [CRAG Threshold Calibration](#crag-threshold-calibration-2026-08-06).
 
 ---
 
@@ -345,3 +347,169 @@ All runs: 0% failure rate. Full pipeline active: BM25 + Milvus + cross-encoder +
 - **p99 improves as concurrency rises** (12 s → 8.7 s) due to Redis cache hits warming up across the 100-query pool.
 - **RPS scales linearly** (0.15 → 3.40 for 1 → 20 users) — no saturation point reached at 20 users.
 - Degradation point was not hit; push to 50–100 users to find the ceiling in a production environment.
+
+---
+
+## CRAG Threshold Calibration (2026-08-06)
+
+The CRAG thresholds were not chosen by intuition. This section records the method, the
+results, and — importantly — the negative findings, because the honest conclusion is that
+**the corrective loop delivers very little on this catalog and the calibration confirmed
+the existing thresholds rather than improving on them.**
+
+### Method: cache-and-replay
+
+CRAG thresholds affect **routing only**, never retrieval. Given a query, the candidates
+`hybrid_search()` returns and their cosine scores are identical whether the threshold is
+0.45 or 0.65. So the expensive half runs once and every threshold combination is replayed
+against a cached snapshot:
+
+```bash
+python eval/calibrate_crag.py --build-cache   # 100 queries, needs Postgres + Milvus + OpenAI
+python eval/calibrate_crag.py --grid          # pure offline CPU, free, rerunnable
+```
+
+This is the same principle as sweeping a classifier's decision threshold over cached scores
+to draw an ROC curve: **score once, threshold many times.** Cost dropped from 12 full eval
+runs to ~1.2. `eval/calibration_cache.json` is committed, so anyone can re-derive the
+decision without an API key, and adding a new candidate threshold later costs nothing.
+
+The cache carries a **fingerprint** (embedding model, RRF k, candidate pool, per-product
+chunk cap, retrieval top-k, Milvus row count). `--grid` refuses to run if the live config
+has drifted — a stale cache is worse than no cache, because it fails silently and produces
+confident, wrong thresholds.
+
+### The grid: 50 combinations
+
+Three graders × five HIGH cutoffs × three-to-four LOW cutoffs, minus invalid pairs where
+`LOW >= HIGH`:
+
+| Grader | HIGH candidates | LOW candidates | Valid combos |
+|---|---|---|---:|
+| `mean20` (production) | 0.45, 0.50, 0.55, 0.60, 0.65 | 0.10, 0.32, 0.38, 0.43 | 20 |
+| `max` | 0.5124, 0.6007, 0.6925, 0.7406, 0.8174 | 0.3818, 0.4531, 0.5064 | 15 |
+| `top3` | 0.4942, 0.5703, 0.6415, 0.6747, 0.7514 | 0.3751, 0.4409, 0.4784 | 15 |
+
+Each grader has a different natural score range, so the non-production graders reuse the
+**same percentile positions** as the production anchors rather than the same absolute
+numbers — combos are compared at equal routing rates, not at arbitrary cutoffs.
+
+Objective: **NDCG@10**. Constraint: retry rate < 20%. Faithfulness was deliberately *not*
+used as the objective — the generator is faithful to whatever chunks it receives, so it sits
+near 0.95 regardless of routing and cannot discriminate between combos.
+
+### Score distribution
+
+Grading uses the mean Milvus cosine across all 20 retrieved candidates. Over the 100-query
+golden set:
+
+```
+p0 0.3205   p25 0.4289   p50 0.5125   p75 0.6030   p90 0.6470   p100 0.7091
+```
+
+**A HIGH threshold of 0.75 is unreachable on this catalog.** An earlier configuration
+documented 0.75/0.45; it would have produced zero `synthesize` decisions and routed every
+single query through a rewrite.
+
+The distribution is also tight: moving HIGH by 0.05 reroutes roughly 16–18 of 100 queries.
+That brittleness is worth knowing — modest data drift changes routing behaviour with no
+code change.
+
+### Results
+
+| Config | NDCG@10 | Recall@10 | Retry rate | Expected added latency |
+|---|---:|---:|---:|---:|
+| `mean20 / 0.45 / 0.10` (previous) | **0.6975** | 0.6794 | 0.30 | 309.6 ms |
+| **`mean20 / 0.45 / 0.43` (selected)** | 0.6931 | 0.6740 | **0.05** | **51.6 ms** |
+| `max / 0.5124 / 0.5064` | 0.6943 | 0.6748 | 0.05 | 51.6 ms |
+
+Bootstrap, 1,000 resamples of the query set with threshold selection re-run on each:
+
+- Best-combo improvement over the previous config: **+0.0017, 95% CI [+0.0000, +0.0110]** —
+  the interval **includes zero**.
+- Selection stability: the previous config won **60.8%** of resamples.
+- NDCG spread across all 50 combos: **0.6634 – 0.6975**, a range of only **0.034**.
+
+**Conclusion: no configuration beats the incumbent outside noise.** The calibration
+confirmed the thresholds rather than improving them, which is a legitimate outcome and is
+reported as such.
+
+### What changed, and why
+
+`CRAG_LOW_THRESHOLD` was raised from `0.10` to `0.43`.
+
+The quality difference is −0.0044 NDCG, which sits inside the bootstrap noise band and is
+therefore **statistically indistinguishable from zero**. The latency saving is 258 ms of
+expected added latency per query and a retry rate drop from 30% to 5%, which is
+**deterministic and measurable**. Trading an unprovable quality loss for a certain latency
+gain is the favourable side of that trade.
+
+Confirmation run against the live service after the change:
+
+| | Simulated | Live | Diff |
+|---|---:|---:|---:|
+| NDCG@10 | 0.6931 | 0.6930 | −0.0001 |
+| Recall@10 | 0.6740 | 0.6740 | 0.0000 |
+
+The offline replay reproduces the live pipeline to four decimal places, which validates the
+cache-and-replay methodology itself.
+
+### Negative findings (kept deliberately)
+
+CRAG is retained in the codebase and this section documents why it underperforms, rather
+than deleting the experiment.
+
+1. **The corrective action is net harmful.** Across 100 queries, the query rewrite *improved*
+   the retrieval grade for 24 (mean +0.0246) and *degraded* it for 75 (mean −0.0275).
+
+2. **Root cause: the rewrite introduces no new information.** In the original CRAG paper the
+   corrective action on a failed retrieval is a *web search* — new knowledge from outside the
+   corpus. Here it rephrases the query and searches the same 5,000-product index. If the
+   product is not in the catalogue, no rephrasing will find it. The user's original phrasing
+   is usually the most accurate expression of intent, so LLM rewriting mostly adds semantic drift.
+
+3. **The grader is a weak signal.** Rank correlation between the grade and true NDCG@10,
+   measured against the golden set:
+
+   | Grader | Pearson | Spearman |
+   |---|---:|---:|
+   | `mean20` (production) | 0.393 | 0.443 |
+   | `max` | 0.490 | 0.543 |
+   | `top3` | 0.457 | 0.513 |
+
+   `max` correlates better because averaging across all 20 candidates lets the weak tail —
+   which is weak for good *and* bad retrievals, and therefore carries almost no information —
+   pull every query toward the middle. **But `max` did not win the grid**: better correlation
+   with the proxy did not translate into better end-to-end NDCG. The production grader was
+   kept on that evidence.
+
+4. **The retry loop cannot improve on its second attempt.** `run_crag()` rewrites the
+   *original* query on every attempt and never updates it, so with `temperature=0` attempt 2
+   reproduces attempt 1 exactly and burns roughly 1 s for nothing. Retained as a known issue.
+
+5. **Structural limit.** CRAG pays off when the corpus is large and heterogeneous and an
+   external knowledge source can be consulted. On a single-domain closed catalogue of 5,000
+   products, a product either exists or it does not, and the headroom for a corrective loop is
+   small. On this project the larger gains are in retrieval itself — chunking, embeddings,
+   query understanding — not in correction.
+
+### Future work
+
+**Reconsider the grader.** `_grade()` averages cosine over all 20 candidates, so the weak tail
+compresses the achievable range to 0.32–0.71, which is why HIGH had to be tuned down to 0.45
+rather than the 0.75 the design assumed. Grading on the max, or on the top-5 mean, would give a
+more separable signal and let the threshold be set on the quality of the *best* evidence rather
+than the average of everything retrieved — but it invalidates the calibration cache and turns
+threshold tuning into a grader redesign, so it belongs in its own session.
+
+**Move the grader after the cross-encoder.** The pipeline already runs a cross-encoder, which is
+a far stronger relevance signal than cosine. Reordering to `retrieve → rerank → grade → retry`
+would cost ~120 ms on the retry path versus the 886 ms the rewrite currently costs, and the
+forward pass is already paid for on the happy path.
+
+**Correct by failure mode.** One action (rewrite) is currently applied to every failure. Relaxing
+metadata filters, decomposing multi-constraint queries, or honestly reporting absence are
+different corrections for different causes.
+
+**Report CRAG on the subset where it fires.** Whole-set NDCG understates it: the loop affects
+~30% of queries, so a real improvement there is diluted roughly threefold in the headline number.

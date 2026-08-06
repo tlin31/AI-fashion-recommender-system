@@ -107,3 +107,52 @@ def test_review_chunk_receives_no_boost():
     r = _make_reranker([0.5])
     result = r.rerank("blue dress", [chunk])
     assert abs(result[0]["score"] - 0.5) < 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Per-product deduplication (max-pooling chunk scores up to the product)
+# ---------------------------------------------------------------------------
+
+def test_duplicate_product_collapsed_to_one_result():
+    """Two chunks of the same product yield a single result row."""
+    chunks = [
+        _make_chunk("p001", text="chunk a"),
+        _make_chunk("p001", text="chunk b"),
+        _make_chunk("p002", text="chunk c"),
+    ]
+    r = _make_reranker([0.4, 0.9, 0.6])
+    result = r.rerank("blue dress", chunks, top_k=5)
+    assert [c["product_id"] for c in result] == ["p001", "p002"]
+
+
+def test_dedup_keeps_highest_scoring_chunk():
+    """The surviving chunk is the better-matching one, not the first seen."""
+    chunks = [
+        _make_chunk("p001", text="weak match"),
+        _make_chunk("p001", text="strong match"),
+    ]
+    r = _make_reranker([0.2, 0.8])
+    result = r.rerank("blue dress", chunks, top_k=5)
+    assert len(result) == 1
+    assert result[0]["text"] == "strong match"
+
+
+def test_dedup_applied_before_top_k_truncation():
+    """top_k counts distinct products, so duplicates don't consume result slots."""
+    chunks = [
+        _make_chunk("p001", text="a"),
+        _make_chunk("p001", text="b"),
+        _make_chunk("p002", text="c"),
+        _make_chunk("p003", text="d"),
+    ]
+    r = _make_reranker([0.9, 0.8, 0.7, 0.6])
+    result = r.rerank("blue dress", chunks, top_k=3)
+    assert [c["product_id"] for c in result] == ["p001", "p002", "p003"]
+
+
+def test_fewer_distinct_products_than_top_k():
+    """Returns what exists rather than padding when distinct products < top_k."""
+    chunks = [_make_chunk("p001", text="a"), _make_chunk("p001", text="b")]
+    r = _make_reranker([0.9, 0.8])
+    result = r.rerank("blue dress", chunks, top_k=5)
+    assert len(result) == 1

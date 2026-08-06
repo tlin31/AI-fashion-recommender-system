@@ -18,10 +18,16 @@ from pipeline.utils import get_openai_client
 
 logger = logging.getLogger(__name__)
 
-# Threshold calibration: above HIGH → synthesize, between LOW and HIGH → rewrite,
-# below LOW → trending fallback. Values from Week 2 eval notebook.
-_CRAG_HIGH_THRESHOLD = float(os.environ.get("CRAG_HIGH_THRESHOLD", "0.75"))
-_CRAG_LOW_THRESHOLD  = float(os.environ.get("CRAG_LOW_THRESHOLD",  "0.45"))
+# Above HIGH → synthesize, between LOW and HIGH → rewrite and retry,
+# below LOW → best_effort (real candidates, NOT trending).
+#
+# Defaults match rag-service/.env, which is what every measured metric was produced
+# with. _grade() averages cosine over all 20 candidates including the weak tail, so
+# the achievable range on this catalog is 0.32–0.71 (golden set, n=100) — an earlier
+# default of 0.75 was unreachable and would have routed every query to a rewrite.
+# See eval/calibration_cache.json for the distribution.
+_CRAG_HIGH_THRESHOLD = float(os.environ.get("CRAG_HIGH_THRESHOLD", "0.45"))
+_CRAG_LOW_THRESHOLD  = float(os.environ.get("CRAG_LOW_THRESHOLD",  "0.43"))
 _CRAG_MAX_RETRIES    = int(os.environ.get("CRAG_MAX_RETRIES",      "2"))
 _CRAG_TIME_BUDGET_S  = float(os.environ.get("CRAG_TIME_BUDGET_S",  "3.5"))
 
@@ -76,7 +82,10 @@ async def _rewrite_query(query: str) -> str:
                     }
                 ],
                 max_tokens=60,
-                temperature=0.3,
+                # temperature=0 so a cached calibration run can be reproduced
+                # exactly — a rewrite that varies per call would make the
+                # threshold grid non-deterministic.
+                temperature=0,
             ),
             timeout=2.0,
         )

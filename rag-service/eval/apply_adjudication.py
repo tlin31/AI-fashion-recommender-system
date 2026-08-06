@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -17,7 +18,13 @@ GOLDEN_PATH       = Path("eval/golden_queries.json")
 
 
 def main() -> None:
-    with open(ADJUDICATION_PATH) as f:
+    parser = argparse.ArgumentParser(description="Merge labeled candidates into the golden set")
+    parser.add_argument("--input", default=str(ADJUDICATION_PATH),
+                        help="Labeled candidates file (round 3 writes a separate file "
+                             "so earlier rounds stay on record)")
+    args = parser.parse_args()
+
+    with open(args.input) as f:
         adjudicated: list[dict] = json.load(f)
 
     with open(GOLDEN_PATH) as f:

@@ -1,6 +1,6 @@
 # Cross-encoder reranker that scores all retrieved candidates in a single batch forward
-# pass, then applies business rule adjustments (description boost) before selecting
-# the top-k results passed to the generator.
+# pass, applies business rule adjustments (description boost), then collapses to one
+# chunk per product before selecting the top-k results passed to the generator.
 
 from __future__ import annotations
 
@@ -23,7 +23,8 @@ class Reranker:
 
     def rerank(self, query: str, candidates: list[dict], top_k: int = 5) -> list[dict]:
         """Score all candidates in one batch forward pass, apply business rules,
-        return the top_k chunks sorted by adjusted score descending.
+        collapse to one chunk per product, and return the top_k sorted by adjusted
+        score descending.
 
         Batch predict — one forward pass over all candidates, not one per chunk.
         At 20 candidates this takes ~120ms on CPU, well within the latency budget.
@@ -48,10 +49,33 @@ class Reranker:
 
         adjusted.sort(key=lambda x: x["score"], reverse=True)
 
+        # Retrieval allows _MAX_CHUNKS_PER_PRODUCT chunks per product so the
+        # cross-encoder can pick whichever one matches the query better. Only that
+        # winner survives: max-pooling chunk scores up to the product. Without this,
+        # one product occupies several result slots and any downstream consumer
+        # counting product_ids (the eval harness, the UI) sees it more than once.
+        deduped: list[dict] = []
+        seen: set[str] = set()
+        for chunk in adjusted:
+            pid = chunk["product_id"]
+            if pid in seen:
+                continue
+            seen.add(pid)
+            deduped.append(chunk)
+            if len(deduped) == top_k:
+                break
+
+        if len(deduped) < top_k:
+            logger.info(
+                "Reranker: only %d distinct products available from %d candidates "
+                "(requested top_k=%d)",
+                len(deduped), len(candidates), top_k,
+            )
+
         logger.debug(
-            "Reranker: %d candidates → top-%d (scores %.3f … %.3f)",
-            len(candidates), top_k,
-            adjusted[0]["score"], adjusted[min(top_k, len(adjusted)) - 1]["score"],
+            "Reranker: %d candidates → %d distinct products (scores %.3f … %.3f)",
+            len(candidates), len(deduped),
+            deduped[0]["score"], deduped[-1]["score"],
         )
 
-        return adjusted[:top_k]
+        return deduped
