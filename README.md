@@ -1,92 +1,83 @@
-# Gorse Open-source Recommender System Engine
+# AI Fashion Recommender System
 
-<img width=160 src="assets/gorse.png"/>
+A fashion recommendation platform that combines collaborative filtering with LLM-powered
+natural-language search. CF handles behavioural signals; a retrieval-augmented search
+service handles the semantic and cold-start queries CF cannot answer — evaluated against a
+hand-labelled query set with a regression gate, not by inspection.
 
-![](https://img.shields.io/github/go-mod/go-version/zhenghaoz/gorse)
-[![test](https://github.com/gorse-io/gorse/actions/workflows/build_test.yml/badge.svg)](https://github.com/gorse-io/gorse/actions/workflows/build_test.yml)
-[![codecov](https://codecov.io/gh/gorse-io/gorse/branch/master/graph/badge.svg)](https://codecov.io/gh/gorse-io/gorse)
-[![Discord](https://img.shields.io/discord/830635934210588743)](https://discord.gg/x6gAtNNkAE)
-[![Twitter Follow](https://img.shields.io/twitter/follow/gorse_io?label=Follow&style=social)](https://twitter.com/gorse_io)
-[![Gurubase](https://img.shields.io/badge/Gurubase-Ask%20Gorse%20Guru-006BFF)](https://gurubase.io/g/gorse)
+> Built on **[Gorse](https://github.com/gorse-io/gorse)** (Apache 2.0), an open-source
+> recommender engine. The Go engine at the repository root is Gorse; the three subsystems
+> below are this project's own work.
 
-Gorse is an AI powered open-source recommender system written in Go. Gorse aims to be a universal open-source recommender system that can be quickly integrated into a wide variety of online services. By importing items, users, and interaction data into Gorse, the system will automatically train models to generate recommendations for each user. Project features are as follows.
+---
 
-![](https://github.com/gorse-io/docs/blob/main/src/img/dashboard/recflow.png?raw=true)
+## Components
 
-- **Multi-source:** Recommend items from latest, user-to-user, item-to-item, collaborative filtering and etc.
-- **Multimodal:** Support multimodal content (text, image, videos, etc.) via embedding.
-- **AI-powered:** Support both classical recommenders and LLM-based recommenders.
-- **GUI Dashboard:** Provide GUI dashboard for recommendation pipeline editing, system monitoring, and data management.
-- **RESTful APIs:** Expose RESTful APIs for data CRUD and recommendation requests.
+| Subsystem | Stack | What it does |
+|---|---|---|
+| **[rag-service/](rag-service/)** | FastAPI · Milvus · BM25 · GPT-4o-mini | Natural-language product search: guardrail → hybrid retrieval (BM25 + dense, RRF-fused) → CRAG corrective loop → cross-encoder reranker → grounded answer with citations |
+| **[python-agent/](python-agent/)** | LangGraph · FastAPI · PostgreSQL | ReAct agent with multi-turn memory and human-in-the-loop approval before any user preference is written |
+| **[fashion-recommend/](fashion-recommend/)** | Go · Gin · React · PostgreSQL | Domain API over Gorse — auth, social features, LLM trait extraction, and the customer-facing SPA |
 
-## Quick Start
-
-The playground mode has been prepared for beginners. Just set up a recommender system for GitHub repositories by the following commands.
-
-```bash
-docker run -p 8088:8088 zhenghaoz/gorse-in-one --playground
+```
+React SPA ──┬── fashion-recommend :5001 (Go/Gin) ──┬── Gorse :8088  (CF engine)
+            │                                      ├── python-agent :8001 (LangGraph)
+            │                                      └── PostgreSQL
+            └── rag-service :8002 (FastAPI) ───────┬── Milvus (HNSW) + BM25
+                                                   ├── Redis (embedding cache)
+                                                   └── OpenAI (embed + generate)
 ```
 
-The playground mode will download data from [GitRec](https://gitrec.gorse.io/) and import it into Gorse. The dashboard is available at `http://localhost:8088`.
+---
 
-![](https://github.com/gorse-io/docs/blob/main/src/img/dashboard/overview.png?raw=true)
+## What makes it non-trivial
 
-After the "Generate item-to-item recommendation" task is completed on the "Tasks" page, try to insert several feedbacks into Gorse. Suppose Bob is a developer who interested in LLM related repositories. We insert his star feedback to Gorse.
+**A real evaluation harness.** 100 golden queries stratified across navigational /
+exploratory / attribute / edge cases, with graded relevance judgments (0/1/2) produced by
+TREC-style pooling rather than by labelling only what the system happened to return.
+NDCG@10 and Recall@10 are gated against a locked baseline in CI.
+
+**Thresholds calibrated, not guessed.** The CRAG routing thresholds were selected via a
+50-combination offline grid with 1,000-resample bootstrap validation. A cache-and-replay
+design — the thresholds affect routing but never retrieval, so retrieval runs once and every
+combination is replayed offline — cut the cost from 12 evaluation runs to ~1.2. The
+calibration **confirmed** the existing thresholds rather than improving on them, and is
+reported that way.
+
+**Negative results kept.** The CRAG query rewrite degrades retrieval quality on 75 of 100
+queries: rephrasing searches the same closed catalogue and introduces no new information,
+unlike the web-search fallback in the original CRAG paper. The loop is retained with the
+finding documented rather than quietly deleted.
+
+**A metric bug found and fixed.** Duplicate product IDs in ranked lists let six queries
+score above the theoretical maximum of 1.0. Fixing it cost 7 points of reported Recall@10;
+the baseline was re-measured and re-locked accordingly.
+
+Full write-up: **[rag-service/README.md](rag-service/README.md)**
+
+---
+
+## Results
+
+Retrieval quality (provisional — ~60% of returned slots are still unjudged, which makes both
+figures pessimistic by construction; a third pooling round is in progress):
+
+| NDCG@10 | Recall@10 |
+|---:|---:|
+| 0.6930 | 0.6740 |
+
+Load: 0% failures at 1/5/10/20 concurrent users, p50 3.3 s and 1.81 RPS at 10 users.
+Latency is dominated by OpenAI round-trips, not local infrastructure — p50 stays flat as
+concurrency rises.
+
+---
+
+## Running it
 
 ```bash
-read -d '' JSON << EOF
-[
-    { \"FeedbackType\": \"star\", \"UserId\": \"bob\", \"ItemId\": \"ollama:ollama\", \"Value\": 1.0, \"Timestamp\": \"2022-02-24\" },
-    { \"FeedbackType\": \"star\", \"UserId\": \"bob\", \"ItemId\": \"huggingface:transformers\", \"Value\": 1.0, \"Timestamp\": \"2022-02-25\" },
-    { \"FeedbackType\": \"star\", \"UserId\": \"bob\", \"ItemId\": \"rasbt:llms-from-scratch\", \"Value\": 1.0, \"Timestamp\": \"2022-02-26\" },
-    { \"FeedbackType\": \"star\", \"UserId\": \"bob\", \"ItemId\": \"vllm-project:vllm\", \"Value\": 1.0, \"Timestamp\": \"2022-02-27\" },
-    { \"FeedbackType\": \"star\", \"UserId\": \"bob\", \"ItemId\": \"hiyouga:llama-factory\", \"Value\": 1.0, \"Timestamp\": \"2022-02-28\" }
-]
-EOF
-
-curl -X POST http://127.0.0.1:8088/api/feedback \
-   -H 'Content-Type: application/json' \
-   -d "$JSON"
+cd fashion-recommend && make docker-up    # PostgreSQL, Redis, Milvus, Kafka, Gorse
 ```
 
-Then, fetch 10 recommended items from Gorse. We can find that LLM-related repositories are recommended for Bob.
+Per-service setup: [rag-service](rag-service/README.md) · [everything else](CLAUDE.md)
 
-```bash
-curl http://127.0.0.1:8088/api/recommend/bob?n=10
-```
-
-For more information：
-
-- Read [official documents](https://gorse.io/docs/)
-- Visit [playground](https://play.gorse.io/) of Gorse dashboard
-- Explore [live demo](https://gitrec.gorse.io/), a recommender system for GitHub repositories
-- Discuss on [Discord](https://discord.gg/x6gAtNNkAE) or [GitHub Discussion](https://github.com/gorse-io/gorse/discussions)
-
-## Architecture
-
-Gorse is a single-node training and distributed prediction recommender system. Gorse stores data in MySQL, MongoDB, Postgres, or ClickHouse, with intermediate results cached in Redis, MySQL, MongoDB and Postgres.
-
-1. The cluster consists of a master node, multiple worker nodes, and server nodes.
-1. The master node is responsible for model training, non-personalized recommendation, configuration management, and membership management.
-1. The server node is responsible for exposing the RESTful APIs and online real-time recommendations.
-1. Worker nodes are responsible for offline recommendations for each user.
-
-In addition, the administrator can perform system monitoring, data import and export, and system status checking via the dashboard on the master node.
-
-<img width=520 src="https://github.com/gorse-io/docs/blob/main/src/img/cluster.drawio.svg?raw=true"/>
-
-## Contributors
-
-<a href="https://github.com/gorse-io/gorse/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=zhenghaoz/gorse" />
-</a>
-
-Any contribution is appreciated: report a bug, give advice or create a pull request. Read [CONTRIBUTING.md](CONTRIBUTING.md) for more information.
-
-## Acknowledgments
-
-`gorse` is inspired by the following projects:
-
-- [Guibing Guo's librec](https://github.com/guoguibing/librec)
-- [Nicolas Hug's Surprise](https://github.com/NicolasHug/Surprise)
-- [Golang Samples's gopher-vector](https://github.com/golang-samples/gopher-vector)
+Licence: Apache 2.0 — see [LICENSE](LICENSE). Gorse is Apache 2.0, © the Gorse authors.
