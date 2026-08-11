@@ -1,9 +1,17 @@
-# LLM-as-judge faithfulness scoring via Ragas. Measures whether every claim in the
-# generated answer is supported by the retrieved context chunks. Target score >= 0.85.
+# LLM-as-judge faithfulness scoring. Measures whether every claim in the generated
+# answer is supported by the retrieved context chunks. Target score >= 0.85.
 #
-# Primary path: ragas 0.1.9 evaluate() with the default OpenAI LLM.
-# Fallback path: direct OpenAI GPT-4o-mini claim-decomposition judge when ragas
-#   is unavailable or its transitive dependencies are missing.
+# WHICH JUDGE ACTUALLY RUNS: the direct two-step GPT-4o-mini judge below
+# (_direct_faithfulness) — extract claims from the answer, then verify each against
+# the context. ragas is deliberately NOT installed (see requirements.txt), so the
+# ragas path never executes and eval/baseline_metrics.json was measured with the
+# direct judge. Installing ragas silently switches judges and makes new faithfulness
+# numbers incomparable to the locked baseline.
+#
+# Known bias: _direct_faithfulness returns 1.0 when claim extraction yields nothing
+# or the response fails to parse ("vacuously faithful"). Short answers therefore skew
+# high — all 20 navigational queries scored exactly 1.0000 in the 2026-08-11 run — so
+# the aggregate is somewhat optimistic. Kept as-is rather than changed mid-baseline.
 
 from __future__ import annotations
 

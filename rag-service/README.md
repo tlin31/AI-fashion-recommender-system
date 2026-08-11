@@ -27,17 +27,17 @@ POST /query
   │
   ├─ 3. CRAG Corrective Loop
   │      Grades the top candidates by cosine similarity to the query.
-  │      High score  → proceed directly to reranking.
-  │      Medium score → GPT-4o-mini rewrites the query and retries retrieval
-  │                     (up to CRAG_MAX_RETRIES times).
-  │      Low score   → falls back to non-personalized trending products.
+  │      High score  → proceed directly to reranking ("synthesize").
+  │      Medium score → GPT-4o-mini rewrites the query and retries retrieval.
+  │      Low score   → returns the best real candidates ("best_effort").
+  │      Trending products are used ONLY when retrieval returns nothing at all.
   │
   ├─ 4. Cross-Encoder Reranker
   │      ms-marco-MiniLM-L-6-v2 rescores all 20 candidates in one batch
-  │      forward pass. Business rule adjustments applied after scoring:
-  │        + boost for products added in the last 30 days
-  │        - demote for low-stock items
-  │      Returns top-5 to the generator.
+  │      forward pass. Business rule applied after scoring:
+  │        + 0.05 boost for description chunks over review chunks
+  │      Then collapses to one chunk per product (highest scorer wins) so
+  │      top_k counts distinct products. Returns top-k to the generator.
   │
   └─ 5. Generator
          GPT-4o-mini synthesises a grounded answer from the top-5 chunks.
@@ -166,7 +166,7 @@ Submit a natural language product search query.
 }
 ```
 
-`retrieval_path` indicates which CRAG branch was taken: `"synthesize"` (high confidence), `"retry"` (query was rewritten), or `"fallback"` (low confidence, trending products returned).
+`retrieval_path` indicates which CRAG branch was taken: `"synthesize"` (high confidence), `"retry"` (query was rewritten), `"best_effort"` (low confidence — real candidates, weak signal), or `"fallback"` (retrieval returned nothing; trending products).
 
 ### `POST /ingest`
 
@@ -201,7 +201,7 @@ Returns the status of each downstream dependency.
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENAI_API_KEY` | — | **Required.** Used for `text-embedding-3-small` embeddings, GPT-4o-mini generation, and Ragas evaluation. |
+| `OPENAI_API_KEY` | — | **Required.** Used for `text-embedding-3-small` embeddings, GPT-4o-mini generation, and the faithfulness judge. |
 | `MILVUS_HOST` | `localhost` | Milvus host |
 | `MILVUS_PORT` | `19530` | Milvus gRPC port |
 | `MILVUS_COLLECTION` | `fashion_rag` | Collection name. Do not change after the index is built without a full re-embed. |
@@ -220,7 +220,7 @@ CRAG thresholds were selected empirically — see [CRAG Threshold Calibration](#
 
 ## Running tests
 
-All 54 tests run in under 3 seconds with no external services required — OpenAI and Milvus are mocked.
+All 116 tests run in about 10 seconds with no external services required — OpenAI and Milvus are mocked.
 
 ```bash
 # Run the full suite
@@ -350,6 +350,77 @@ All runs: 0% failure rate. Full pipeline active: BM25 + Milvus + cross-encoder +
 
 ---
 
+## Evaluation (2026-08-11)
+
+Measured against a hand-labelled golden query set: 100 queries stratified across
+navigational / exploratory / attribute / edge cases, with graded relevance judgments
+(0 / 1 / 2) built by TREC-style pooling over three adjudication rounds — **1,481
+(query, product) judgments, 14.8 per query.**
+
+| Metric | Value | Target | |
+|---|---:|---:|---|
+| NDCG@10 | 0.8468 | ≥ 0.50 | pass |
+| Recall@10 | 0.6993 | ≥ 0.70 | **miss by 0.0007** |
+| Faithfulness | 0.9580 | ≥ 0.85 | pass |
+
+By query type:
+
+| Type | n | NDCG@10 | Recall@10 | Faithfulness |
+|---|---:|---:|---:|---:|
+| navigational | 20 | 0.9393 | 0.8249 | 1.0000 |
+| attribute | 30 | 0.8998 | 0.7837 | 0.9779 |
+| exploratory | 30 | 0.8157 | 0.5990 | 0.9368 |
+| edge | 20 | 0.7214 | 0.5977 | 0.9180 |
+
+### Why Recall@10 is structurally capped at 0.7615
+
+Recall@10 misses its target, and the reason is arithmetic rather than retrieval quality.
+
+`Recall@10 = hits in top-10 / total relevant`. The denominator counts **every** product
+judged relevant for that query, including ones that cannot fit in ten slots. After round 3
+the golden set averages **13.4 relevant products per query** (median 14, max 21), and
+**81 of 100 queries have more than 10 relevant products.**
+
+Ten slots cannot hold 13.4 items, so the maximum attainable score is:
+
+```
+max Recall@10 = mean( min(10, |relevant|) / |relevant| ) = 0.7615
+```
+
+Against that ceiling, 0.6993 is **91.8% of what is mathematically achievable**. The ≥0.70
+target was set when the label set averaged 5.8 judgments per query and the ceiling was
+close to 1.0; denser labelling lowered the ceiling without changing retrieval at all.
+
+The target is deliberately left at 0.70 rather than lowered to match the result — moving a
+threshold to fit an outcome is not a fix. The honest statements are that Recall@10 is
+0.6993, that its ceiling is 0.7615, and that **Recall@k is the wrong headline metric once
+the number of relevant items routinely exceeds k**. NDCG@10 does not have this problem: it
+normalises by the ideal ranking truncated at k, so it stays interpretable.
+
+### Faithfulness judge — what actually runs
+
+The scorer is **not** Ragas, despite the original filename. `ragas` is deliberately left
+uninstalled (commented out in `requirements.txt`), so `eval/faithfulness_judge.py` runs its
+own two-step GPT-4o-mini judge: extract the factual claims from the answer, then verify
+each against the retrieved context. Score = supported claims / total claims.
+
+Installing `ragas` silently switches judges and makes new numbers incomparable to the
+locked baseline — hence the comment rather than a deletion.
+
+Known bias: the judge returns 1.0 when claim extraction yields nothing or the response
+fails to parse. Short answers therefore skew high — all 20 navigational queries scored
+exactly 1.0000 — so 0.9580 is somewhat optimistic.
+
+### Labelling honesty note
+
+Round 3 judged **89% of pooled candidates as relevant** (474 of 903 at the top grade),
+against the 10–30% typical of a TREC pool. Pooling only from this system's own output and
+then grading generously means the system is partly measured against a standard it defined.
+A strict re-scoring — counting only grade 2 as relevant — gives NDCG@10 **0.8033** and
+Recall@10 **0.7785**, so the conclusion does not depend on the lenient 0-versus-1 boundary.
+
+---
+
 ## CRAG Threshold Calibration (2026-08-06)
 
 The CRAG thresholds were not chosen by intuition. This section records the method, the
@@ -417,34 +488,63 @@ code change.
 
 ### Results
 
+Scored against the completed label set — 1,481 graded (query, product) judgments over 100
+queries, after a third pooling round took coverage from 5.8 to 14.8 labels per query. The
+grid was built *before* that labeling, deliberately: pooling over the union of both
+candidate sets (`eval/pull_adjudication_round3.py`) removes a bias that would otherwise
+penalise combos for surfacing unjudged products, since retry returns rewritten-query
+results that are likelier to be unlabelled.
+
 | Config | NDCG@10 | Recall@10 | Retry rate | Expected added latency |
 |---|---:|---:|---:|---:|
-| `mean20 / 0.45 / 0.10` (previous) | **0.6975** | 0.6794 | 0.30 | 309.6 ms |
-| **`mean20 / 0.45 / 0.43` (selected)** | 0.6931 | 0.6740 | **0.05** | **51.6 ms** |
-| `max / 0.5124 / 0.5064` | 0.6943 | 0.6748 | 0.05 | 51.6 ms |
+| `mean20 / 0.45 / 0.10` (pre-calibration) | 0.8459 | 0.6983 | 0.30 | 309.6 ms |
+| **`mean20 / 0.45 / 0.43` (selected)** | **0.8468** | 0.6993 | **0.05** | **51.6 ms** |
+| `mean20 / 0.50 / 0.43` | 0.8483 | 0.6999 | 0.23 | 237.4 ms |
 
 Bootstrap, 1,000 resamples of the query set with threshold selection re-run on each:
 
-- Best-combo improvement over the previous config: **+0.0017, 95% CI [+0.0000, +0.0110]** —
-  the interval **includes zero**.
-- Selection stability: the previous config won **60.8%** of resamples.
-- NDCG spread across all 50 combos: **0.6634 – 0.6975**, a range of only **0.034**.
+- Improvement over the pre-calibration config: **+0.0058, 95% CI [+0.0009, +0.0140]** —
+  the interval **excludes zero**.
+- Selection stability: the winning combo took only **21.2%** of resamples.
 
-**Conclusion: no configuration beats the incumbent outside noise.** The calibration
-confirmed the thresholds rather than improving them, which is a legitimate outcome and is
-reported as such.
+**Conclusion: the selected config is a real improvement, but the precise optimum is not
+identified.** The direction is solid — raising LOW to 0.43 beats the previous setting
+outside the noise band while cutting the retry rate from 30% to 5% and expected added
+latency from 310 ms to 52 ms. Which combo is *best*, however, is near-tied: several
+configurations sit within 0.002 NDCG of each other, and no single one wins a majority of
+resamples. Reported as such rather than presenting a point estimate as settled.
+
+The higher-NDCG alternatives all violate the retry-rate constraint — `mean20 / 0.50 / 0.43`
+buys +0.0015 NDCG for 4.6× the retry rate and 185 ms of added latency.
+
+**Labeling honesty note.** Round 3 judged 89% of pooled candidates as relevant (474 of 903
+at the top grade), well above the 10–30% typical of TREC pools. Pooling only from this
+system's own output and then grading generously means the system is partly measured against
+a standard it defined. A sensitivity check holds the conclusion: scoring strictly (only
+grade 2 counts as relevant) gives NDCG@10 0.8033 and Recall@10 0.7785, so the result does
+not depend on the lenient 0-versus-1 boundary.
+
+*Historical note:* an earlier version of this section reported NDCG 0.6931 / Recall 0.6740
+against an incomplete label set, where ~60% of returned slots were unjudged and therefore
+scored as irrelevant. Those figures were pessimistic by construction.
 
 ### What changed, and why
 
 `CRAG_LOW_THRESHOLD` was raised from `0.10` to `0.43`.
 
-The quality difference is −0.0044 NDCG, which sits inside the bootstrap noise band and is
-therefore **statistically indistinguishable from zero**. The latency saving is 258 ms of
-expected added latency per query and a retry rate drop from 30% to 5%, which is
-**deterministic and measurable**. Trading an unprovable quality loss for a certain latency
-gain is the favourable side of that trade.
+The decision was made on the incomplete label set, where the quality difference read as
+−0.0044 NDCG — inside the noise band, and therefore an unprovable loss traded against a
+deterministic 258 ms latency saving and a retry-rate drop from 30% to 5%. That was the
+right call on the evidence available.
 
-Confirmation run against the live service after the change:
+Re-scoring against the completed labels reversed the sign: the change is now **+0.0009
+NDCG with a 95% CI excluding zero**, so it improves quality *and* latency. Worth noting
+that the original justification did not depend on this — the trade was defensible when the
+quality term was believed to be slightly negative.
+
+Confirmation run against the live service after the change (incomplete label set, so the
+absolute values are lower than those reported above — the point is the agreement, not the
+level):
 
 | | Simulated | Live | Diff |
 |---|---:|---:|---:|

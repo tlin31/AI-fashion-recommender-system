@@ -44,7 +44,7 @@ locust -f eval/locustfile.py --host http://localhost:8002
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENAI_API_KEY` | — | Used for `text-embedding-3-small` embeddings + GPT-4o-mini generation + Ragas LLM-as-judge |
+| `OPENAI_API_KEY` | — | Used for `text-embedding-3-small` embeddings + GPT-4o-mini generation + the faithfulness LLM-as-judge |
 | `MILVUS_HOST` | `localhost` | Milvus host (existing Docker Compose service) |
 | `MILVUS_PORT` | `19530` | Milvus gRPC port |
 | `MILVUS_COLLECTION` | `fashion_rag` | Milvus collection name — never change after index is built without a full re-embed |

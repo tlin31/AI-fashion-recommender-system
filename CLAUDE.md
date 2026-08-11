@@ -190,13 +190,19 @@ locust -f eval/locustfile.py --host http://localhost:8002 --users 10 --spawn-rat
 
 #### Eval Baseline (locked, do not overwrite without re-running adjudication)
 
-| Metric | Value |
-|---|---|
-| NDCG@10 | 0.7302 |
-| Recall@10 | 0.7511 |
-| Faithfulness | 0.9527 |
+| Metric | Value | Target | |
+|---|---|---|---|
+| NDCG@10 | 0.8468 | ≥ 0.50 | pass |
+| Recall@10 | 0.6993 | ≥ 0.70 | miss by 0.0007 |
+| Faithfulness | 0.9580 | ≥ 0.85 | pass |
 
-Baseline lives in `rag-service/eval/baseline_metrics.json`. Relevance judgments (0/1/2) live inline in `rag-service/eval/golden_queries.json` under each query's `relevance` key — 578 (query, ASIN) judgments over 316 unique ASINs, across 2 adjudication rounds.
+Locked 2026-08-11 in `rag-service/eval/baseline_metrics.json`. Relevance judgments (0/1/2) live inline in `rag-service/eval/golden_queries.json` under each query's `relevance` key — **1,481 (query, ASIN) judgments, 14.8 per query, across 3 adjudication rounds**.
+
+**Recall@10 is structurally capped at 0.7615.** The golden set now averages 13.4 relevant products per query and 81 of 100 queries have more than 10 relevant products, so ten slots cannot hold them all: `max = mean(min(10,|rel|)/|rel|) = 0.7615`. The measured 0.6993 is 91.8% of that ceiling. The ≥0.70 target was set when labels averaged 5.8 per query and the ceiling was near 1.0; denser labelling lowered the ceiling without changing retrieval. Target deliberately NOT lowered to match the result. Full analysis in `rag-service/README.md` § Evaluation.
+
+**Faithfulness is not Ragas.** `ragas` is commented out in `requirements.txt` on purpose; `eval/faithfulness_judge.py` (renamed from `ragas_judge.py`) runs a two-step GPT-4o-mini claim-extraction-and-verification judge. Installing ragas silently switches judges and invalidates comparison against this baseline. Known bias: returns 1.0 when claim extraction yields nothing, so short answers skew high.
+
+**Labelling caveat:** round 3 judged 89% of pooled candidates relevant, above the 10–30% typical of TREC pools. Strict re-scoring (grade 2 only) gives NDCG 0.8033 / Recall 0.7785 — the conclusion holds.
 
 #### CRAG thresholds (env-configurable)
 
