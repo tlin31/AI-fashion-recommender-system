@@ -33,7 +33,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from eval.metrics import ndcg_at_k, recall_at_k  # noqa: E402
-from eval.ragas_judge import faithfulness_score  # noqa: E402
+from eval.faithfulness_judge import faithfulness_score  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

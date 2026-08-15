@@ -156,3 +156,12 @@ changes.md
 # ── Go build artefacts ────────────────────────────────────────────────────────
 fashion-recommend/bin/
 *.log
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+
+# ── Datasets and derived media (regenerable, and not ours to redistribute) ────
+# Myntra Kaggle dataset — 3.0 GB, source data for data/normalize.py and seeding.
+Myntra Fashion Product Dataset/
+# Product images copied out of the dataset by fashion-recommend/data/seed_gorse.py.
+# Regenerate by re-running the seed script rather than committing 32 MB of JPEGs.
+fashion-recommend/public/images/*.jpg

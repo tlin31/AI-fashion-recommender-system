@@ -17,11 +17,23 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from pipeline.crag import _grade, run_crag
+from pipeline.crag import (
+    _CRAG_HIGH_THRESHOLD,
+    _CRAG_LOW_THRESHOLD,
+    _grade,
+    run_crag,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+# Scores are derived from the live thresholds rather than hardcoded. Calibration
+# moved the retry band from [0.45, 0.75] to [0.43, 0.45]; hardcoded values silently
+# changed which branch they exercised, so these tests now follow the config.
+_SCORE_HIGH       = min(_CRAG_HIGH_THRESHOLD + 0.10, 1.0)
+_SCORE_BORDERLINE = (_CRAG_LOW_THRESHOLD + _CRAG_HIGH_THRESHOLD) / 2
+_SCORE_LOW        = max(_CRAG_LOW_THRESHOLD - 0.10, 0.0)
 
 def _make_chunks(milvus_score: float, n: int = 3) -> list[dict]:
     """Return n identical chunks with a fixed milvus_score."""
@@ -70,7 +82,7 @@ def test_grade_missing_milvus_score_treated_as_zero():
 
 async def test_high_score_returns_synthesize_path():
     """Candidates above HIGH_THRESHOLD — pass through with no rewrite."""
-    chunks = _make_chunks(milvus_score=0.85)
+    chunks = _make_chunks(milvus_score=_SCORE_HIGH)
 
     with patch("pipeline.crag._rewrite_query", new_callable=AsyncMock) as mock_rewrite, \
          patch("pipeline.crag._fetch_trending_fallback", new_callable=AsyncMock) as mock_fallback:
@@ -89,7 +101,7 @@ async def test_high_score_returns_synthesize_path():
 
 async def test_low_score_returns_best_effort_path():
     """Candidates below LOW_THRESHOLD — return original candidates as best_effort, no rewrite."""
-    chunks = _make_chunks(milvus_score=0.30)
+    chunks = _make_chunks(milvus_score=_SCORE_LOW)
 
     with patch("pipeline.crag._rewrite_query", new_callable=AsyncMock) as mock_rewrite, \
          patch("pipeline.crag._fetch_trending_fallback", new_callable=AsyncMock) as mock_fallback:
@@ -128,8 +140,8 @@ async def test_empty_candidates_returns_fallback_immediately():
 
 async def test_medium_score_retry_returns_retry_path():
     """Initial score is borderline; rewritten query retrieves high-quality chunks."""
-    initial_chunks = _make_chunks(milvus_score=0.60)  # between 0.45 and 0.75
-    good_chunks    = _make_chunks(milvus_score=0.80)  # above HIGH_THRESHOLD
+    initial_chunks = _make_chunks(milvus_score=_SCORE_BORDERLINE)  # inside the retry band
+    good_chunks    = _make_chunks(milvus_score=_SCORE_HIGH)        # above HIGH_THRESHOLD
 
     with patch("pipeline.crag._rewrite_query",
                new_callable=AsyncMock, return_value="rewritten query"), \
@@ -150,8 +162,8 @@ async def test_medium_score_retry_returns_retry_path():
 
 async def test_medium_score_retry_bad_result_returns_best_effort():
     """Initial score borderline; rewrite produces worse results — return pre-rewrite candidates."""
-    initial_chunks = _make_chunks(milvus_score=0.60)
-    bad_chunks     = _make_chunks(milvus_score=0.20)  # below LOW_THRESHOLD
+    initial_chunks = _make_chunks(milvus_score=_SCORE_BORDERLINE)
+    bad_chunks     = _make_chunks(milvus_score=_SCORE_LOW)  # below LOW_THRESHOLD
 
     with patch("pipeline.crag._rewrite_query",
                new_callable=AsyncMock, return_value="rewritten query"), \
@@ -176,7 +188,7 @@ async def test_medium_score_retry_bad_result_returns_best_effort():
 
 async def test_time_budget_exceeded_returns_best_effort():
     """If the time budget is already exhausted before the first retry, return best candidates so far."""
-    initial_chunks = _make_chunks(milvus_score=0.60)  # borderline — would retry
+    initial_chunks = _make_chunks(milvus_score=_SCORE_BORDERLINE)  # borderline — would retry
 
     # Simulate start=0.0, then elapsed check returns 100s — way over any budget.
     with patch("pipeline.crag.time") as mock_time, \

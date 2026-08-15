@@ -29,7 +29,10 @@ aiokafka==0.11.0            # async Kafka consumer (replaces kafka-python)
 redis==5.0.4
 
 # Evaluation
-ragas==0.1.9
+# ragas==0.1.9    # NOT installed on purpose — eval/faithfulness_judge.py falls back to
+#                 # its own two-step GPT-4o-mini judge, which is what the locked baseline
+#                 # was measured with. Installing ragas silently switches judges and makes
+#                 # faithfulness incomparable to eval/baseline_metrics.json.
 locust==2.28.0
 
 # Utilities

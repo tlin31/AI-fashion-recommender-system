@@ -59,12 +59,16 @@ Full write-up: **[rag-service/README.md](rag-service/README.md)**
 
 ## Results
 
-Retrieval quality (provisional — ~60% of returned slots are still unjudged, which makes both
-figures pessimistic by construction; a third pooling round is in progress):
+Retrieval quality over 100 golden queries and 1,481 graded relevance judgments:
 
 | NDCG@10 | Recall@10 |
 |---:|---:|
-| 0.6930 | 0.6740 |
+| 0.8468 | 0.6993 |
+
+One caveat stated up front: 89% of pooled candidates were judged relevant, well above the
+10–30% typical of TREC pools, so the system is partly measured against a standard it
+defined — a strict re-scoring (top grade only) gives NDCG 0.8033 and Recall 0.7785, which
+is the check that the conclusion does not rest on a lenient boundary.
 
 Load: 0% failures at 1/5/10/20 concurrent users, p50 3.3 s and 1.81 RPS at 10 users.
 Latency is dominated by OpenAI round-trips, not local infrastructure — p50 stays flat as

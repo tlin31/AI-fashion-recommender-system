@@ -6,12 +6,31 @@ from __future__ import annotations
 import math
 
 
+def _assert_no_duplicates(retrieved_ids: list[str], k: int) -> None:
+    """Both metrics assume a deduplicated ranked list — the standard IR convention.
+
+    A repeated document double-counts its relevance in the numerator while the
+    denominator (IDCG / |relevant|) counts it once, so the result can exceed the
+    theoretical maximum of 1.0. This silently inflated the locked baseline until
+    2026-08-03; failing loudly is cheaper than re-deriving it a second time.
+    """
+    window = retrieved_ids[:k]
+    if len(window) != len(set(window)):
+        dupes = sorted({pid for pid in window if window.count(pid) > 1})
+        raise ValueError(
+            f"retrieved_ids contains duplicate product IDs within the top-{k} "
+            f"window: {dupes}. Deduplicate before scoring."
+        )
+
+
 def recall_at_k(retrieved_ids: list[str], relevant_ids: set[str], k: int) -> float:
+    _assert_no_duplicates(retrieved_ids, k)
     hits = sum(1 for pid in retrieved_ids[:k] if pid in relevant_ids)
     return hits / len(relevant_ids) if relevant_ids else 0.0
 
 
 def ndcg_at_k(retrieved_ids: list[str], relevance: dict[str, int], k: int) -> float:
+    _assert_no_duplicates(retrieved_ids, k)
     # Standard NDCG with exponential gain and log2 position discount.
     # Numerator:   2^rel - 1  (exponential gain; amplifies highly-relevant items)
     # Denominator: log2(i+2)  (i is 0-based, so rank = i+1, discount = log2(rank+1))

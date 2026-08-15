@@ -44,7 +44,7 @@ locust -f eval/locustfile.py --host http://localhost:8002
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENAI_API_KEY` | — | Used for `text-embedding-3-small` embeddings + GPT-4o-mini generation + Ragas LLM-as-judge |
+| `OPENAI_API_KEY` | — | Used for `text-embedding-3-small` embeddings + GPT-4o-mini generation + the faithfulness LLM-as-judge |
 | `MILVUS_HOST` | `localhost` | Milvus host (existing Docker Compose service) |
 | `MILVUS_PORT` | `19530` | Milvus gRPC port |
 | `MILVUS_COLLECTION` | `fashion_rag` | Milvus collection name — never change after index is built without a full re-embed |
@@ -52,8 +52,8 @@ locust -f eval/locustfile.py --host http://localhost:8002
 | `REDIS_URL` | `redis://localhost:6379` | TTL cache for frequent RAG query results |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Async ingestion write path |
 | `PINECONE_API_KEY` | — | Phase 2 only — leave unset in Phase 1 |
-| `CRAG_HIGH_THRESHOLD` | `0.75` | Cosine score above this → synthesize directly |
-| `CRAG_LOW_THRESHOLD` | `0.45` | Cosine score below this → fall back to trending |
+| `CRAG_HIGH_THRESHOLD` | `0.45` | Cosine score above this → synthesize directly |
+| `CRAG_LOW_THRESHOLD` | `0.43` | Cosine score below this → return `best_effort` candidates (NOT trending) |
 | `CRAG_MAX_RETRIES` | `2` | Hard cap on CRAG retry attempts |
 | `CRAG_TIME_BUDGET_S` | `3.5` | Hard wall-clock cap on CRAG loop (seconds) |
 
@@ -76,18 +76,24 @@ POST /query
   │      → fused via RRF (k=60), returns top-20 candidates
   │
   ├─ 3. CRAG Corrective Loop (pipeline/crag.py)
-  │      Grade top candidates by cosine similarity to query embedding.
-  │      score > CRAG_HIGH_THRESHOLD  → proceed to reranker
-  │      score in [LOW, HIGH]         → rewrite query (GPT-4o-mini) + retry retrieval
+  │      Grade = mean Milvus cosine over all 20 candidates (no extra API call).
+  │      score >= CRAG_HIGH_THRESHOLD → proceed to reranker  ("synthesize")
+  │      score in [LOW, HIGH)         → rewrite query (GPT-4o-mini) + retry retrieval
   │      score < CRAG_LOW_THRESHOLD
-  │        or max retries hit         → fall back to non-personalized trending products
+  │        or max retries hit         → return best retrieved candidates ("best_effort")
+  │      Trending fallback fires ONLY when retrieval returns zero candidates.
+  │      Observed score range on the golden set: 0.3205 – 0.7091 (p50 0.5125).
+  │      LOW=0.43 leaves a deliberately narrow retry band (0.43–0.45): calibration
+  │      showed the rewrite is net harmful, so the loop is mostly disabled.
+  │      Path distribution: 70 synthesize / 2 retry / 28 best_effort.
   │
   ├─ 4. Cross-Encoder Reranker (pipeline/reranker.py)
   │      ms-marco-MiniLM-L-6-v2 scores all 20 candidates in one batch forward pass.
-  │      Business rules applied as score adjustments after cross-encoder:
-  │        boost: days_since_added < 30
-  │        demote: stock_level = low
-  │      Returns top-5 to generator.
+  │      Business rule applied as a score adjustment after the cross-encoder:
+  │        boost +0.05 if chunk_type == "description"  (descriptions outrank reviews)
+  │      Then collapses to ONE chunk per product (highest scorer wins) before
+  │      truncating to top_k — max-pooling chunk scores up to the product, so
+  │      top_k counts distinct products. Returns top-k to generator.
   │
   └─ 5. Generator (pipeline/generator.py)
          GPT-4o-mini synthesises a grounded answer from top-5 chunks.

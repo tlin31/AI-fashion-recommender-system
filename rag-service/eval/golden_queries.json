@@ -5,7 +5,23 @@
     "type": "navigational",
     "relevance": {
       "B09KHSM7BB": 2,
-      "B009R09Z8W": 1
+      "B009R09Z8W": 1,
+      "B09QYBMK78": 2,
+      "B08XBYZ78P": 2,
+      "B0849TXH29": 2,
+      "B07K48CRFR": 1,
+      "B09195BJ6D": 1,
+      "B08D88TTPN": 1,
+      "B09RHXV42L": 1,
+      "B08DK2YB53": 1,
+      "B08GH32WN3": 2,
+      "B07NWC6Y34": 1,
+      "B07R1WBB9F": 2,
+      "B091J3WQDV": 1,
+      "B08KH1K836": 2,
+      "B09957YH5D": 2,
+      "B0BGZKDB2R": 1,
+      "B0825RNT1C": 0
     },
     "notes": "Brand + product type lookup; BM25 should rank this highly."
   },
@@ -15,7 +31,16 @@
     "type": "navigational",
     "relevance": {
       "B09M6X79V9": 2,
-      "B07BM9GWG7": 1
+      "B07BM9GWG7": 1,
+      "B0B2KL8C8Q": 2,
+      "B093T1SMCY": 1,
+      "B08GJ5GRQF": 2,
+      "B0928FSGGD": 2,
+      "B09MJ6NSNM": 1,
+      "B07PN8KRSY": 1,
+      "B0849TXH29": 1,
+      "B085455TJD": 1,
+      "B0854G5W5M": 1
     },
     "notes": "Brand + multi-pack compression tank; BM25 wins on exact terms."
   },
@@ -26,7 +51,20 @@
     "relevance": {
       "B081XYDBL2": 2,
       "B092ZNLS7B": 2,
-      "B095NW2T8S": 1
+      "B095NW2T8S": 1,
+      "B07YFRBZWL": 2,
+      "B08V8MN2TS": 2,
+      "B08W59PM7Z": 2,
+      "B093KHNNF5": 2,
+      "B08PNP8CCP": 2,
+      "B08PYTNKFC": 0,
+      "B08L34W59C": 2,
+      "B088THWP7K": 2,
+      "B07HK222T1": 2,
+      "B08CZQ75DV": 2,
+      "B0BVMLJTFS": 2,
+      "B08BHV7NV3": 2,
+      "B07VNVW9L5": 2
     },
     "notes": "Brand + distinctive descriptor; two MOSHENGQI variants both score 2."
   },
@@ -36,7 +74,19 @@
     "type": "navigational",
     "relevance": {
       "B08F1V3KB9": 2,
-      "B0B16Q1854": 1
+      "B0B16Q1854": 1,
+      "B08BHYCKZ1": 1,
+      "B08PS9522X": 1,
+      "B087CYHKTJ": 1,
+      "B087CYVW1K": 1,
+      "B097BMDMKB": 1,
+      "B08DKT1T3B": 1,
+      "B09H65TD9M": 2,
+      "B07RWNMQM8": 1,
+      "B08HQBHMM1": 2,
+      "B08W59PM7Z": 2,
+      "B087BM2B6M": 1,
+      "B0BF358FD6": 1
     },
     "notes": "Brand + product type; BM25 should rank Oalka first."
   },
@@ -46,7 +96,18 @@
     "type": "navigational",
     "relevance": {
       "B0BGQ3MBH3": 2,
-      "B09C8LRXN4": 1
+      "B09C8LRXN4": 1,
+      "B09KV65DSW": 2,
+      "B08PK1DL6W": 2,
+      "B08PK27447": 2,
+      "B08FQRNDDH": 2,
+      "B07MNN711Z": 2,
+      "B077YH8HYG": 2,
+      "B07HRG9VWX": 2,
+      "B07TBZR8DV": 2,
+      "B01CPSR7HI": 2,
+      "B09CFTX9H1": 2,
+      "B071F7Y4V8": 2
     },
     "notes": "Brand + distinctive product descriptor."
   },
@@ -56,7 +117,17 @@
     "type": "navigational",
     "relevance": {
       "B009R09Z8W": 2,
-      "B09KHSM7BB": 1
+      "B09KHSM7BB": 1,
+      "B08GH32WN3": 2,
+      "B0BVGKVF6B": 1,
+      "B00W9DZWZY": 1,
+      "B09BC2STXP": 2,
+      "B09FKVF3KV": 1,
+      "B09WVSMG56": 1,
+      "B0BGFP2Y6T": 2,
+      "B07R1WBB9F": 1,
+      "B08D88TTPN": 0,
+      "B0B68L6V1X": 0
     },
     "notes": "Brand + material composition query; BM25 should find exact match."
   },
@@ -66,7 +137,16 @@
     "type": "navigational",
     "relevance": {
       "B06W57G8QX": 2,
-      "B09QFJGKM5": 1
+      "B09QFJGKM5": 1,
+      "B096DXJQTY": 2,
+      "B07DM62Q4N": 2,
+      "B0888FWJ91": 2,
+      "B07Q11RP88": 2,
+      "B07WSTZZSJ": 2,
+      "B07SZ5B1SM": 2,
+      "B08KDJWXF6": 2,
+      "B01BGY15EI": 2,
+      "B09ZQL865G": 2
     },
     "notes": "Brand + technical spec (mmHg); BM25 excels at numeric specs."
   },
@@ -75,7 +155,19 @@
     "query": "HotStyle BESTIE mini backpack purse multiple colors patterns",
     "type": "navigational",
     "relevance": {
-      "B09TXPYLQF": 2
+      "B09TXPYLQF": 2,
+      "B0788P68N6": 2,
+      "B077JLWM29": 2,
+      "B07Y32HGT3": 1,
+      "B07TWRKHHN": 2,
+      "B07H97HSZC": 1,
+      "B07GZ7WHT9": 1,
+      "B07MVSDPXZ": 1,
+      "B09J4HQ53S": 0,
+      "B077JLYH4Z": 1,
+      "B07N34FG1N": 1,
+      "B08KH3YRZZ": 1,
+      "B08TB9J6KH": 1
     },
     "notes": "Brand + model name lookup; very specific navigational query."
   },
@@ -84,7 +176,16 @@
     "query": "DEVOPS men UPF 50 long sleeve sun protection fishing hiking t-shirt",
     "type": "navigational",
     "relevance": {
-      "B0BYCZ2W78": 2
+      "B0BYCZ2W78": 2,
+      "B09WR7MP76": 1,
+      "B0924VW6MS": 1,
+      "B0869B8377": 1,
+      "B08L78KVH1": 2,
+      "B09KNNKNGF": 0,
+      "B088W5X8BN": 1,
+      "B091YBDDCS": 1,
+      "B094R1KCZN": 0,
+      "B087BDVQY5": 0
     },
     "notes": "Brand + UPF rating + use case; BM25 matches on UPF and brand."
   },
@@ -93,7 +194,17 @@
     "query": "HOMELEX jersey knit head wrap turban scarf tie women",
     "type": "navigational",
     "relevance": {
-      "B08GPZL157": 2
+      "B08GPZL157": 2,
+      "B082KRC1KC": 2,
+      "B07PLQ21SV": 1,
+      "B087RGPLW6": 2,
+      "B07CBPW7MG": 2,
+      "B07GS6K5B9": 1,
+      "B07H2WRMHQ": 1,
+      "B07Y8KKD1V": 1,
+      "B08LW3HXGF": 1,
+      "B000NRTA8S": 0,
+      "B0BVBVF8X9": 1
     },
     "notes": "Brand + product type; distinctive multi-keyword query."
   },
@@ -102,7 +213,20 @@
     "query": "LA ACTIVE baby girls cable knit winter tights non-skid grip toddler",
     "type": "navigational",
     "relevance": {
-      "B086SHHWRH": 2
+      "B086SHHWRH": 2,
+      "B07S8824S6": 2,
+      "B0BH8CV3D7": 2,
+      "B07SDLR1XX": 2,
+      "B08V5J2V4Q": 2,
+      "B07KWXYVRR": 2,
+      "B08F38RYP1": 2,
+      "B09D7ZDTSV": 0,
+      "B0791BYG83": 2,
+      "B08FM2T6RX": 1,
+      "B09MW7FHML": 1,
+      "B08GZ16DX3": 0,
+      "B09MCT929F": 2,
+      "B0BFDHPMM4": 1
     },
     "notes": "Brand + specific feature (non-skid grip); BM25 wins on brand + keyword combo."
   },
@@ -112,7 +236,18 @@
     "type": "navigational",
     "relevance": {
       "B0BVMLJTFS": 2,
-      "B081XYDBL2": 1
+      "B081XYDBL2": 1,
+      "B08CZQ75DV": 2,
+      "B083L85V7S": 1,
+      "B08V8MN2TS": 2,
+      "B088THWP7K": 2,
+      "B086W3BRFZ": 2,
+      "B08BHV7NV3": 2,
+      "B08CDZ9HBP": 1,
+      "B08BJ54RKY": 2,
+      "B08GYDBHQR": 1,
+      "B08W59PM7Z": 1,
+      "B07SMRDFH1": 1
     },
     "notes": "Brand + product line name; BM25 should match 'vital seamless'."
   },
@@ -122,7 +257,17 @@
     "type": "navigational",
     "relevance": {
       "B0BG5PWPN5": 2,
-      "B0B3DJBN32": 1
+      "B0B3DJBN32": 1,
+      "B09FXHJ88D": 2,
+      "B083J6Z86S": 2,
+      "B08516JL48": 1,
+      "B09FXLWP9P": 1,
+      "B08L8PD1QQ": 1,
+      "B0BBG8Y8PK": 1,
+      "B0BG5ZPJ66": 1,
+      "B09J8DGMS2": 2,
+      "B08MX85R2J": 1,
+      "B07YFWH49R": 0
     },
     "notes": "Brand + product description; BM25 wins on 'two piece' + 'tracksuit'."
   },
@@ -132,7 +277,19 @@
     "type": "navigational",
     "relevance": {
       "B09C8LRXN4": 2,
-      "B0BGQ3MBH3": 1
+      "B0BGQ3MBH3": 1,
+      "B08GG6WPLD": 2,
+      "B09KV65DSW": 2,
+      "B08DYFH6PW": 2,
+      "B08BFB8PDQ": 1,
+      "B0991N14XV": 1,
+      "B0BHZHP984": 2,
+      "B08BF9G6VZ": 1,
+      "B08BF4MHLR": 1,
+      "B077YH8HYG": 1,
+      "B0919VRC47": 1,
+      "B01CPSR7HI": 1,
+      "B08BFGDFCX": 1
     },
     "notes": "Brand + material descriptor combo."
   },
@@ -141,7 +298,16 @@
     "query": "DIDK women cute cartoon print tee shorts pajama set",
     "type": "navigational",
     "relevance": {
-      "B07XDZ73Z9": 2
+      "B07XDZ73Z9": 2,
+      "B07C5753L2": 2,
+      "B07RM1XRKZ": 2,
+      "B08PCY9L11": 2,
+      "B08CR5LQ7G": 2,
+      "B08F24MBF9": 2,
+      "B07TV2H1ZC": 1,
+      "B087PYLBRN": 1,
+      "B0895BWBYW": 2,
+      "B091CKC67R": 2
     },
     "notes": "Brand + product type; pajama sets are distinctive enough for BM25."
   },
@@ -150,7 +316,16 @@
     "query": "OZERO waterproof winter touchscreen anti-slip thermal gloves",
     "type": "navigational",
     "relevance": {
-      "B07VPGY6FX": 2
+      "B07VPGY6FX": 2,
+      "B07VPG5X8K": 2,
+      "B0B6J6PW6P": 2,
+      "B0995WPDBR": 2,
+      "B07G5MRRSS": 1,
+      "B08FHYV6DD": 1,
+      "B0BYVSFBRW": 2,
+      "B0BSTSZM62": 1,
+      "B0BW8CLR8Z": 1,
+      "B07YN4ZFDK": 2
     },
     "notes": "Brand + multi-feature glove query."
   },
@@ -160,7 +335,19 @@
     "type": "navigational",
     "relevance": {
       "B08B12FQXD": 2,
-      "B07WJGPBDN": 1
+      "B07WJGPBDN": 1,
+      "B07VBLLXZD": 2,
+      "B07PS2X9CC": 1,
+      "B097M4MPHR": 1,
+      "B07N82SRMR": 2,
+      "B07L1WC2VV": 2,
+      "B07L1XMG39": 2,
+      "B09W8N5SGD": 1,
+      "B07MKCBMBM": 2,
+      "B08VS3Y4HP": 1,
+      "B09MD9B79B": 1,
+      "B08RD3BKJQ": 0,
+      "B07GLGP673": 1
     },
     "notes": "Brand + distinctive color effect (ombre) + pocket feature."
   },
@@ -170,7 +357,17 @@
     "type": "navigational",
     "relevance": {
       "B07S8KMCQW": 2,
-      "B09M6X79V9": 1
+      "B09M6X79V9": 1,
+      "B07S7Q24DH": 1,
+      "B071P1V57N": 2,
+      "B08DRFC6C5": 1,
+      "B07GS2NQ1J": 1,
+      "B08RHW28R1": 2,
+      "B088NF25X7": 2,
+      "B07Q2XMK2T": 1,
+      "B09P33SDGT": 2,
+      "B07PN8KRSY": 2,
+      "B0975VWT4K": 2
     },
     "notes": "Brand + product category; BM25 wins on brand name."
   },
@@ -180,7 +377,15 @@
     "type": "navigational",
     "relevance": {
       "B09VM4FZ6W": 2,
-      "B09MJTRDCW": 1
+      "B09MJTRDCW": 1,
+      "B097BMDMKB": 2,
+      "B09BCGXG46": 2,
+      "B06XP5K99M": 2,
+      "B09H65TD9M": 2,
+      "B07SLYCDX7": 0,
+      "B0832CTYD1": 1,
+      "B096TNR7HB": 0,
+      "B0853371FL": 0
     },
     "notes": "Brand + distinctive 'striped side' descriptor."
   },
@@ -190,7 +395,20 @@
     "type": "navigational",
     "relevance": {
       "B095NW2T8S": 2,
-      "B081XYDBL2": 1
+      "B081XYDBL2": 1,
+      "B07VNVW9L5": 2,
+      "B08BHV7NV3": 1,
+      "B08VJ8JGMD": 2,
+      "B07YFRBZWL": 1,
+      "B093KHNNF5": 1,
+      "B08W59PM7Z": 2,
+      "B086W3BRFZ": 1,
+      "B08BJ54RKY": 1,
+      "B0887RVWXT": 2,
+      "B08L2Z6FXZ": 1,
+      "B08L34W59C": 1,
+      "B08PNP8CCP": 1,
+      "B08L334N8V": 1
     },
     "notes": "Brand + 'scrunch butt' is a distinctive search term; BM25 should win."
   },
@@ -211,7 +429,14 @@
       "B086W3BRFZ": 1,
       "B09BCGXG46": 2,
       "B08LD62DCF": 2,
-      "B07ZKSCD7J": 1
+      "B07ZKSCD7J": 1,
+      "B07ZWPHKV4": 2,
+      "B07QHD2FM5": 2,
+      "B09BTLS63F": 2,
+      "B099GF2JG2": 1,
+      "B09FXHJ88D": 2,
+      "B0BYD3WRX6": 2,
+      "B08TZD2ZJS": 2
     },
     "notes": "Semantic: 'cozy lounging' maps to pajamas and soft joggers. BM25 misses 'cozy' as a descriptor.",
     "dense_only": true
@@ -233,7 +458,13 @@
       "B07YHJB1JV": 2,
       "B08C326CT8": 2,
       "B09LH9BJDT": 2,
-      "B08VS3Y4HP": 2
+      "B08VS3Y4HP": 2,
+      "B08316CVB1": 1,
+      "B07QNBXSBK": 1,
+      "B085XPGKJP": 2,
+      "B0C344XSC2": 1,
+      "B07QRRR7KD": 2,
+      "B093DFMFXL": 2
     },
     "notes": "Occasion-based: 'beach wedding' is not in product titles; dense retrieval finds boho/summer dresses."
   },
@@ -254,7 +485,11 @@
       "B07L61LCBM": 2,
       "B07CHTZ1HM": 2,
       "B0922Z2GNQ": 2,
-      "B08VJ8JGMD": 2
+      "B08VJ8JGMD": 2,
+      "B09N8PP2GC": 2,
+      "B07ZKSCD7J": 2,
+      "B08W59PM7Z": 2,
+      "B07HK222T1": 2
     },
     "notes": "Use-case: gym-to-street activewear; 'coffee run' is not in any product."
   },
@@ -276,7 +511,13 @@
       "B091B1R94F": 1,
       "B07V4J6HJ9": 2,
       "B07PBRN5DV": 2,
-      "B08MVQ62Z4": 2
+      "B08MVQ62Z4": 2,
+      "B0C6JBL42K": 2,
+      "B07JQD4716": 2,
+      "B08F9SRZF6": 2,
+      "B0BYD3WRX6": 2,
+      "B08QV6HJ43": 2,
+      "B072JX6LJB": 0
     },
     "notes": "Travel comfort: 'flight' is not in product descriptions; dense maps to soft elastic-waist pants.",
     "dense_only": true
@@ -288,7 +529,18 @@
     "relevance": {
       "B07DY3H2XX": 2,
       "B07WJGPBDN": 1,
-      "B07CQ84KLT": 1
+      "B07CQ84KLT": 1,
+      "B07L6BLF24": 2,
+      "B07J3YTVFY": 2,
+      "B0B3XW5KK6": 2,
+      "B0BG5H84CZ": 2,
+      "B07QNBXSBK": 2,
+      "B09TT5YMF6": 2,
+      "B0C344XSC2": 2,
+      "B096DP1YHM": 2,
+      "B07S9CCCTD": 2,
+      "B093B8NTTX": 2,
+      "B08JGDRVHL": 2
     },
     "notes": "'Cocktail party not too serious' implies bodycon/midi rather than formal gown."
   },
@@ -300,7 +552,21 @@
       "B09KHSM7BB": 2,
       "B07VPGY6FX": 2,
       "B07J5XH426": 1,
-      "B0BYCZ2W78": 1
+      "B0BYCZ2W78": 1,
+      "B09KNL82LM": 2,
+      "B08LQ5RX47": 1,
+      "B098B4MG4M": 1,
+      "B07YJVGTMX": 2,
+      "B07G4WDQNZ": 1,
+      "B0869B8377": 0,
+      "B07Y7F25ZZ": 0,
+      "B076F1C6R3": 2,
+      "B09K4XG235": 2,
+      "B003VWBN46": 0,
+      "B094R1KCZN": 2,
+      "B08KH1K836": 2,
+      "B07JQ7T96H": 2,
+      "B08BFD23ZQ": 2
     },
     "notes": "Layering for autumn hike; dense retrieval connects 'warm layer outdoor' to fleece hoodie + gloves."
   },
@@ -309,7 +575,16 @@
     "query": "practical clothing for someone recovering from shoulder surgery",
     "type": "exploratory",
     "relevance": {
-      "B07YSSNLSW": 2
+      "B07YSSNLSW": 2,
+      "B07RQH9CMJ": 2,
+      "B085H785CT": 2,
+      "B0BVRSRCFN": 1,
+      "B07YN8S9Z9": 1,
+      "B07RPJTDTN": 1,
+      "B085BWPPQN": 1,
+      "B08C1YVHF8": 1,
+      "B089P12XFS": 1,
+      "B09CCJM377": 1
     },
     "notes": "Very specific functional need; 'shoulder surgery' is in the product description directly.",
     "dense_only": true
@@ -331,7 +606,12 @@
       "B00OQC64VW": 0,
       "B0816989ZN": 0,
       "B09Z62696J": 1,
-      "B09FXLWP9P": 2
+      "B09FXLWP9P": 2,
+      "B07SR8MTX4": 1,
+      "B07HMW86BF": 1,
+      "B0924VW6MS": 1,
+      "B0BTTTLP1L": 1,
+      "B07KKMG9F1": 1
     },
     "notes": "'Gift for fitness friend' is semantic; dense maps to activewear/compression gear.",
     "dense_only": true
@@ -353,7 +633,11 @@
       "B07QRRR7KD": 2,
       "B097M4MPHR": 2,
       "B09LH9BJDT": 2,
-      "B09LH64L8G": 2
+      "B09LH64L8G": 2,
+      "B08624L7XT": 2,
+      "B08CGTJMMK": 2,
+      "B08355HXY1": 1,
+      "B09Y1MBMSH": 1
     },
     "notes": "Occasion-based: 'Sunday brunch' is purely semantic context."
   },
@@ -374,7 +658,12 @@
       "B09JLW26L4": 1,
       "B07YXD4STK": 2,
       "B07Q3M8WST": 1,
-      "B09LH64L8G": 2
+      "B09LH64L8G": 2,
+      "B09GLHFG2M": 2,
+      "B098B5LFP3": 2,
+      "B08RHX7875": 0,
+      "B091B1R94F": 0,
+      "B09Y1MBMSH": 1
     },
     "notes": "Season + occasion: 'autumn date night' requires semantic connection to midi dress + cozy layers."
   },
@@ -394,7 +683,14 @@
       "B09QMF1G4K": 2,
       "B07CG5QBYS": 2,
       "B07H4JP7SH": 2,
-      "B07NKGGCX8": 2
+      "B07NKGGCX8": 2,
+      "B08KZKDV2Y": 1,
+      "B07XZ8NKX4": 1,
+      "B07XG4B7LP": 2,
+      "B07X8DT52C": 2,
+      "B09579VQHG": 2,
+      "B07H4JJ4CZ": 2,
+      "B094N8Z8GV": 2
     },
     "notes": "'Business casual' is semantic; dense maps to chino trousers and polished joggers.",
     "dense_only": true
@@ -415,7 +711,13 @@
       "B09K4XG235": 2,
       "B09RHXV42L": 2,
       "B08ZCT1VXT": 1,
-      "B098B4MG4M": 2
+      "B098B4MG4M": 2,
+      "B09957YH5D": 2,
+      "B0B9S2D5G6": 2,
+      "B085PV7B8S": 1,
+      "B0995WPDBR": 1,
+      "B07BSD2Y2V": 1,
+      "B09C1JPJYR": 2
     },
     "notes": "Seasonal workout context; dense connects 'cool weather running' to moisture-wicking layers."
   },
@@ -434,7 +736,13 @@
       "B0749HKVXR": 2,
       "B098BNWD94": 1,
       "B08923HLW5": 2,
-      "B081G7JFR6": 2
+      "B081G7JFR6": 2,
+      "B0922YTNZQ": 2,
+      "B01NANPUQ0": 0,
+      "B01N55WBE4": 1,
+      "B07D3371C9": 0,
+      "B00ZALP8I8": 1,
+      "B08P8BSXK1": 1
     },
     "notes": "'Back to school kids' is semantic; maps to character t-shirts and comfortable tights."
   },
@@ -444,7 +752,22 @@
     "type": "exploratory",
     "relevance": {
       "B082W1BRXK": 2,
-      "B09MJTRDCW": 1
+      "B09MJTRDCW": 1,
+      "B07R4Y34SL": 2,
+      "B01N3UVHWK": 0,
+      "B0878PNDLQ": 2,
+      "B089DKHMNG": 2,
+      "B09TGL6JXW": 1,
+      "B09BCGXG46": 2,
+      "B01J4KTWJQ": 1,
+      "B07B2QPJS4": 2,
+      "B07YN8S9Z9": 0,
+      "B08LKMH6J1": 2,
+      "B095PZB2HK": 2,
+      "B07JX4RXXX": 2,
+      "B08CBBXCH9": 2,
+      "B072Z5SSFT": 1,
+      "B075FQV1PQ": 2
     },
     "notes": "'Nursing mom' directly maps to nursing bra; dense retrieval also surfaces comfortable pants.",
     "dense_only": true
@@ -456,7 +779,25 @@
     "relevance": {
       "B07DY3H2XX": 2,
       "B07CQ84KLT": 1,
-      "B07WJGPBDN": 1
+      "B07WJGPBDN": 1,
+      "B07ZBMLJSP": 2,
+      "B07WN1WLBK": 2,
+      "B073P8HMWS": 2,
+      "B0946LGJ4N": 1,
+      "B07LGK9XJW": 2,
+      "B096DP1YHM": 0,
+      "B0946HRNZ3": 2,
+      "B0C344XSC2": 2,
+      "B08VHRVMHF": 1,
+      "B09JLW26L4": 1,
+      "B08VHRRK9J": 1,
+      "B09SG5TJC4": 2,
+      "B08VHRD6CL": 1,
+      "B093B8NTTX": 2,
+      "B08VHQRTPY": 1,
+      "B07NKGGCX8": 2,
+      "B08VHR7YRS": 1,
+      "B08624L7XT": 2
     },
     "notes": "'Holiday party festive not formal' is semantic; maps to cocktail and boho dresses."
   },
@@ -467,7 +808,21 @@
     "relevance": {
       "B089YV34P1": 2,
       "B07CQ84KLT": 1,
-      "B084RR9N7B": 1
+      "B084RR9N7B": 1,
+      "B00T6ICL8Q": 2,
+      "B088WGPYV6": 2,
+      "B094PX6HSG": 2,
+      "B08L7CSLQP": 2,
+      "B07XQHWZM1": 2,
+      "B07WLKLXCD": 2,
+      "B00TEMYTBG": 1,
+      "B079N1NSCJ": 2,
+      "B07CJ9XH37": 2,
+      "B08K42W4LD": 2,
+      "B075M73LH5": 2,
+      "B0BG5H84CZ": 1,
+      "B07PP273L2": 1,
+      "B09XCXYJH5": 2
     },
     "notes": "'Stand out at festival' semantically matches glow-in-dark tee and statement pieces.",
     "dense_only": true
@@ -489,7 +844,11 @@
       "B0BG5H84CZ": 2,
       "B085XPGKJP": 2,
       "B07PJXX8XV": 2,
-      "B0BC4DGCY6": 2
+      "B0BC4DGCY6": 2,
+      "B07QML2FDR": 2,
+      "B0948XN6T1": 2,
+      "B0816989ZN": 1,
+      "B097M4MPHR": 2
     },
     "notes": "Full beach day: swimwear + shorts + sandals + cover-up dress."
   },
@@ -500,7 +859,19 @@
     "relevance": {
       "B08F1V3KB9": 2,
       "B09VM4FZ6W": 1,
-      "B0B16Q1854": 1
+      "B0B16Q1854": 1,
+      "B09FXHJ88D": 2,
+      "B08DHKQ8CX": 2,
+      "B083J6Z86S": 2,
+      "B0B7HHFDJY": 2,
+      "B096TNR7HB": 2,
+      "B088ZR3Q86": 2,
+      "B08516JL48": 2,
+      "B07P17WLTT": 2,
+      "B09BCGXG46": 2,
+      "B08NSVZGWM": 2,
+      "B086W3BRFZ": 2,
+      "B09BZV6Z8Z": 2
     },
     "notes": "Run-to-errands transition; semantic connection to stylish joggers."
   },
@@ -521,7 +892,12 @@
       "B097W1RSM1": 2,
       "B0BYJMG265": 2,
       "B0BYJHP21S": 2,
-      "B0887ZJ79Y": 2
+      "B0887ZJ79Y": 2,
+      "B09N8PP2GC": 2,
+      "B085PV7B8S": 2,
+      "B07BSD2Y2V": 2,
+      "B073SGQDBN": 2,
+      "B0956LX5T2": 2
     },
     "notes": "'Gym bag essentials new routine' is purely semantic; maps to multi-pack activewear.",
     "dense_only": true
@@ -541,7 +917,12 @@
       "B081H7WBVR": 2,
       "B08M3CMCKZ": 2,
       "B08LQ5RX47": 2,
-      "B01M5H43SA": 2
+      "B01M5H43SA": 2,
+      "B07YJVGTMX": 2,
+      "B08CZPN2Z6": 2,
+      "B07KSS881G": 2,
+      "B09DG6MNHT": 2,
+      "B08BFD23ZQ": 1
     },
     "notes": "'Winter outdoor protection' maps to gloves + hoodie + windbreaker."
   },
@@ -560,7 +941,13 @@
       "B01NAHQ6CX": 2,
       "B01MAZDPZ2": 1,
       "B073FBTG4L": 2,
-      "B07CHKJDTB": 2
+      "B07CHKJDTB": 2,
+      "B07F6C34KF": 1,
+      "B07Y32HGT3": 2,
+      "B08QG1FF5P": 1,
+      "B01LLCNHTG": 1,
+      "B07F17DPJ6": 2,
+      "B01DK7G7K6": 1
     },
     "notes": "'Travel essentials handy' maps semantically to mini backpack + comfortable pants.",
     "dense_only": true
@@ -582,7 +969,10 @@
       "B07WSTZZSJ": 1,
       "B07JQD4716": 2,
       "B06W9NJLF6": 2,
-      "B08JCS3T7M": 2
+      "B08JCS3T7M": 2,
+      "B07DZXL7XM": 2,
+      "B0C6JBL42K": 2,
+      "B00M97OXIW": 2
     },
     "notes": "'Athlete recovery' semantically connects to compression socks; dense helps here."
   },
@@ -603,7 +993,8 @@
       "B0833QJG7N": 2,
       "B0833QXC84": 2,
       "B0833QLDP9": 2,
-      "B0833QYJWY": 2
+      "B0833QYJWY": 2,
+      "B09Y1MBMSH": 2
     },
     "notes": "'Bohemian summer flowing' maps to polka dot rayon maxi; BM25 may miss 'bohemian'.",
     "dense_only": true
@@ -624,7 +1015,15 @@
       "B07K45LJGG": 2,
       "B07GVVNDV1": 2,
       "B0991N14XV": 2,
-      "B09D78NTHB": 2
+      "B09D78NTHB": 2,
+      "B0BRHXSLL1": 2,
+      "B08N8Y17T5": 2,
+      "B08LQ5RX47": 2,
+      "B0833BRNHW": 2,
+      "B081FC9HXJ": 2,
+      "B0BYVSFBRW": 2,
+      "B07FPMX4B5": 2,
+      "B08KH1K836": 1
     },
     "notes": "'Warm without sacrificing style' is semantic; maps to chunky knit cardigans."
   },
@@ -643,7 +1042,10 @@
       "B085L298KP": 1,
       "B0BW8C3XD7": 2,
       "B093FFC2TK": 2,
-      "B07Z995XV8": 1
+      "B07Z995XV8": 1,
+      "B09D7ZDTSV": 2,
+      "B095GJG64R": 2,
+      "B07XZ2CNYG": 2
     },
     "notes": "'Baby comfortable in stroller outdoors' semantically maps to warm tights for infants.",
     "dense_only": true
@@ -662,7 +1064,13 @@
       "B07CG5QBYS": 1,
       "B07X8DT52C": 2,
       "B081YDLHQT": 2,
-      "B09LH64L8G": 2
+      "B09LH64L8G": 2,
+      "B0BCV6Y5T6": 0,
+      "B095HN2KPZ": 0,
+      "B07GWXSZWZ": 1,
+      "B01NAADGJU": 2,
+      "B09LH9BJDT": 2,
+      "B07NKGGCX8": 0
     },
     "notes": "'Professional but comfortable business casual' is semantic for chino trousers.",
     "dense_only": true
@@ -682,7 +1090,14 @@
       "B09HTSPGFZ": 2,
       "B06XC14XWY": 1,
       "B081YDLHQT": 1,
-      "B01LYAUFRV": 2
+      "B01LYAUFRV": 2,
+      "B09TT5YMF6": 1,
+      "B07RCZ3YZ9": 0,
+      "B0727W6MT9": 1,
+      "B0747Q3GXV": 2,
+      "B07QNBXSBK": 2,
+      "B09P8CMYV7": 2,
+      "B07259HX7G": 1
     },
     "notes": "'Anniversary dinner elegant yet comfortable' semantic match to bodycon cocktail dress."
   },
@@ -692,7 +1107,20 @@
     "type": "exploratory",
     "relevance": {
       "B06W57G8QX": 2,
-      "B09QFJGKM5": 2
+      "B09QFJGKM5": 2,
+      "B07SB2892S": 2,
+      "B07JQD4716": 2,
+      "B09G31GN3D": 2,
+      "B0067HH850": 2,
+      "B08BR7RD4R": 1,
+      "B06W9NJLF6": 2,
+      "B08JCS3T7M": 2,
+      "B07WSTZZSJ": 2,
+      "B093K888HL": 2,
+      "B096DXJQTY": 2,
+      "B0C6JBL42K": 2,
+      "B07PXTN56Y": 1,
+      "B085BWPPQN": 2
     },
     "notes": "'Reduce leg soreness and swelling post-workout' maps to compression socks via dense retrieval.",
     "dense_only": true
@@ -714,7 +1142,11 @@
       "B07KFHVL6H": 2,
       "B09HH5WNRW": 0,
       "B07KFG5HNQ": 2,
-      "B08L7CSLQP": 2
+      "B08L7CSLQP": 2,
+      "B07BY412M6": 2,
+      "B07H97HSZC": 2,
+      "B0788P68N6": 1,
+      "B08CZMF5L2": 2
     },
     "notes": "'Festival weekend accessories' maps to mini backpack + headwrap + face mask."
   },
@@ -736,7 +1168,12 @@
       "B097BMDMKB": 2,
       "B08XBYZ78P": 2,
       "B07WT3GSSL": 2,
-      "B09SWS5LC7": 2
+      "B09SWS5LC7": 2,
+      "B092889KCW": 0,
+      "B09K4XG235": 1,
+      "B0B6RDLTGC": 0,
+      "B085PV7B8S": 0,
+      "B0849TXH29": 0
     },
     "notes": "'5K charity run' maps to UPF shirt, jogger pants, tank top, and compression socks."
   },
@@ -746,7 +1183,19 @@
     "type": "attribute",
     "relevance": {
       "B09KHSM7BB": 2,
-      "B009R09Z8W": 2
+      "B009R09Z8W": 2,
+      "B091YBDDCS": 0,
+      "B09DCM6H8H": 1,
+      "B09RHXV42L": 1,
+      "B08KH1K836": 1,
+      "B08D88TTPN": 0,
+      "B07R1WBB9F": 1,
+      "B08GH32WN3": 1,
+      "B0BVGKVF6B": 1,
+      "B0924VW6MS": 2,
+      "B0B8F3FNQX": 1,
+      "B0849TXH29": 1,
+      "B09S5ZN5Y6": 1
     },
     "notes": "Price constraint + material feature; BM25 handles 'fleece hoodie' well."
   },
@@ -757,7 +1206,20 @@
     "relevance": {
       "B08F1V3KB9": 2,
       "B095NW2T8S": 2,
-      "B0B16Q1854": 1
+      "B0B16Q1854": 1,
+      "B08HQBHMM1": 2,
+      "B08DKT1T3B": 2,
+      "B0BL75H87N": 1,
+      "B07SMRDFH1": 2,
+      "B0894CSQGF": 1,
+      "B0BF358FD6": 2,
+      "B08VJ8JGMD": 2,
+      "B088FQFH6Z": 2,
+      "B08W59PM7Z": 2,
+      "B0882XG9BQ": 1,
+      "B092889KCW": 1,
+      "B0887RVWXT": 1,
+      "B07RWNMQM8": 1
     },
     "notes": "Price + feature constraint; both Oalka and RIOJOY fit at ~$22-23."
   },
@@ -767,7 +1229,17 @@
     "type": "attribute",
     "relevance": {
       "B06W57G8QX": 2,
-      "B09QFJGKM5": 2
+      "B09QFJGKM5": 2,
+      "B096DXJQTY": 2,
+      "B07Q11RP88": 2,
+      "B07DM62Q4N": 2,
+      "B089DKHMNG": 1,
+      "B07WSTZZSJ": 1,
+      "B08KDJWXF6": 1,
+      "B0067HH850": 1,
+      "B07D3Q2J5W": 1,
+      "B0888FWJ91": 2,
+      "B06W9NJLF6": 1
     },
     "notes": "Technical spec + price filter; BM25 wins on mmHg numeric match."
   },
@@ -787,7 +1259,9 @@
       "B098QDMNB1": 2,
       "B07ZGJD2XV": 0,
       "B07XC45GWH": 0,
-      "B07XC44M21": 0
+      "B07XC44M21": 0,
+      "B098SZZSL8": 2,
+      "B08624L7XT": 1
     },
     "notes": "Material composition query; BM25 should find the cotton blend dress."
   },
@@ -798,7 +1272,17 @@
     "relevance": {
       "B07BM9GWG7": 2,
       "B09MJ6NSNM": 1,
-      "B01H0X4WXK": 1
+      "B01H0X4WXK": 1,
+      "B093T1SMCY": 1,
+      "B09M6X79V9": 0,
+      "B0B2KL8C8Q": 0,
+      "B07K48CRFR": 1,
+      "B08R38T6F2": 1,
+      "B0928FSGGD": 0,
+      "B09SP3959B": 0,
+      "B08QS1BCM3": 1,
+      "B00M97OXIW": 0,
+      "B08GJ5GRQF": 0
     },
     "notes": "Multi-pack + performance feature; BM25 matches 'compression' + 'tank top'."
   },
@@ -807,7 +1291,19 @@
     "query": "95% rayon spandex women's boho floral maxi dress",
     "type": "attribute",
     "relevance": {
-      "B07CQ84KLT": 2
+      "B07CQ84KLT": 2,
+      "B08VS3Y4HP": 2,
+      "B07VKZ9TYF": 2,
+      "B07X536QV9": 2,
+      "B07ZTMKD9T": 2,
+      "B07T1ZPNV3": 1,
+      "B097RFTKJP": 2,
+      "B07HVWY6PQ": 1,
+      "B09XBFMRN8": 2,
+      "B07SNB9FTL": 2,
+      "B0871TS7YJ": 1,
+      "B087RQJJ2Y": 0,
+      "B07SNBKXQR": 1
     },
     "notes": "Material + style; rayon maxi dress with polka dot pattern."
   },
@@ -817,7 +1313,17 @@
     "type": "attribute",
     "relevance": {
       "B09VM4FZ6W": 2,
-      "B0B16Q1854": 1
+      "B0B16Q1854": 1,
+      "B09MJTRDCW": 2,
+      "B09BCGXG46": 1,
+      "B07K6L5FBZ": 2,
+      "B097BMDMKB": 2,
+      "B07CRRW85R": 1,
+      "B07F1YFZT4": 0,
+      "B0B8Q689XG": 2,
+      "B08D88TTPN": 0,
+      "B08KSTRFBT": 0,
+      "B08KSW317T": 0
     },
     "notes": "Material + closure type; exact match in product description."
   },
@@ -826,7 +1332,19 @@
     "query": "non-slip grip safety tights for toddler girls winter",
     "type": "attribute",
     "relevance": {
-      "B086SHHWRH": 2
+      "B086SHHWRH": 2,
+      "B07S8824S6": 2,
+      "B0BH8CV3D7": 2,
+      "B08F38RYP1": 2,
+      "B08V5J2V4Q": 2,
+      "B09MCT929F": 2,
+      "B09C5DFNQV": 1,
+      "B07SDLR1XX": 1,
+      "B07KWXYVRR": 1,
+      "B08Z351H3L": 0,
+      "B0921FPXCW": 0,
+      "B076VMDCGD": 0,
+      "B08RMNC2JH": 0
     },
     "notes": "Safety feature + age group + season; 'non-slip grip' is in the LA ACTIVE description."
   },
@@ -835,7 +1353,17 @@
     "query": "waterproof touchscreen winter gloves -30 degrees cold proof",
     "type": "attribute",
     "relevance": {
-      "B07VPGY6FX": 2
+      "B07VPGY6FX": 2,
+      "B08FHYV6DD": 2,
+      "B0995WPDBR": 1,
+      "B0B6YTB2L5": 1,
+      "B09S117L2G": 1,
+      "B0B6J6PW6P": 1,
+      "B0BYVSFBRW": 1,
+      "B07YCGPP4N": 1,
+      "B07KSS881G": 2,
+      "B0BSTSZM62": 1,
+      "B07VYSJYZZ": 1
     },
     "notes": "Temperature rating + touchscreen feature; very specific attribute query."
   },
@@ -845,7 +1373,17 @@
     "type": "attribute",
     "relevance": {
       "B07VDCS9FW": 2,
-      "B09C8LRXN4": 1
+      "B09C8LRXN4": 1,
+      "B08GG6WPLD": 1,
+      "B08292X64P": 2,
+      "B09H76KGGN": 1,
+      "B08L9WCTTG": 1,
+      "B07PH5X1HY": 2,
+      "B07R1WBB9F": 1,
+      "B07YFWH49R": 1,
+      "B09M3PB22V": 2,
+      "B08D3NXZ88": 1,
+      "B09MD5VXCQ": 1
     },
     "notes": "Material + silhouette + closure type; BM25 handles 'sherpa fleece zip-up' well."
   },
@@ -854,7 +1392,22 @@
     "query": "skull print face mask motorcycle bandana neck gaiter scarf",
     "type": "attribute",
     "relevance": {
-      "B084RR9N7B": 2
+      "B084RR9N7B": 2,
+      "B086JHZVPB": 1,
+      "B085WWFD3B": 2,
+      "B087LSCYGD": 1,
+      "B092QVL5BV": 1,
+      "B0881C75TS": 1,
+      "B0876RZQ3X": 1,
+      "B087F2267W": 1,
+      "B088QW67KL": 1,
+      "B089KKS9NC": 1,
+      "B07JG6TY87": 1,
+      "B088WGPYV6": 1,
+      "B07YY2BKB7": 1,
+      "B087M358P9": 1,
+      "B08L7CSLQP": 1,
+      "B08DTZWDR4": 1
     },
     "notes": "Print + multi-use product; 'skull face mask bandana' are in the title."
   },
@@ -864,7 +1417,17 @@
     "type": "attribute",
     "relevance": {
       "B07DY3H2XX": 2,
-      "B07WJGPBDN": 1
+      "B07WJGPBDN": 1,
+      "B0923YP5RS": 2,
+      "B0BVHDL9LM": 1,
+      "B0912LCQC2": 2,
+      "B095JTV7KL": 2,
+      "B09129PL2L": 2,
+      "B0946HRNZ3": 2,
+      "B0946LGJ4N": 2,
+      "B095JSYBQP": 2,
+      "B095JTFS9L": 2,
+      "B095JTHVDR": 2
     },
     "notes": "Material + style details; exact composition in YACUN product description."
   },
@@ -882,7 +1445,8 @@
       "B08KSTRFBT": 0,
       "B08G11FDMR": 1,
       "B087CJR8YK": 1,
-      "B087CJTJ7L": 1
+      "B087CJTJ7L": 1,
+      "B087CJ4NDP": 0
     },
     "notes": "Fit + material + style; 'slim fit chino' is a distinctive keyword."
   },
@@ -891,7 +1455,21 @@
     "query": "glow in the dark interactive t-shirt for birthday party festival",
     "type": "attribute",
     "relevance": {
-      "B089YV34P1": 2
+      "B089YV34P1": 2,
+      "B098RW3W5D": 1,
+      "B094PX6HSG": 1,
+      "B098RW3338": 1,
+      "B07H7WMSMB": 0,
+      "B08TMQ2MQV": 0,
+      "B01NANPUQ0": 1,
+      "B08525CL4M": 1,
+      "B0BGB7QW8Y": 0,
+      "B08JSN3MCX": 0,
+      "B07DK3R9HR": 0,
+      "B07JF352TW": 0,
+      "B07WG9DB1Q": 1,
+      "B07ZQJH4ZP": 0,
+      "B095HN2KPZ": 1
     },
     "notes": "Novelty feature; 'glow in the dark' is in the product title."
   },
@@ -902,7 +1480,17 @@
     "relevance": {
       "B0B2KL8C8Q": 2,
       "B0928FSGGD": 2,
-      "B09M6X79V9": 1
+      "B09M6X79V9": 1,
+      "B0BL6PDR5G": 2,
+      "B09SWS5LC7": 2,
+      "B08SJ49SHG": 0,
+      "B07BM9GWG7": 0,
+      "B08PFYDC1J": 2,
+      "B08QS1BCM3": 1,
+      "B08DRFC6C5": 2,
+      "B09SP3959B": 0,
+      "B01MRM6IBY": 0,
+      "B09MJZR5GV": 2
     },
     "notes": "Pack + material + activity; both NELEUS compression LS products qualify."
   },
@@ -912,7 +1500,19 @@
     "type": "attribute",
     "relevance": {
       "B0BG5PWPN5": 2,
-      "B0B3DJBN32": 2
+      "B0B3DJBN32": 2,
+      "B08KGBM73Z": 2,
+      "B083J6Z86S": 2,
+      "B08MX85R2J": 2,
+      "B0BBG8Y8PK": 2,
+      "B09DPJ2T7B": 2,
+      "B08MVQ62Z4": 2,
+      "B08516JL48": 2,
+      "B09FXHJ88D": 2,
+      "B08B63FGSD": 2,
+      "B09FXLWP9P": 2,
+      "B098QP222C": 2,
+      "B08B64QVY8": 2
     },
     "notes": "Set + price constraint; both EOSIEDUR ($36.99) and Nimsruc ($33.99) qualify."
   },
@@ -921,7 +1521,20 @@
     "query": "small mini backpack purse 8 liters for everyday carry",
     "type": "attribute",
     "relevance": {
-      "B09TXPYLQF": 2
+      "B09TXPYLQF": 2,
+      "B0788P68N6": 2,
+      "B08KH3YRZZ": 2,
+      "B07TWRKHHN": 2,
+      "B09J4HQ53S": 2,
+      "B09PZPWQW2": 2,
+      "B07Y32HGT3": 2,
+      "B08CZMF5L2": 1,
+      "B07DFBKZD1": 2,
+      "B077JLWM29": 1,
+      "B07N34FG1N": 2,
+      "B07F17DPJ6": 2,
+      "B01DK7G7K6": 1,
+      "B01HRS8YFA": 1
     },
     "notes": "Size specification; HotStyle BESTIE is explicitly 8 liters in the description."
   },
@@ -930,7 +1543,19 @@
     "query": "men's UPF 50 moisture-wicking long sleeve outdoor shirt 2 pack",
     "type": "attribute",
     "relevance": {
-      "B0BYCZ2W78": 2
+      "B0BYCZ2W78": 2,
+      "B08L78KVH1": 2,
+      "B091J3WQDV": 1,
+      "B0869B8377": 1,
+      "B07RJ4JZ9N": 0,
+      "B0924VW6MS": 1,
+      "B09KNNKNGF": 0,
+      "B097W1RSM1": 1,
+      "B08QS1BCM3": 2,
+      "B092XPNFTT": 2,
+      "B08LVK6TCN": 1,
+      "B094R1KCZN": 1,
+      "B09C1JPJYR": 1
     },
     "notes": "UPF rating + multi-pack + use case; exact feature set matches DEVOPS."
   },
@@ -939,7 +1564,16 @@
     "query": "orthopedic arch support slippers for men with removable insoles plantar fasciitis",
     "type": "attribute",
     "relevance": {
-      "B09Y3TXYF1": 2
+      "B09Y3TXYF1": 2,
+      "B099GF2JG2": 2,
+      "B09LLS1LGH": 2,
+      "B09BN1PDW4": 2,
+      "B0BMKH6TKQ": 1,
+      "B097F4QGD6": 2,
+      "B073JJQ2KP": 2,
+      "B07J53XVZ3": 2,
+      "B0741DYV91": 2,
+      "B0756WHJDG": 2
     },
     "notes": "Medical feature + target condition; 'plantar fasciitis' is in the Orthofeet description."
   },
@@ -948,7 +1582,18 @@
     "query": "nursing maternity bra 3 pack with one-hand front clasp for breastfeeding",
     "type": "attribute",
     "relevance": {
-      "B082W1BRXK": 2
+      "B082W1BRXK": 2,
+      "B075FQV1PQ": 2,
+      "B0166EB79G": 1,
+      "B0166EB71E": 1,
+      "B07M5WQ3GS": 0,
+      "B07SC65L1J": 0,
+      "B08ZMN5BD9": 0,
+      "B01G5HX25G": 0,
+      "B07PY8F276": 0,
+      "B08BC3MVRW": 0,
+      "B07WGBN449": 0,
+      "B08JCDZGL3": 0
     },
     "notes": "Multi-pack + functional feature; 'one-hand access nursing clasp' is in description."
   },
@@ -957,7 +1602,20 @@
     "query": "lightweight rubber flip flops quick dry travel shower sandals",
     "type": "attribute",
     "relevance": {
-      "B0C3G9447V": 2
+      "B0C3G9447V": 2,
+      "B07MTYFFCL": 2,
+      "B091P99VFR": 2,
+      "B08BR7RD4R": 1,
+      "B07PB1Q2F1": 2,
+      "B08WYK4G38": 2,
+      "B07PXTN56Y": 2,
+      "B07QNV8ZYB": 2,
+      "B094VQ1HT5": 2,
+      "B09LHBF1H2": 2,
+      "B09PYKLN52": 2,
+      "B07QNVCXSN": 2,
+      "B01HAVFVW8": 2,
+      "B09ZQ5GZYY": 0
     },
     "notes": "Material + feature; 'closed-cell EVA quick dry travel' is in Vertico description."
   },
@@ -966,7 +1624,17 @@
     "query": "men's 3/4 sleeve raglan baseball tee shirt cotton polyester",
     "type": "attribute",
     "relevance": {
-      "B0767RRMH8": 2
+      "B0767RRMH8": 2,
+      "B08B1V6D29": 1,
+      "B09NZHZTBJ": 2,
+      "B09195BJ6D": 1,
+      "B09JC9C1LK": 0,
+      "B08Y8BHMWB": 1,
+      "B09RHXV42L": 1,
+      "B0821R91YB": 1,
+      "B0886B2NJ3": 1,
+      "B0B6RDLTGC": 1,
+      "B09QYBMK78": 0
     },
     "notes": "Sleeve style + product type; '3/4 sleeve raglan baseball tee' is distinctive."
   },
@@ -975,7 +1643,19 @@
     "query": "100% cotton adjustable nurse or chef working cap with sweat-absorbing band",
     "type": "attribute",
     "relevance": {
-      "B08HM3Y85H": 2
+      "B08HM3Y85H": 2,
+      "B0B9C7WD9W": 2,
+      "B086KVF3HZ": 2,
+      "B094CK9H5G": 2,
+      "B08GXV8H1Q": 2,
+      "B08FX84791": 1,
+      "B07RSWD4WJ": 1,
+      "B013K95T4E": 1,
+      "B08XQNGC7Z": 0,
+      "B07GRSNCBJ": 1,
+      "B01D0MRNOA": 1,
+      "B07TCBP9BH": 1,
+      "B01B0U4ISI": 1
     },
     "notes": "Material + use case; QBA cap description explicitly mentions elastic bandage."
   },
@@ -984,7 +1664,17 @@
     "query": "Disney character graphic t-shirts for girls multipack Frozen Princess Moana",
     "type": "attribute",
     "relevance": {
-      "B07PHW2CWH": 2
+      "B07PHW2CWH": 2,
+      "B0922YTNZQ": 2,
+      "B0B9LL8ZXR": 1,
+      "B097N446M8": 1,
+      "B08T7PPZ8J": 1,
+      "B07K43VFC7": 1,
+      "B08N57ZW5V": 0,
+      "B0886LVCMZ": 0,
+      "B085HMKWQ7": 0,
+      "B091KTW1VB": 1,
+      "B091NNY6D7": 1
     },
     "notes": "Brand + character names; BM25 wins on character name keywords."
   },
@@ -1004,7 +1694,11 @@
       "B07RXV5H81": 1,
       "B0B9QSXKVT": 1,
       "B074DR3LVL": 2,
-      "B07NHWGBBV": 2
+      "B07NHWGBBV": 2,
+      "B07DY3H2XX": 2,
+      "B09TT5YMF6": 1,
+      "B07R1HFMM3": 1,
+      "B07ZYPWZR6": 1
     },
     "notes": "Silhouette + length + feature combo; 'ruched' is a distinctive styling term."
   },
@@ -1014,7 +1708,15 @@
     "type": "attribute",
     "relevance": {
       "B07XK91C3T": 2,
-      "B07XDKBCXZ": 1
+      "B07XDKBCXZ": 1,
+      "B08LMKMDV9": 2,
+      "B07F8G2D55": 2,
+      "B07F18N25Y": 2,
+      "B07QMVJ9YJ": 2,
+      "B07K8S3VY4": 2,
+      "B07Q3G91S4": 1,
+      "B08THC47S1": 2,
+      "B07FGBD1QJ": 1
     },
     "notes": "Product + use case; 'durag 360 waves long tail' matches both products."
   },
@@ -1023,7 +1725,18 @@
     "query": "men's lightweight zip-up windbreaker jacket 100% polyester black",
     "type": "attribute",
     "relevance": {
-      "B07J5XH426": 2
+      "B07J5XH426": 2,
+      "B09KNL82LM": 2,
+      "B09K3BTP9R": 2,
+      "B07R1WBB9F": 2,
+      "B09CGSB7W2": 2,
+      "B08BFD23ZQ": 2,
+      "B07F1YFZT4": 1,
+      "B07K48CRFR": 1,
+      "B08D3NXZ88": 1,
+      "B01D34VX3W": 1,
+      "B09KNNKNGF": 1,
+      "B06XQ5B9FG": 0
     },
     "notes": "Color + material + closure type; BM25 should match 'windbreaker polyester'."
   },
@@ -1033,7 +1746,17 @@
     "type": "attribute",
     "relevance": {
       "B0853371FL": 2,
-      "B09VM4FZ6W": 1
+      "B09VM4FZ6W": 1,
+      "B084ZP4G6K": 2,
+      "B084ZPDJPJ": 2,
+      "B084ZQ3XRG": 2,
+      "B0832CTYD1": 2,
+      "B07SLYCDX7": 2,
+      "B07B2RV9CN": 1,
+      "B0872QTBD6": 2,
+      "B084JPVRBJ": 1,
+      "B0872QWDQP": 2,
+      "B0972FPW1L": 1
     },
     "notes": "Material + print + style; SweatyRocks beach shorts match exactly."
   },
@@ -1043,7 +1766,18 @@
     "type": "attribute",
     "relevance": {
       "B07XS893GL": 2,
-      "B06W57G8QX": 1
+      "B06W57G8QX": 1,
+      "B08CMFYM1G": 2,
+      "B08GYZ6DT6": 2,
+      "B09BJKJF22": 2,
+      "B06W9NJLF6": 2,
+      "B098B4MG4M": 1,
+      "B07THX3RXH": 1,
+      "B08JCS3T7M": 1,
+      "B08CMPWX16": 1,
+      "B08RBJYFMK": 1,
+      "B08RBKKFGY": 1,
+      "B08XQJBY8Q": 1
     },
     "notes": "Design + feature; Under Armour HeatGear description mentions strategic cushioning."
   },
@@ -1052,7 +1786,19 @@
     "query": "jersey stretch headwrap turbans for hair care and style women",
     "type": "attribute",
     "relevance": {
-      "B08GPZL157": 2
+      "B08GPZL157": 2,
+      "B000NRTA8S": 2,
+      "B082KRC1KC": 2,
+      "B087RGPLW6": 1,
+      "B07PLQ21SV": 2,
+      "B07H2WRMHQ": 2,
+      "B07QJ9DR2X": 1,
+      "B07GS6K5B9": 2,
+      "B07DBY3W9Y": 2,
+      "B07XBQPV77": 1,
+      "B08CXVFY3X": 2,
+      "B00VFXA8CQ": 1,
+      "B08LW3HXGF": 1
     },
     "notes": "Material + multi-purpose use; HOMELEX jersey knit headwraps."
   },
@@ -1072,7 +1818,10 @@
       "B091JXZJ7X": 0,
       "B09JLW26L4": 1,
       "B07YW5DRDD": 1,
-      "B0946HRNZ3": 2
+      "B0946HRNZ3": 2,
+      "B07NKGGCX8": 2,
+      "B0C344XSC2": 2,
+      "B095JTHVDR": 0
     },
     "notes": "Inverted constraint: 'opposite of formal gown' = casual/midi dress. BM25 cannot handle negation.",
     "dense_only": true
@@ -1083,7 +1832,18 @@
     "type": "edge",
     "relevance": {
       "B06W57G8QX": 2,
-      "B09QFJGKM5": 2
+      "B09QFJGKM5": 2,
+      "B07SB2892S": 2,
+      "B0C6JBL42K": 2,
+      "B07DM62Q4N": 2,
+      "B07PBRN5DV": 2,
+      "B06W9NJLF6": 2,
+      "B08KDJWXF6": 2,
+      "B096DXJQTY": 2,
+      "B093K888HL": 2,
+      "B08BR7RD4R": 0,
+      "B09G31GN3D": 2,
+      "B07PXTN56Y": 0
     },
     "notes": "Implicit constraint: symptom description (leg swelling at desk) implies compression socks. BM25 has no relevant keywords.",
     "dense_only": true
@@ -1102,7 +1862,13 @@
       "B0887ZJ79Y": 2,
       "B0BYJMG265": 2,
       "B08KGBM73Z": 2,
-      "B0BYJHP21S": 1
+      "B0BYJHP21S": 1,
+      "B09957YH5D": 2,
+      "B09K4XG235": 2,
+      "B08DKT1T3B": 2,
+      "B07FNH3WBK": 2,
+      "B092889KCW": 2,
+      "B097BMDMKB": 2
     },
     "notes": "Athleisure implicit need; 'gym to errands' requires semantic understanding of versatility.",
     "dense_only": true
@@ -1124,7 +1890,15 @@
       "B07QWPKS8J": 1,
       "B08FWNCL4N": 2,
       "B094CK9H5G": 0,
-      "B07MBK8QV8": 0
+      "B07MBK8QV8": 0,
+      "B08VDK4RYF": 1,
+      "B091CVQF55": 2,
+      "B08MY4PKL1": 1,
+      "B06XW3XY91": 2,
+      "B091XPM9W4": 1,
+      "B07GWXSZWZ": 1,
+      "B07H4GGX2J": 1,
+      "B09W1JJ3FV": 1
     },
     "notes": "Implicit: 'won't show sweat' = moisture-wicking / dark color. BM25 misses entirely.",
     "dense_only": true
@@ -1136,7 +1910,24 @@
     "relevance": {
       "B09MJTRDCW": 2,
       "B09VM4FZ6W": 2,
-      "B0B16Q1854": 1
+      "B0B16Q1854": 1,
+      "B081VR8B5F": 1,
+      "B08VJ8JGMD": 1,
+      "B086W3BRFZ": 1,
+      "B07ZKSCD7J": 2,
+      "B0947173ZT": 2,
+      "B07QHD2FM5": 2,
+      "B07D2JTHN7": 1,
+      "B0B8Q689XG": 2,
+      "B09H65TD9M": 1,
+      "B0887ZJ79Y": 0,
+      "B098QDS5GC": 0,
+      "B0BF358FD6": 1,
+      "B07Y4XYZZ9": 1,
+      "B097XMVWRL": 2,
+      "B08DKT1T3B": 0,
+      "B097T5N8YM": 2,
+      "B09BZV6Z8Z": 2
     },
     "notes": "Implicit: 'comfortable after eating + WFH' = elastic waist / stretchy pants. Purely semantic.",
     "dense_only": true
@@ -1146,7 +1937,19 @@
     "query": "my toddler is learning to walk and keeps slipping on hardwood floors",
     "type": "edge",
     "relevance": {
-      "B086SHHWRH": 2
+      "B086SHHWRH": 2,
+      "B09MW7FHML": 2,
+      "B07YPVVGCS": 2,
+      "B07S8824S6": 2,
+      "B09MCT929F": 2,
+      "B07Z45G6JK": 2,
+      "B08RMNC2JH": 2,
+      "B089D7MSF4": 2,
+      "B0B8B4Q7RV": 1,
+      "B07RPTZB1S": 2,
+      "B09C5DFNQV": 0,
+      "B075DDHZJ7": 1,
+      "B07KFLF5VN": 1
     },
     "notes": "Implicit need: 'toddler slipping on hardwood' = non-slip grip tights. BM25 misses all keywords.",
     "dense_only": true
@@ -1167,7 +1970,10 @@
       "B08QCV6Q73": 1,
       "B08KH3YRZZ": 2,
       "B09K4XG235": 1,
-      "B08YYL3HK5": 2
+      "B08YYL3HK5": 2,
+      "B0BF358FD6": 2,
+      "B08DKT1T3B": 2,
+      "B08Z45VRK9": 2
     },
     "notes": "Functional need (phone/keys pocket for running); maps to capris/joggers with side pockets.",
     "dense_only": true
@@ -1178,7 +1984,19 @@
     "type": "edge",
     "relevance": {
       "B07VPGY6FX": 2,
-      "B08HM3Y85H": 1
+      "B08HM3Y85H": 1,
+      "B081H7WBVR": 2,
+      "B09BZDXB2G": 2,
+      "B07JKXK3HS": 2,
+      "B0995WPDBR": 2,
+      "B07BLMM92L": 2,
+      "B08LQ5RX47": 2,
+      "B01HUOHVBY": 2,
+      "B07FP2FG1N": 2,
+      "B08LZC9BTT": 2,
+      "B08X123WRR": 2,
+      "B09DG6MNHT": 2,
+      "B09HKJK1L6": 2
     },
     "notes": "Winter commute accessories: 'cycling to work in November' → gloves + hat. Semantic leap required.",
     "dense_only": true
@@ -1199,7 +2017,11 @@
       "B097M4MPHR": 2,
       "B0BC4DGCY6": 2,
       "B07R1XGJZ2": 2,
-      "B07N1JKFZM": 2
+      "B07N1JKFZM": 2,
+      "B07KQQY44M": 1,
+      "B07FQVQ6L1": 2,
+      "B07M7DZD2K": 0,
+      "B06XG1C9CN": 1
     },
     "notes": "Multi-venue constraint: beach-to-dinner; lightweight dress is the connecting semantic thread."
   },
@@ -1219,7 +2041,11 @@
       "B09BCC94S2": 2,
       "B08GKH1F6R": 2,
       "B08G8CP21H": 0,
-      "B09DD5BKPX": 1
+      "B09DD5BKPX": 1,
+      "B0BCVKMYYC": 1,
+      "B07HMQKT1Y": 0,
+      "B0BPXTWWVW": 1,
+      "B0825Z3TPQ": 0
     },
     "notes": "Humorous implicit constraint: 'overindulging = need stretchy pants'. Pure semantic.",
     "dense_only": true
@@ -1231,7 +2057,21 @@
     "relevance": {
       "B09KHSM7BB": 2,
       "B0B16Q1854": 1,
-      "B09C8LRXN4": 1
+      "B09C8LRXN4": 1,
+      "B0887ZJ79Y": 2,
+      "B073SGQDBN": 2,
+      "B0B92LPVY5": 2,
+      "B0BYJMG265": 2,
+      "B08B9QPRBG": 2,
+      "B08FWNCL4N": 1,
+      "B08B8ZRSGP": 2,
+      "B07FNH3WBK": 1,
+      "B092889KCW": 0,
+      "B088ZR3Q86": 0,
+      "B0BL6TDRBB": 1,
+      "B0BF358FD6": 0,
+      "B086W3BRFZ": 0,
+      "B0B6RDLTGC": 2
     },
     "notes": "Anti-preference: 'hates tight clothing' = loose/relaxed fit activewear. BM25 misses negation.",
     "dense_only": true
@@ -1252,7 +2092,12 @@
       "B08KGBM73Z": 1,
       "B09BFMCRZG": 2,
       "B09H5ZXWD5": 1,
-      "B08RHX7875": 2
+      "B08RHX7875": 2,
+      "B0BBG8Y8PK": 2,
+      "B08516JL48": 2,
+      "B0878PNDLQ": 2,
+      "B09FXLWP9P": 2,
+      "B08DHKQ8CX": 1
     },
     "notes": "Generational fit constraint: versatile activewear suitable for multiple age groups.",
     "dense_only": true
@@ -1273,7 +2118,11 @@
       "B0727W6MT9": 2,
       "B0948XN6T1": 2,
       "B09Y1MBMSH": 0,
-      "B08JGDRVHL": 0
+      "B08JGDRVHL": 0,
+      "B08PSY178J": 2,
+      "B08MXLWYDN": 2,
+      "B09JLW26L4": 1,
+      "B091JXZJ7X": 1
     },
     "notes": "Multi-occasion: premiere + rooftop bar implies slightly formal but not gown.",
     "dense_only": true
@@ -1294,7 +2143,10 @@
       "B07JQ7T96H": 0,
       "B098B4MG4M": 2,
       "B0069B1ITG": 2,
-      "B09CGSB7W2": 2
+      "B09CGSB7W2": 2,
+      "B07R1WBB9F": 2,
+      "B087F2267W": 2,
+      "B017BF79KK": 2
     },
     "notes": "Safety-framed query: 'prevent getting cold camping' = thermal/insulating gear. Semantic.",
     "dense_only": true
@@ -1307,7 +2159,17 @@
       "B081XYDBL2": 2,
       "B0BVMLJTFS": 2,
       "B07GKLQ5KV": 1,
-      "B095NW2T8S": 1
+      "B095NW2T8S": 1,
+      "B07YFRBZWL": 2,
+      "B08FWNCL4N": 1,
+      "B0893BPWTT": 1,
+      "B08V8MN2TS": 2,
+      "B093KHNNF5": 2,
+      "B08VWXFPN7": 2,
+      "B08MY4PKL1": 2,
+      "B08BHV7NV3": 2,
+      "B09L158GCP": 2,
+      "B09N8PP2GC": 1
     },
     "notes": "Body-shaping implicit need: 'slim waist + lift glutes' = tummy control + butt-lifting leggings.",
     "dense_only": true
@@ -1328,7 +2190,13 @@
       "B0BN6Y5N5L": 2,
       "B07N1JKFZM": 2,
       "B077MPJ9N6": 0,
-      "B088JVSWSC": 0
+      "B088JVSWSC": 0,
+      "B07SPL2LY6": 0,
+      "B086T25RN8": 0,
+      "B09WR7MP76": 1,
+      "B09Y1MBMSH": 2,
+      "B0BVMGLR2Z": 1,
+      "B09H2RTP8M": 1
     },
     "notes": "Opacity concern: 'not see-through' is an implicit fabric quality. Dense must find relevant fabrics.",
     "dense_only": true
@@ -1350,7 +2218,15 @@
       "B09N8PP2GC": 2,
       "B0922Z2GNQ": 1,
       "B08DKT1T3B": 2,
-      "B086W3BRFZ": 2
+      "B086W3BRFZ": 2,
+      "B0975VWT4K": 2,
+      "B08B8ZRSGP": 1,
+      "B08B9QPRBG": 1,
+      "B09J29WW4W": 2,
+      "B08SQ962M1": 2,
+      "B07RWNMQM8": 2,
+      "B00M97OXIW": 2,
+      "B08JCDZGL3": 2
     },
     "notes": "High-impact support: 'everything in place during jumping' implies compression + high-waist.",
     "dense_only": true
@@ -1362,7 +2238,22 @@
     "relevance": {
       "B07GKLQ5KV": 2,
       "B08F1V3KB9": 2,
-      "B08B12FQXD": 1
+      "B08B12FQXD": 1,
+      "B07D2JTHN7": 2,
+      "B0887RVWXT": 2,
+      "B0BF358FD6": 2,
+      "B08DKT1T3B": 2,
+      "B08SM5KZDS": 2,
+      "B08HQBHMM1": 2,
+      "B08L9WCTTG": 1,
+      "B0B76DVV8X": 1,
+      "B0BL75H87N": 1,
+      "B0947173ZT": 1,
+      "B06XP5K99M": 2,
+      "B098QDS5GC": 1,
+      "B09BFNMC39": 2,
+      "B081GLXH24": 2,
+      "B078NK5C99": 2
     },
     "notes": "Sarcastic constraint: 'not just decorative pockets' is colloquial. 90 Degree capris explicitly mention smartphone pockets.",
     "dense_only": true
@@ -1382,7 +2273,14 @@
       "B09N8PP2GC": 1,
       "B09K4XG235": 2,
       "B0BVMLJTFS": 2,
-      "B0BYJHP21S": 0
+      "B0BYJHP21S": 0,
+      "B08CZQ75DV": 1,
+      "B07GL76JPF": 2,
+      "B0BYJMG265": 2,
+      "B092889KCW": 1,
+      "B08B9QPRBG": 2,
+      "B08VWXFPN7": 1,
+      "B08B8ZRSGP": 1
     },
     "notes": "Athleisure paradox: 'looks non-athletic but IS athletic'. Requires semantic understanding of athleisure.",
     "dense_only": true
@@ -1404,7 +2302,12 @@
       "B08LQ5RX47": 0,
       "B081H7WBVR": 0,
       "B08RC7GPDB": 2,
-      "B0069B1ITG": 1
+      "B0069B1ITG": 1,
+      "B017BF79KK": 2,
+      "B09K4XG235": 2,
+      "B0995WPDBR": 1,
+      "B08CZPN2Z6": 2,
+      "B07NLF8NGF": 1
     },
     "notes": "Temperature paradox: 'runs hot but cold office' = lightweight moisture-wicking base layer. Semantic.",
     "dense_only": true

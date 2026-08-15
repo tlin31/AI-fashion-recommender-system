@@ -9,6 +9,7 @@ This is an AI-powered fashion recommendation system built on top of the **Gorse*
 1. **Gorse core** (root of repo) — distributed recommendation engine (Master/Server/Worker nodes) written in Go
 2. **fashion-recommend/** — a fashion-domain API layer built with Gin that integrates Gorse with LLM capabilities
 3. **python-agent/** — a LangGraph ReAct agent (FastAPI) that replaces the Go agent with multi-turn memory, HITL trait approval, and a two-model architecture (Gemini router + Gemma finalizer)
+4. **rag-service/** — a FastAPI microservice for natural-language product search; adds semantic/cold-start query handling on top of Gorse CF; pipeline: guardrail → hybrid retrieval (BM25 + Milvus) → CRAG loop → cross-encoder reranker → GPT-4o-mini generator
 
 ## Common Commands
 
@@ -159,6 +160,70 @@ python-agent/
 ```
 
 All 20 tests run in ~0.2 s with no external service dependencies (MemorySaver replaces Postgres; LLM calls are AsyncMocks).
+
+### rag-service (rag-service/)
+
+FastAPI microservice for semantic product search. Runs on port 8002. Requires Postgres, Milvus, Redis, and OpenAI API key.
+
+```bash
+cd rag-service
+
+# First-time setup
+pip install -r requirements.txt
+cp .env.example .env   # set OPENAI_API_KEY at minimum
+
+# Run the API server
+uvicorn main:app --reload --port 8002
+
+# Run tests (no external services needed — all mocked)
+pytest tests/ -v
+
+# Eval harness: run against golden query set
+python eval/run_eval.py --golden-set eval/golden_queries.json
+
+# Check regression against locked baseline (fails if any metric drops >5%)
+python eval/check_regression.py --threshold 0.05
+
+# Load test (headless, 3 min per level)
+locust -f eval/locustfile.py --host http://localhost:8002 --users 10 --spawn-rate 10 --run-time 3m --headless --csv eval/load_test_u10
+```
+
+#### Eval Baseline (locked, do not overwrite without re-running adjudication)
+
+| Metric | Value | Target | |
+|---|---|---|---|
+| NDCG@10 | 0.8468 | ≥ 0.50 | pass |
+| Recall@10 | 0.6993 | ≥ 0.70 | miss by 0.0007 |
+| Faithfulness | 0.9580 | ≥ 0.85 | pass |
+
+Locked 2026-08-11 in `rag-service/eval/baseline_metrics.json`. Relevance judgments (0/1/2) live inline in `rag-service/eval/golden_queries.json` under each query's `relevance` key — **1,481 (query, ASIN) judgments, 14.8 per query, across 3 adjudication rounds**.
+
+**Recall@10 is structurally capped at 0.7615.** The golden set now averages 13.4 relevant products per query and 81 of 100 queries have more than 10 relevant products, so ten slots cannot hold them all: `max = mean(min(10,|rel|)/|rel|) = 0.7615`. The measured 0.6993 is 91.8% of that ceiling. The ≥0.70 target was set when labels averaged 5.8 per query and the ceiling was near 1.0; denser labelling lowered the ceiling without changing retrieval. Target deliberately NOT lowered to match the result. Full analysis in `rag-service/README.md` § Evaluation.
+
+**Faithfulness is not Ragas.** `ragas` is commented out in `requirements.txt` on purpose; `eval/faithfulness_judge.py` (renamed from `ragas_judge.py`) runs a two-step GPT-4o-mini claim-extraction-and-verification judge. Installing ragas silently switches judges and invalidates comparison against this baseline. Known bias: returns 1.0 when claim extraction yields nothing, so short answers skew high.
+
+**Labelling caveat:** round 3 judged 89% of pooled candidates relevant, above the 10–30% typical of TREC pools. Strict re-scoring (grade 2 only) gives NDCG 0.8033 / Recall 0.7785 — the conclusion holds.
+
+#### CRAG thresholds (env-configurable)
+
+| Variable | Value | Meaning |
+|---|---|---|
+| `CRAG_HIGH_THRESHOLD` | `0.45` | Above this → synthesize directly |
+| `CRAG_LOW_THRESHOLD` | `0.43` | Below this → return best_effort candidates (not trending fallback) |
+| `CRAG_MAX_RETRIES` | `2` | Max query-rewrite + retry attempts |
+| `CRAG_TIME_BUDGET_S` | `3.5` | Hard wall-clock cap on CRAG loop |
+
+**Threshold provenance:** selected empirically on 2026-08-06 via a 50-combo offline grid with
+bootstrap validation — full write-up in `rag-service/README.md` § CRAG Threshold Calibration.
+`_grade()` averages cosine over all 20 candidates including the weak tail, capping the achievable
+score at **0.7091** (100-query golden set; p50 = 0.5125, p0 = 0.3205) — so a HIGH threshold of
+0.75 is unreachable and would route every query to a rewrite. HIGH stayed at 0.45: no combo beat
+it outside the bootstrap CI. LOW was raised `0.10 → 0.43`, trading −0.0044 NDCG (inside the noise
+band) for −258 ms expected latency and a retry rate of 30% → 5%. This leaves a deliberately narrow
+retry band, because the query rewrite was measured to *degrade* the retrieval grade on 75 of 100
+queries. Path distribution: 70 synthesize / 2 retry / 28 best_effort.
+
+**Important:** `score < CRAG_LOW_THRESHOLD` returns `best_effort` (real candidates, weak signal) — NOT trending products. Trending fallback is only used when retrieval returns zero candidates. This was a deliberate architectural fix in Session 4.
 
 ### Gorse Core (root module)
 
