@@ -90,7 +90,8 @@ POST /query
   ├─ 4. Cross-Encoder Reranker (pipeline/reranker.py)
   │      ms-marco-MiniLM-L-6-v2 scores all 20 candidates in one batch forward pass.
   │      Business rule applied as a score adjustment after the cross-encoder:
-  │        boost +0.05 if chunk_type == "description"  (descriptions outrank reviews)
+  │        boost +0.05 if chunk_type == "description"  — currently a NO-OP:
+  │        no review is indexed, so every candidate gets the same constant
   │      Then collapses to ONE chunk per product (highest scorer wins) before
   │      truncating to top_k — max-pooling chunk scores up to the product, so
   │      top_k counts distinct products. Returns top-k to generator.
@@ -112,7 +113,7 @@ Collection: `fashion_rag` (set via `MILVUS_COLLECTION`)
 | `id` | VARCHAR | chunk UUID |
 | `product_id` | VARCHAR | foreign key to PostgreSQL `products` |
 | `vector` | FLOAT_VECTOR[1536] | `text-embedding-3-small` embedding |
-| `chunk_type` | VARCHAR | `"description"` or `"review"` |
+| `chunk_type` | VARCHAR | `"description"` or `"review"` — **in practice always `"description"`**; see Chunking Rules |
 | `price_range` | VARCHAR | `"budget"` / `"mid"` / `"premium"` |
 | `category` | VARCHAR | e.g. `"tops"`, `"trousers"`, `"dresses"` |
 | `occasion` | VARCHAR | e.g. `"casual"`, `"formal"`, `"sport"` |
@@ -130,8 +131,13 @@ collection and re-embedding. Do not add ad-hoc filter fields — modify the sche
 
 - **Product descriptions:** sentence-aware sliding window, 256 tokens, ~50-token overlap.
   Uses `nltk.sent_tokenize()` + `tiktoken` for counting.
-- **Customer reviews:** one chunk per review (reviews are semantically atomic). Reviews
-  shorter than 20 words are dropped at ingestion.
+- **Customer reviews:** `chunk_review()` produces one chunk per review (reviews are
+  semantically atomic) and drops anything under 20 words — **but nothing calls it during
+  seeding**. `data/run_ingest.py` reads only `rag_products` and only calls
+  `chunk_description()`, so all 6,337 indexed vectors are descriptions. The 64,744 rows in
+  `rag_reviews` are ingested into Postgres and unused. Indexing them is scoped future work:
+  it grows the index ~10x and invalidates the locked baseline, the calibration cache and the
+  golden-set label coverage. See `rag-service/README.md` § Reviews are not indexed.
 - Chunking logic lives entirely in `ingestion/chunker.py`. The retrieval layer never
   re-chunks — it only queries.
 

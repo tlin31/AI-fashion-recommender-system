@@ -13,6 +13,11 @@ logger = logging.getLogger(__name__)
 # Description chunks carry structured, authoritative product facts.
 # Reviews are subjective and often tangential to the query.
 # A small boost ensures descriptions rank above reviews at equal cross-encoder scores.
+#
+# NOTE: currently a no-op. data/run_ingest.py seeds descriptions only, so every indexed
+# chunk has chunk_type == "description" and this adds the same constant to all candidates,
+# changing no ordering. It becomes live the moment reviews are indexed — see
+# README.md section "Reviews are not indexed".
 _DESCRIPTION_BOOST = 0.05
 
 
