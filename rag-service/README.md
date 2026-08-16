@@ -389,6 +389,91 @@ Two consequences worth stating plainly:
 
 ---
 
+## Scale and cost
+
+The system runs at laptop scale — 5,000 products, 6,337 vectors, no production traffic.
+This section states what that costs today and what breaks first when it grows, because
+"it works on 5,000 products" and "it works" are different claims.
+
+### Cost per query
+
+Token counts are measured from the pipeline (`tiktoken`, `cl100k_base`) against the golden
+set; **unit prices change and should be re-checked before quoting a bill.**
+
+| Stage | Calls | Tokens | Notes |
+|---|---|---|---|
+| Embedding | 1 | ~15 in | `text-embedding-3-small`; skipped on a Redis cache hit |
+| Guardrail | 1 | ~40 in / 5 out | `max_tokens=5` — "YES"/"NO" is one token |
+| Generation | 1 | ~735 in / ≤300 out | Context is top-5 chunks; measured mean 131 tokens per chunk |
+| Query rewrite | 0.05 | ~30 in / 60 out | Retry path only — 5% of queries after calibration |
+
+**~775 input and ≤305 output tokens per query, across three LLM round-trips.**
+
+Two properties worth noting. Generation dominates by an order of magnitude, so any cost work
+starts there — `top_k` is the lever, since context scales linearly with it. And the embedding
+cache only helps on *exact* repeat queries; it does nothing for the generation cost, which is
+where the money is. A response-level cache (future work) is a cost optimisation before it is
+a latency one.
+
+### What breaks first, in order
+
+**1. The BM25 index, at roughly 10⁵–10⁶ products.** It is a `BM25Okapi` object held in
+process memory and **rebuilt from PostgreSQL on every startup**. Today that is 3.5 MB of raw
+text over 5,000 products and a sub-second build. At a million products it is both a slow
+cold start and a per-replica memory cost that scales with the catalogue rather than with
+traffic — every replica holds a full copy. This is the first thing to break and the first
+thing to move out of process: Elasticsearch/OpenSearch, or Postgres full-text search, both
+of which make the sparse index a shared service instead of a per-instance liability.
+
+**2. Milvus memory, at roughly 10⁷ vectors.** 1536-dimensional `float32` vectors are 6 KB
+each: 6,337 vectors is 39 MB, but 10 million is **61 GB of raw vectors** before HNSW graph
+overhead, which adds materially at `M=16`. Mitigations in increasing order of disruption:
+scalar quantisation or `float16` (halves it), an IVF-family index (trades recall for
+memory), dimensionality reduction via Matryoshka-style truncation of the embedding, or
+partitioning by category so each search touches a slice.
+
+**3. The golden query set, at any scale.** 100 queries is already thin — most per-type
+breakdowns rest on 20–30 queries, so a per-type difference of a few points is inside the
+noise. It does not break loudly; it silently stops being able to detect regressions as the
+catalogue diversifies. Growing the catalogue without growing the golden set is the failure
+mode nobody notices.
+
+**4. Cost, well before infrastructure.** Nothing about the architecture prevents scaling to
+100 QPS, but at three LLM calls per query the bill scales linearly with traffic while
+infrastructure cost stays roughly flat. At meaningful volume the correct move is not more
+replicas — it is to stop calling an LLM on every request: cache responses, and skip
+generation entirely for navigational queries where the product list *is* the answer.
+
+**What does *not* break early:** the cross-encoder reranker always sees exactly 20
+candidates regardless of catalogue size, so its ~120 ms is constant. Retrieval is
+`O(log n)` through HNSW. The pipeline's expensive stages are bounded by design, which is
+the point of narrowing before reranking.
+
+### Stability and failure modes
+
+Current behaviour under dependency failure, and where it is wrong:
+
+| Dependency | On failure | Assessment |
+|---|---|---|
+| Redis | Cache silently disabled; every query calls OpenAI | Correct — degrade, don't fail |
+| Guardrail LLM | 3 s timeout, **fails open** — query proceeds | Correct for a search box; off-topic queries can slip through |
+| Milvus | Service starts degraded; `/query` returns empty | Loud in `/health`, but a **dense-retrieval outage silently becomes a BM25-only search** rather than an error |
+| PostgreSQL | Hard failure at startup after 3 retries with backoff | Correct — BM25 cannot be built without it |
+| **OpenAI generation** | **No fallback — the request fails** | **The real gap.** Retrieval succeeded; the answer is what failed. Returning ranked products without prose would be strictly better than a 5xx |
+| Kafka | `/ingest` unavailable | Fine — queries are unaffected |
+
+The load test found **0% failures at 1/5/10/20 concurrent users**, but that was against a
+healthy OpenAI. The untested case is partial degradation — slow rather than absent
+upstream — which is the failure mode that actually happens in production.
+
+Two known gaps beyond that: there is **no rate limiting or per-caller quota**, so a single
+client can run up an unbounded LLM bill; and **p95 is 6.4 s at 10 concurrent users**, which
+is not shippable for interactive search regardless of how the infrastructure scales. Users
+abandon search well before that. The fix is not capacity — it is streaming the answer, or
+skipping generation for the query classes that do not need it.
+
+---
+
 ## Future work
 
 ### Retrieval and evaluation
