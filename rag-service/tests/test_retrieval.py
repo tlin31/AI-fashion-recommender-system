@@ -258,9 +258,36 @@ async def test_hybrid_search_none_index_returns_empty():
 
 
 @pytest.mark.asyncio
-async def test_hybrid_search_none_milvus_returns_empty(bm25_fixture):
-    result = await hybrid_search("any query", {}, bm25_index=bm25_fixture, milvus_client=None)
+async def test_none_milvus_degrades_to_bm25_only(bm25_fixture):
+    """Milvus down is a degradation, not an outage — BM25 needs no external service."""
+    sparse = [{"chunk_id": "bm25_p1", "product_id": "p1", "text": "t",
+               "score": 0.0, "milvus_score": 0.0, "metadata": {}}]
+    degradations: list[str] = []
+    with patch("pipeline.retrieval._bm25_only_chunks",
+               new_callable=AsyncMock, return_value=sparse):
+        result = await hybrid_search(
+            "nike air max", {}, bm25_index=bm25_fixture, milvus_client=None,
+            degradations=degradations,
+        )
+    assert result == sparse
+    assert "milvus_unavailable" in degradations
+    assert "bm25_only" in degradations
+
+
+async def test_none_bm25_index_still_returns_empty(bm25_fixture):
+    """Without the sparse index there is no fallback left."""
+    result = await hybrid_search("any query", {}, bm25_index=None, milvus_client=None)
     assert result == []
+
+
+async def test_degradation_not_recorded_on_healthy_path(bm25_fixture, dummy_vector):
+    hits = [_make_hit("c1", "p1", "nike air max shoes", 0.9)]
+    client = _make_milvus_client(hits)
+    degradations: list[str] = []
+    with patch("pipeline.retrieval.embed", new_callable=AsyncMock, return_value=dummy_vector):
+        await hybrid_search("nike air max", {}, bm25_index=bm25_fixture,
+                            milvus_client=client, degradations=degradations)
+    assert degradations == []
 
 
 @pytest.mark.asyncio
@@ -286,22 +313,49 @@ async def test_hybrid_search_whitespace_query_returns_empty(bm25_fixture):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_embed_failure_returns_empty(bm25_fixture):
+async def test_embed_failure_degrades_to_bm25_only(bm25_fixture):
+    """An OpenAI outage kills the dense path but not the in-memory sparse index."""
     client = _make_milvus_client([])
+    sparse = [{"chunk_id": "bm25_p1", "product_id": "p1", "text": "t",
+               "score": 0.0, "milvus_score": 0.0, "metadata": {}}]
+    degradations: list[str] = []
     with patch("pipeline.retrieval.embed", new_callable=AsyncMock,
-               side_effect=Exception("OpenAI 503")):
+               side_effect=Exception("OpenAI 503")), \
+         patch("pipeline.retrieval._bm25_only_chunks",
+               new_callable=AsyncMock, return_value=sparse):
         result = await hybrid_search(
-            "blue trousers", filters={}, bm25_index=bm25_fixture, milvus_client=client
+            "nike air max", filters={}, bm25_index=bm25_fixture,
+            milvus_client=client, degradations=degradations,
         )
-    assert result == []
+    assert result == sparse
+    assert "embedding_failed" in degradations
 
 
 @pytest.mark.asyncio
-async def test_milvus_failure_returns_empty(bm25_fixture, dummy_vector):
+async def test_milvus_search_failure_degrades_to_bm25_only(bm25_fixture, dummy_vector):
+    """A raising Milvus client degrades rather than emptying the result set."""
+    client = _make_raising_milvus_client(Exception("collection not loaded"))
+    sparse = [{"chunk_id": "bm25_p1", "product_id": "p1", "text": "t",
+               "score": 0.0, "milvus_score": 0.0, "metadata": {}}]
+    degradations: list[str] = []
+    with patch("pipeline.retrieval.embed", new_callable=AsyncMock, return_value=dummy_vector), \
+         patch("pipeline.retrieval._bm25_only_chunks",
+               new_callable=AsyncMock, return_value=sparse):
+        result = await hybrid_search(
+            "nike air max", filters={}, bm25_index=bm25_fixture,
+            milvus_client=client, degradations=degradations,
+        )
+    assert result == sparse
+    assert "milvus_search_failed" in degradations
+
+
+async def test_no_dense_and_no_bm25_match_returns_empty(bm25_fixture, dummy_vector):
+    """Both retrievers empty-handed — nothing to degrade to."""
     client = _make_raising_milvus_client(Exception("collection not loaded"))
     with patch("pipeline.retrieval.embed", new_callable=AsyncMock, return_value=dummy_vector):
         result = await hybrid_search(
-            "blue trousers", filters={}, bm25_index=bm25_fixture, milvus_client=client
+            "zzzz nonexistent token qqqq", filters={},
+            bm25_index=bm25_fixture, milvus_client=client,
         )
     assert result == []
 

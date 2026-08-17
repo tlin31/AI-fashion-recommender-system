@@ -30,6 +30,14 @@ from pipeline.utils import Timer, _get_redis, embed
 
 logger = logging.getLogger(__name__)
 
+# Returned in place of a generated answer when the LLM is unavailable. Deterministic
+# and honest: it does not pretend to be a synthesised recommendation, and it tells the
+# caller the products below are still ranked results rather than a fallback list.
+_GENERATION_FALLBACK_ANSWER = (
+    "I couldn't generate a written summary just now, but these products are the "
+    "closest matches for your search."
+)
+
 router = APIRouter()
 
 _POSTGRES_URL = os.environ.get(
@@ -83,29 +91,46 @@ async def _fetch_product_details(product_ids: list[str]) -> dict[str, dict]:
 async def query(request: Request, body: QueryRequest) -> QueryResponse:
     total_start = Timer()
     total_start.__enter__()
+    degraded: list[str] = []
 
-    # ── 1. Guardrail ──────────────────────────────────────────────────────
-    with Timer() as t_guard:
-        is_fashion = await is_fashion_query(body.query)
+    # ── 1+2. Guardrail and retrieval, concurrently ────────────────────────
+    # The guardrail is a GPT-4o-mini round-trip and was the second-largest stage
+    # in the latency breakdown, sitting in front of retrieval purely because it
+    # can reject. But its verdict is independent of retrieval, so the two overlap
+    # and the guardrail's wall-clock cost disappears behind the retrieval it used
+    # to block. An off-topic query now does the retrieval work before being
+    # rejected — cheap locally, and it costs one embedding call, which is the
+    # deliberate trade for removing a serial LLM hop from every good query.
+    #
+    # Timers now measure overlapping windows, so guardrail_ms + retrieval_ms
+    # exceeds the wall-clock time they jointly consume. total_ms remains truthful.
+    with Timer() as t_parallel:
+        guard_task = asyncio.create_task(is_fashion_query(body.query))
+        retrieval_task = asyncio.create_task(
+            hybrid_search(
+                query=body.query,
+                filters=body.filters,
+                top_k=20,
+                bm25_index=request.app.state.bm25_index,
+                milvus_client=request.app.state.milvus_client,
+                collection_name=request.app.state.milvus_collection,
+                degradations=degraded,
+            )
+        )
+        is_fashion, candidates = await asyncio.gather(guard_task, retrieval_task)
+
     if not is_fashion:
         raise HTTPException(status_code=400, detail="Query is not fashion-related.")
 
-    # ── 2. Hybrid retrieval ───────────────────────────────────────────────
-    # Syntax 语法：通过 request.app.state 动态提取我们在 lifespan 阶段预热好的 bm25_index（内存倒排索引）
-    #             以及 milvus_client 链接，作为命名参数传入。
-    # 并发启动两路检索：路 A 走 BM25Okapi 做精确关键字匹配；路 B 走 Milvus 做高维向量语义搜索。
-    # 在 hybrid_search 内用 RRF 算法将结果合并，粗选出 20 个相关性最高的候选商品。
-    with Timer() as t_retrieval:
-        candidates = await hybrid_search(
-            query=body.query,
-            filters=body.filters,
-            top_k=20,
-            bm25_index=request.app.state.bm25_index,
-            milvus_client=request.app.state.milvus_client,
-            collection_name=request.app.state.milvus_collection,
-        )
-        # embed() is cached after hybrid_search already called it — ~5ms Redis hit.
+    with Timer() as t_embed:
+        # Cached by the hybrid_search call above — a Redis hit, not an API call.
         query_embedding = await embed(body.query)
+
+    # Both stages ran inside the same window, so each is reported as that window
+    # rather than as a slice of it. Summing the per-stage fields therefore
+    # overstates total_ms; total_ms is the number to trust.
+    guardrail_ms = t_parallel.ms
+    retrieval_ms = t_parallel.ms + t_embed.ms
 
     # ── 3. CRAG loop ──────────────────────────────────────────────────────
     with Timer() as t_crag:
@@ -127,8 +152,20 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
         )
 
     # ── 5. Generator ──────────────────────────────────────────────────────
+    # Generation is the only stage whose failure used to fail the whole request,
+    # which inverted the value: retrieval had already succeeded, so the ranked
+    # products were sitting right there. A product list without prose is strictly
+    # more useful than a 5xx, so an LLM outage degrades to exactly that.
     with Timer() as t_gen:
-        answer, cited_sources = await generate(body.query, reranked)
+        try:
+            answer, cited_sources = await generate(body.query, reranked)
+        except Exception as exc:
+            logger.error("Generation failed (%s); returning products without prose", exc)
+            degraded.append("generation_failed")
+            answer = _GENERATION_FALLBACK_ANSWER
+            # Every returned product is a "source" here — nothing was cited because
+            # nothing was written, but the caller still needs the IDs to render cards.
+            cited_sources = list(dict.fromkeys(c["product_id"] for c in reranked))
 
     # ── 6. Fetch product details for response construction ─────────────────
     product_ids = [c["product_id"] for c in reranked]
@@ -153,9 +190,10 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
         products=products,
         cited_sources=cited_sources,
         retrieval_path=retrieval_path,
+        degraded=degraded,
         latency_ms=LatencyBreakdown(
-            guardrail_ms=round(t_guard.ms, 1),
-            retrieval_ms=round(t_retrieval.ms, 1),
+            guardrail_ms=round(guardrail_ms, 1),
+            retrieval_ms=round(retrieval_ms, 1),
             crag_ms=round(t_crag.ms, 1),
             rerank_ms=round(t_rerank.ms, 1),
             generation_ms=round(t_gen.ms, 1),

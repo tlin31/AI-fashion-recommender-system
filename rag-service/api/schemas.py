@@ -47,6 +47,16 @@ class QueryResponse(BaseModel):
     cited_sources: list[str] = Field(..., description="Product IDs cited in the answer")
     retrieval_path: Literal["synthesize", "retry", "fallback", "best_effort"]
     latency_ms: LatencyBreakdown
+    degraded: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Components that failed during this request. Empty on the healthy path. "
+            "The response is still usable — degradations are surfaced rather than "
+            "raised so a partial outage returns partial results instead of a 5xx. "
+            "Values: milvus_unavailable, milvus_search_failed, embedding_failed, "
+            "bm25_only, generation_failed."
+        ),
+    )
 
 
 class IngestRequest(BaseModel):

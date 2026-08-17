@@ -96,6 +96,129 @@ def test_query_happy_path_returns_200_with_correct_shape():
 
 
 # ---------------------------------------------------------------------------
+# POST /query — degradation instead of failure
+# ---------------------------------------------------------------------------
+
+def test_generation_failure_returns_products_not_5xx():
+    """An LLM outage must not discard retrieval that already succeeded."""
+    chunks = [_make_chunk("p001"), _make_chunk("p002")]
+    app = _make_app()
+
+    with TestClient(app) as client:
+        with patch("api.routes.is_fashion_query",  new_callable=AsyncMock, return_value=True), \
+             patch("api.routes.hybrid_search",     new_callable=AsyncMock, return_value=chunks), \
+             patch("api.routes.embed",             new_callable=AsyncMock, return_value=[0.0] * 1536), \
+             patch("api.routes.run_crag",          new_callable=AsyncMock, return_value=(chunks, "synthesize")), \
+             patch("api.routes.generate",          new_callable=AsyncMock,
+                   side_effect=Exception("OpenAI 503")), \
+             patch("api.routes._fetch_product_details", new_callable=AsyncMock,
+                   return_value={"p001": {"name": "Blue Dress", "price": 49.99},
+                                 "p002": {"name": "Red Top",   "price": 29.99}}):
+
+            resp = client.post("/query", json={"query": "blue casual dress"})
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["degraded"] == ["generation_failed"]
+    # Products survive, and every one is offered as a source.
+    assert [p["product_id"] for p in body["products"]] == ["p001", "p002"]
+    assert body["cited_sources"] == ["p001", "p002"]
+    assert body["answer"]        # non-empty, deterministic fallback text
+
+
+def test_retrieval_degradations_surface_in_response():
+    """Degradations recorded inside hybrid_search reach the caller."""
+    chunks = [_make_chunk("p001")]
+    app = _make_app()
+
+    async def _degrading_search(*args, **kwargs):
+        kwargs["degradations"].extend(["milvus_unavailable", "bm25_only"])
+        return chunks
+
+    with TestClient(app) as client:
+        with patch("api.routes.is_fashion_query",  new_callable=AsyncMock, return_value=True), \
+             patch("api.routes.hybrid_search",     side_effect=_degrading_search), \
+             patch("api.routes.embed",             new_callable=AsyncMock, return_value=[0.0] * 1536), \
+             patch("api.routes.run_crag",          new_callable=AsyncMock, return_value=(chunks, "best_effort")), \
+             patch("api.routes.generate",          new_callable=AsyncMock, return_value=("ok", ["p001"])), \
+             patch("api.routes._fetch_product_details", new_callable=AsyncMock,
+                   return_value={"p001": {"name": "Blue Dress", "price": 49.99}}):
+
+            resp = client.post("/query", json={"query": "blue casual dress"})
+
+    assert resp.status_code == 200
+    assert resp.json()["degraded"] == ["milvus_unavailable", "bm25_only"]
+
+
+def test_healthy_path_reports_no_degradation():
+    chunks = [_make_chunk("p001")]
+    app = _make_app()
+
+    with TestClient(app) as client:
+        with patch("api.routes.is_fashion_query",  new_callable=AsyncMock, return_value=True), \
+             patch("api.routes.hybrid_search",     new_callable=AsyncMock, return_value=chunks), \
+             patch("api.routes.embed",             new_callable=AsyncMock, return_value=[0.0] * 1536), \
+             patch("api.routes.run_crag",          new_callable=AsyncMock, return_value=(chunks, "synthesize")), \
+             patch("api.routes.generate",          new_callable=AsyncMock, return_value=("ok [1]", ["p001"])), \
+             patch("api.routes._fetch_product_details", new_callable=AsyncMock,
+                   return_value={"p001": {"name": "Blue Dress", "price": 49.99}}):
+
+            resp = client.post("/query", json={"query": "blue casual dress"})
+
+    assert resp.json()["degraded"] == []
+
+
+def test_guardrail_and_retrieval_run_concurrently():
+    """Both stages must be in flight together, not serialised."""
+    import asyncio
+
+    order: list[str] = []
+
+    async def _slow_guard(query):
+        order.append("guard_start")
+        await asyncio.sleep(0.05)
+        order.append("guard_end")
+        return True
+
+    async def _slow_search(*args, **kwargs):
+        order.append("search_start")
+        await asyncio.sleep(0.05)
+        order.append("search_end")
+        return [_make_chunk("p001")]
+
+    app = _make_app()
+    with TestClient(app) as client:
+        with patch("api.routes.is_fashion_query", side_effect=_slow_guard), \
+             patch("api.routes.hybrid_search",    side_effect=_slow_search), \
+             patch("api.routes.embed",            new_callable=AsyncMock, return_value=[0.0] * 1536), \
+             patch("api.routes.run_crag",         new_callable=AsyncMock,
+                   return_value=([_make_chunk("p001")], "synthesize")), \
+             patch("api.routes.generate",         new_callable=AsyncMock, return_value=("ok", ["p001"])), \
+             patch("api.routes._fetch_product_details", new_callable=AsyncMock,
+                   return_value={"p001": {"name": "Blue Dress", "price": 49.99}}):
+
+            resp = client.post("/query", json={"query": "blue casual dress"})
+
+    assert resp.status_code == 200
+    # Serial execution would give guard_start, guard_end, search_start, search_end.
+    # Concurrency means both start before either finishes.
+    assert order.index("search_start") < order.index("guard_end")
+
+
+def test_off_topic_still_rejected_when_run_concurrently():
+    """Parallelising must not let an off-topic query through."""
+    app = _make_app()
+    with TestClient(app) as client:
+        with patch("api.routes.is_fashion_query", new_callable=AsyncMock, return_value=False), \
+             patch("api.routes.hybrid_search",    new_callable=AsyncMock,
+                   return_value=[_make_chunk("p001")]), \
+             patch("api.routes.embed",            new_callable=AsyncMock, return_value=[0.0] * 1536):
+            resp = client.post("/query", json={"query": "best JavaScript framework"})
+
+    assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
 # GET /health
 # ---------------------------------------------------------------------------
 
