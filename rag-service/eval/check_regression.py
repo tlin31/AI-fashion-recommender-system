@@ -16,11 +16,24 @@ def check(threshold: float) -> None:
     with open("eval/baseline_metrics.json") as f:
         baseline = json.load(f)
 
+    # A metric missing from latest is skipped, not fatal. The smoke tier of the CI
+    # gate runs with --skip-faithfulness, so demanding every baseline key would
+    # crash the gate on exactly the tier designed to be cheap.
+    missing = [m for m in baseline if m not in latest or latest[m] is None]
+    compared = [m for m in baseline if m not in missing]
+
     failures = [
         f"{metric}: {baseline[metric]:.3f} → {latest[metric]:.3f}"
-        for metric in baseline
+        for metric in compared
         if (baseline[metric] - latest[metric]) / baseline[metric] > threshold
     ]
+
+    for metric in missing:
+        print(f"  skipped {metric} — not present in latest_metrics.json")
+
+    if not compared:
+        print("Regression gate INCONCLUSIVE: no metrics in common with the baseline.")
+        sys.exit(1)
 
     if failures:
         print("Regression gate FAILED:")
@@ -28,7 +41,7 @@ def check(threshold: float) -> None:
             print(f"  {line}")
         sys.exit(1)
 
-    print("Regression gate passed.")
+    print(f"Regression gate passed ({len(compared)} metric(s) compared).")
 
 
 if __name__ == "__main__":

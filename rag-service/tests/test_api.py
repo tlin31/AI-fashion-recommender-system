@@ -59,12 +59,28 @@ def _make_chunk(product_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def test_query_off_topic_returns_400():
+    """Off-topic queries are still rejected — but only after retrieval and rerank.
+
+    The guardrail now runs concurrently and is awaited just before generation, so
+    an off-topic query pays for the cheap deterministic stages before being turned
+    away. That is the deliberate trade: no query pays a serial LLM hop, and the
+    rejection still happens before the expensive one.
+    """
+    chunks = [_make_chunk("p001")]
     app = _make_app()
     with TestClient(app) as client:
-        with patch("api.routes.is_fashion_query", new_callable=AsyncMock, return_value=False):
+        with patch("api.routes.is_fashion_query", new_callable=AsyncMock, return_value=False), \
+             patch("api.routes.hybrid_search",    new_callable=AsyncMock, return_value=chunks), \
+             patch("api.routes.embed",            new_callable=AsyncMock, return_value=[0.0] * 1536), \
+             patch("api.routes.run_crag",         new_callable=AsyncMock,
+                   return_value=(chunks, "synthesize")), \
+             patch("api.routes.generate",         new_callable=AsyncMock) as mock_gen:
             resp = client.post("/query", json={"query": "best JavaScript framework"})
+
     assert resp.status_code == 400
     assert "fashion" in resp.json()["detail"].lower()
+    # The point of gating before generation: no LLM call is made for an off-topic query.
+    mock_gen.assert_not_called()
 
 
 def test_query_happy_path_returns_200_with_correct_shape():
@@ -203,19 +219,6 @@ def test_guardrail_and_retrieval_run_concurrently():
     # Serial execution would give guard_start, guard_end, search_start, search_end.
     # Concurrency means both start before either finishes.
     assert order.index("search_start") < order.index("guard_end")
-
-
-def test_off_topic_still_rejected_when_run_concurrently():
-    """Parallelising must not let an off-topic query through."""
-    app = _make_app()
-    with TestClient(app) as client:
-        with patch("api.routes.is_fashion_query", new_callable=AsyncMock, return_value=False), \
-             patch("api.routes.hybrid_search",    new_callable=AsyncMock,
-                   return_value=[_make_chunk("p001")]), \
-             patch("api.routes.embed",            new_callable=AsyncMock, return_value=[0.0] * 1536):
-            resp = client.post("/query", json={"query": "best JavaScript framework"})
-
-    assert resp.status_code == 400
 
 
 # ---------------------------------------------------------------------------

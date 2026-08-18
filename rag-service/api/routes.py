@@ -93,21 +93,22 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
     total_start.__enter__()
     degraded: list[str] = []
 
-    # ── 1+2. Guardrail and retrieval, concurrently ────────────────────────
-    # The guardrail is a GPT-4o-mini round-trip and was the second-largest stage
-    # in the latency breakdown, sitting in front of retrieval purely because it
-    # can reject. But its verdict is independent of retrieval, so the two overlap
-    # and the guardrail's wall-clock cost disappears behind the retrieval it used
-    # to block. An off-topic query now does the retrieval work before being
-    # rejected — cheap locally, and it costs one embedding call, which is the
-    # deliberate trade for removing a serial LLM hop from every good query.
+    # ── 1. Guardrail: started now, awaited just before generation ─────────
+    # The guardrail is a full GPT-4o-mini round-trip (~511 ms p50) whose verdict
+    # is independent of everything downstream, so it runs concurrently with the
+    # cheap deterministic stages instead of blocking them.
     #
-    # Timers now measure overlapping windows, so guardrail_ms + retrieval_ms
-    # exceeds the wall-clock time they jointly consume. total_ms remains truthful.
-    with Timer() as t_parallel:
-        guard_task = asyncio.create_task(is_fashion_query(body.query))
-        retrieval_task = asyncio.create_task(
-            hybrid_search(
+    # Measured: retrieval is ~19 ms, so gathering it with the guardrail saved
+    # only ~19 ms — you can only hide the SMALLER of two concurrent tasks.
+    # Awaiting before the generator instead overlaps it with retrieval + CRAG +
+    # rerank (~246 ms), which is the most that can be hidden without also paying
+    # for a generation on queries that turn out to be off-topic.
+    guard_task = asyncio.create_task(is_fashion_query(body.query))
+
+    try:
+        # ── 2. Hybrid retrieval ───────────────────────────────────────────
+        with Timer() as t_retrieval:
+            candidates = await hybrid_search(
                 query=body.query,
                 filters=body.filters,
                 top_k=20,
@@ -116,40 +117,42 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
                 collection_name=request.app.state.milvus_collection,
                 degradations=degraded,
             )
-        )
-        is_fashion, candidates = await asyncio.gather(guard_task, retrieval_task)
+            # Cached by hybrid_search above — a Redis hit, not an API call.
+            query_embedding = await embed(body.query)
 
-    if not is_fashion:
-        raise HTTPException(status_code=400, detail="Query is not fashion-related.")
+        # ── 3. CRAG loop ──────────────────────────────────────────────
+        with Timer() as t_crag:
+            crag_chunks, retrieval_path = await run_crag(
+                query=body.query,
+                candidates=candidates,
+                query_embedding=query_embedding,
+                bm25_index=request.app.state.bm25_index,
+                milvus_client=request.app.state.milvus_client,
+                collection_name=request.app.state.milvus_collection,
+            )
 
-    with Timer() as t_embed:
-        # Cached by the hybrid_search call above — a Redis hit, not an API call.
-        query_embedding = await embed(body.query)
+        # ── 4. Cross-encoder reranker ─────────────────────────────────────
+        with Timer() as t_rerank:
+            reranked = request.app.state.reranker.rerank(
+                query=body.query,
+                candidates=crag_chunks,
+                top_k=body.top_k,
+            )
 
-    # Both stages ran inside the same window, so each is reported as that window
-    # rather than as a slice of it. Summing the per-stage fields therefore
-    # overstates total_ms; total_ms is the number to trust.
-    guardrail_ms = t_parallel.ms
-    retrieval_ms = t_parallel.ms + t_embed.ms
+        # ── 4b. Guardrail gate ────────────────────────────────────────────
+        # Last point at which rejecting is still free: everything above is local
+        # and deterministic, everything below costs an LLM call. By now the
+        # guardrail has usually finished, so this await is close to zero.
+        with Timer() as t_guard_wait:
+            is_fashion = await guard_task
+        if not is_fashion:
+            raise HTTPException(status_code=400, detail="Query is not fashion-related.")
 
-    # ── 3. CRAG loop ──────────────────────────────────────────────────────
-    with Timer() as t_crag:
-        crag_chunks, retrieval_path = await run_crag(
-            query=body.query,
-            candidates=candidates,
-            query_embedding=query_embedding,
-            bm25_index=request.app.state.bm25_index,
-            milvus_client=request.app.state.milvus_client,
-            collection_name=request.app.state.milvus_collection,
-        )
-
-    # ── 4. Cross-encoder reranker ─────────────────────────────────────────
-    with Timer() as t_rerank:
-        reranked = request.app.state.reranker.rerank(
-            query=body.query,
-            candidates=crag_chunks,
-            top_k=body.top_k,
-        )
+    finally:
+        # Any exception above (retrieval, CRAG, rerank) would otherwise leave the
+        # guardrail task orphaned and log "exception was never retrieved".
+        if not guard_task.done():
+            guard_task.cancel()
 
     # ── 5. Generator ──────────────────────────────────────────────────────
     # Generation is the only stage whose failure used to fail the whole request,
@@ -192,8 +195,11 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
         retrieval_path=retrieval_path,
         degraded=degraded,
         latency_ms=LatencyBreakdown(
-            guardrail_ms=round(guardrail_ms, 1),
-            retrieval_ms=round(retrieval_ms, 1),
+            # Residual wait only — the guardrail ran concurrently with everything
+            # above it, so this is what its round-trip actually cost the request,
+            # not what the call itself took.
+            guardrail_ms=round(t_guard_wait.ms, 1),
+            retrieval_ms=round(t_retrieval.ms, 1),
             crag_ms=round(t_crag.ms, 1),
             rerank_ms=round(t_rerank.ms, 1),
             generation_ms=round(t_gen.ms, 1),

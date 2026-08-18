@@ -16,11 +16,24 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 
-from pipeline.utils import get_openai_client
+from pipeline.utils import _get_redis, get_openai_client
 
 logger = logging.getLogger(__name__)
+
+# A query's topic never changes, so this verdict is cacheable far longer than an
+# embedding — 24h against the embedding cache's 1h. The payload is one bit, which
+# makes this the cheapest cache in the pipeline and the highest-leverage: the
+# guardrail is a full GPT-4o-mini round-trip (~511ms measured, p50) in front of a
+# ~2.7s request, and a search box sees the same queries repeatedly.
+_GUARDRAIL_CACHE_TTL = 86_400
+
+
+def _cache_key(query: str) -> str:
+    digest = hashlib.sha256(query.strip().lower().encode()).hexdigest()[:24]
+    return f"guard:{digest}"
 
 # System prompt is a constant — never interpolate user input into it.
 _SYSTEM_PROMPT = (
@@ -56,6 +69,19 @@ async def is_fashion_query(query: str) -> bool:
     # Empty queries are not fashion queries; guard here before spending an API call.
     if not query or not query.strip():
         return False
+
+    # ── Cache read ──────────────────────────────────────────────────────────
+    # Keyed on the case-folded, stripped query so "Blue Dress" and "blue dress "
+    # share a verdict. Fail-open on any Redis error, same as embed().
+    key = _cache_key(query)
+    r = _get_redis()
+    if r is not None:
+        try:
+            cached = await r.get(key)
+            if cached is not None:
+                return cached == "1"
+        except Exception as exc:
+            logger.debug("Guardrail cache read failed: %s", exc)
 
     client = get_openai_client()
 
@@ -93,6 +119,15 @@ async def is_fashion_query(query: str) -> bool:
             raw,
             is_fashion,
         )
+
+        # Write-through. Only real verdicts are cached — a fail-open True from the
+        # exception path below must never be persisted, or one API blip would
+        # whitelist a query for 24 hours.
+        if r is not None:
+            try:
+                await r.set(key, "1" if is_fashion else "0", ex=_GUARDRAIL_CACHE_TTL)
+            except Exception as exc:
+                logger.debug("Guardrail cache write failed: %s", exc)
         return is_fashion
 
     except asyncio.TimeoutError:
