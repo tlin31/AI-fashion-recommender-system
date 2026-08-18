@@ -9,9 +9,11 @@ import json
 import logging
 import os
 import uuid
+from typing import NamedTuple
 
 import psycopg2
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
 from api.schemas import (
     HealthResponse,
@@ -23,7 +25,7 @@ from api.schemas import (
     QueryResponse,
 )
 from pipeline.crag import run_crag
-from pipeline.generator import generate
+from pipeline.generator import _parse_cited_sources, generate, generate_stream
 from pipeline.guardrail import is_fashion_query
 from pipeline.retrieval import hybrid_search
 from pipeline.utils import Timer, _get_redis, embed
@@ -84,11 +86,27 @@ async def _fetch_product_details(product_ids: list[str]) -> dict[str, dict]:
 
 
 # ---------------------------------------------------------------------------
-# POST /query — full RAG pipeline
+# Shared pipeline — everything up to (but not including) generation
 # ---------------------------------------------------------------------------
 
-@router.post("/query", response_model=QueryResponse)
-async def query(request: Request, body: QueryRequest) -> QueryResponse:
+class _Retrieved(NamedTuple):
+    """Result of every stage before the generator.
+
+    Both /query and /query/stream run an identical pipeline and differ only in how
+    the answer is delivered, so the stages live here rather than being duplicated.
+    """
+    reranked: list[dict]
+    products: list[ProductResult]
+    retrieval_path: str
+    degraded: list[str]
+    total_start: Timer
+    t_guard_wait: Timer
+    t_retrieval: Timer
+    t_crag: Timer
+    t_rerank: Timer
+
+
+async def _run_retrieval(request: Request, body: QueryRequest) -> _Retrieved:
     total_start = Timer()
     total_start.__enter__()
     degraded: list[str] = []
@@ -154,23 +172,7 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
         if not guard_task.done():
             guard_task.cancel()
 
-    # ── 5. Generator ──────────────────────────────────────────────────────
-    # Generation is the only stage whose failure used to fail the whole request,
-    # which inverted the value: retrieval had already succeeded, so the ranked
-    # products were sitting right there. A product list without prose is strictly
-    # more useful than a 5xx, so an LLM outage degrades to exactly that.
-    with Timer() as t_gen:
-        try:
-            answer, cited_sources = await generate(body.query, reranked)
-        except Exception as exc:
-            logger.error("Generation failed (%s); returning products without prose", exc)
-            degraded.append("generation_failed")
-            answer = _GENERATION_FALLBACK_ANSWER
-            # Every returned product is a "source" here — nothing was cited because
-            # nothing was written, but the caller still needs the IDs to render cards.
-            cited_sources = list(dict.fromkeys(c["product_id"] for c in reranked))
-
-    # ── 6. Fetch product details for response construction ─────────────────
+    # ── 5. Fetch product details for response construction ────────────────
     product_ids = [c["product_id"] for c in reranked]
     details = await _fetch_product_details(product_ids)
 
@@ -186,25 +188,142 @@ async def query(request: Request, body: QueryRequest) -> QueryResponse:
         for chunk in reranked
     ]
 
-    total_start.__exit__(None, None, None)
+    return _Retrieved(
+        reranked=reranked,
+        products=products,
+        retrieval_path=retrieval_path,
+        degraded=degraded,
+        total_start=total_start,
+        t_guard_wait=t_guard_wait,
+        t_retrieval=t_retrieval,
+        t_crag=t_crag,
+        t_rerank=t_rerank,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /query — full pipeline, answer returned complete
+# ---------------------------------------------------------------------------
+
+@router.post("/query", response_model=QueryResponse)
+async def query(request: Request, body: QueryRequest) -> QueryResponse:
+    r = await _run_retrieval(request, body)
+    degraded = r.degraded
+
+    # ── 6. Generator ──────────────────────────────────────────────────────
+    # Generation is the only stage whose failure used to fail the whole request,
+    # which inverted the value: retrieval had already succeeded, so the ranked
+    # products were sitting right there. A product list without prose is strictly
+    # more useful than a 5xx, so an LLM outage degrades to exactly that.
+    with Timer() as t_gen:
+        try:
+            answer, cited_sources = await generate(body.query, r.reranked)
+        except Exception as exc:
+            logger.error("Generation failed (%s); returning products without prose", exc)
+            degraded.append("generation_failed")
+            answer = _GENERATION_FALLBACK_ANSWER
+            # Every returned product is a "source" here — nothing was cited because
+            # nothing was written, but the caller still needs the IDs to render cards.
+            cited_sources = list(dict.fromkeys(c["product_id"] for c in r.reranked))
+
+    r.total_start.__exit__(None, None, None)
 
     return QueryResponse(
         answer=answer,
-        products=products,
+        products=r.products,
         cited_sources=cited_sources,
-        retrieval_path=retrieval_path,
+        retrieval_path=r.retrieval_path,
         degraded=degraded,
         latency_ms=LatencyBreakdown(
             # Residual wait only — the guardrail ran concurrently with everything
             # above it, so this is what its round-trip actually cost the request,
             # not what the call itself took.
-            guardrail_ms=round(t_guard_wait.ms, 1),
-            retrieval_ms=round(t_retrieval.ms, 1),
-            crag_ms=round(t_crag.ms, 1),
-            rerank_ms=round(t_rerank.ms, 1),
+            guardrail_ms=round(r.t_guard_wait.ms, 1),
+            retrieval_ms=round(r.t_retrieval.ms, 1),
+            crag_ms=round(r.t_crag.ms, 1),
+            rerank_ms=round(r.t_rerank.ms, 1),
             generation_ms=round(t_gen.ms, 1),
-            total_ms=round(total_start.ms, 1),
+            total_ms=round(r.total_start.ms, 1),
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /query/stream — same pipeline, answer streamed as Server-Sent Events
+# ---------------------------------------------------------------------------
+#
+# Separate endpoint rather than a flag on /query, so the JSON contract stays
+# untouched: eval/run_eval.py, eval/locustfile.py and the regression gate all
+# parse /query and none of them need to change.
+#
+# Event order matters and is the point of the endpoint. Products are ready once
+# reranking finishes and are sent immediately, so a client renders cards while
+# the prose is still being written, instead of waiting for the whole answer.
+#
+#   event: products  → products, retrieval_path, degraded          (~500 ms)
+#   event: token     → one text delta, many of these               (first ~920 ms)
+#   event: done      → cited_sources, latency_ms                   (~1.9 s)
+#   event: error     → generation failed after products were sent
+# ---------------------------------------------------------------------------
+
+def _sse(event: str, payload: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+
+@router.post("/query/stream")
+async def query_stream(request: Request, body: QueryRequest) -> StreamingResponse:
+    # Run the blocking stages BEFORE returning the StreamingResponse, so a
+    # guardrail rejection is still a clean 400. Once streaming starts the status
+    # code is already on the wire and errors can only be reported as events.
+    r = await _run_retrieval(request, body)
+
+    async def event_stream():
+        yield _sse("products", {
+            "products":       [p.model_dump() for p in r.products],
+            "retrieval_path": r.retrieval_path,
+            "degraded":       r.degraded,
+        })
+
+        pieces: list[str] = []
+        gen = Timer(); gen.__enter__()
+        try:
+            async for delta in generate_stream(body.query, r.reranked):
+                pieces.append(delta)
+                yield _sse("token", {"text": delta})
+        except Exception as exc:
+            # Products are already delivered, so this degrades rather than fails —
+            # same policy as /query, expressed in the only way SSE allows.
+            logger.error("Streaming generation failed (%s); products already sent", exc)
+            r.degraded.append("generation_failed")
+            yield _sse("error", {"degraded": "generation_failed",
+                                 "message": _GENERATION_FALLBACK_ANSWER})
+        gen.__exit__(None, None, None)
+
+        answer = "".join(pieces)
+        # Citations need the complete text — a partial answer cannot resolve [n].
+        cited = (_parse_cited_sources(answer, r.reranked) if answer
+                 else list(dict.fromkeys(c["product_id"] for c in r.reranked)))
+        r.total_start.__exit__(None, None, None)
+
+        yield _sse("done", {
+            "cited_sources": cited,
+            "degraded":      r.degraded,
+            "latency_ms": {
+                "guardrail_ms":  round(r.t_guard_wait.ms, 1),
+                "retrieval_ms":  round(r.t_retrieval.ms, 1),
+                "crag_ms":       round(r.t_crag.ms, 1),
+                "rerank_ms":     round(r.t_rerank.ms, 1),
+                "generation_ms": round(gen.ms, 1),
+                "total_ms":      round(r.total_start.ms, 1),
+            },
+        })
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        # Stops nginx and similar proxies from buffering the stream, which would
+        # silently undo the whole point of the endpoint.
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

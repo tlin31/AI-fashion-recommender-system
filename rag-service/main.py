@@ -108,7 +108,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if app.state.milvus_client is None:
         logger.critical(
             "rag-service starting DEGRADED — Milvus unavailable. "
-            "All /query requests will return empty results until Milvus is restored."
+            "/query will degrade to BM25-only retrieval (sparse, no semantic match) "
+            "and responses will carry degraded=['milvus_unavailable','bm25_only'] "
+            "until Milvus is restored."
         )
 
     # ── 4. Kafka producer (ingest write path) ─────────────────────────────
