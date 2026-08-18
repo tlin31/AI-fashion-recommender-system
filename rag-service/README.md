@@ -278,12 +278,16 @@ The total is bounded by generation, and no amount of work elsewhere changes that
 ### What is left
 
 Skipping generation for navigational queries would save the full ~1817 ms rather than
-hiding it, and the data supports it: navigational NDCG@10 is 0.9359, so retrieval is
-near-perfect and the products *are* the answer. The obstacle is runtime classification —
-query `type` exists only as evaluation metadata. The next step is to test offline whether
-BM25 score concentration separates navigational from exploratory queries, using the
-golden set's `type` labels as ground truth. Unlike the CRAG calibration, those labels
-were not self-assigned.
+hiding it, and the data supports the premise: navigational NDCG@10 is 0.9359, so retrieval
+is near-perfect and the products *are* the answer. The obstacle is runtime classification —
+query `type` exists only as evaluation metadata.
+
+The first candidate signal, BM25 score concentration, was tested offline and **rejected**
+(`eval/probe_navigational_router.py`; see *What didn't work* item 8). A viable version needs
+an explicit intent signal rather than a retrieval-score heuristic: the guardrail already
+makes an LLM call that runs concurrently and is Redis-cached, so returning an `intent` field
+alongside `is_fashion` would cost no extra latency on the critical path. That is a session,
+not a patch, and it is not started.
 
 ---
 
@@ -491,6 +495,10 @@ the seeding script — reads only `rag_products`, calls only `chunk_description(
 hardcodes `chunk_type: "description"`. The only caller of `chunk_review()` is the Kafka
 consumer, which no review has ever been published to.
 
+**8. BM25 score concentration is not a usable query router.** A high AUC hid an unusable
+operating point, and the negative control showed the hypothesised mechanism was wrong.
+Details below.
+
 ### Reviews are not indexed
 
 All 6,337 vectors are product descriptions. Verified three ways: the seeding script's code
@@ -511,6 +519,60 @@ Two consequences worth stating plainly:
   from a marketing description — so the missing corpus and the weak query classes line up.
 
 64,744 reviews sit in the `rag_reviews` PostgreSQL table, ingested and unused.
+
+### BM25 concentration cannot route navigational queries
+
+Generation is 69% of request latency, and navigational queries score NDCG@10 0.9359 — the
+ranked products already answer them. Skipping the generator for that class would remove
+~1817 ms outright instead of hiding it behind streaming. The service cannot see a query's
+`type` at request time, so it needs a proxy.
+
+**Hypothesis:** a navigational query names one specific product, so its BM25 scores should
+concentrate on a few documents; an exploratory query matches many products weakly.
+
+Tested against the golden set's `type` labels (20 navigational / 80 other) with a
+2000-sample bootstrap, mirroring the CRAG calibration. Unlike the CRAG thresholds, these
+labels were assigned when the set was written, not derived from the system under test.
+
+| Feature | AUC | 95% CI |
+|---|---:|---|
+| `max_score` — raw top-1 BM25 | **0.924** | [0.866, 0.969] |
+| `top1_ratio` — top-1 share of the top-50 mass | 0.863 | [0.787, 0.926] |
+| `entropy` over top-50 (negated) | 0.844 | [0.757, 0.919] |
+| `top1_over_next9` | 0.834 | [0.740, 0.919] |
+| `gap_ratio` — (s₁ − s₂)/s₁ | 0.807 | [0.685, 0.904] |
+| `n_tokens` — *negative control* | 0.416 | [0.287, 0.552] |
+
+**AUC 0.924 looks deployable. It is not.** Three reasons, in order of how much they matter:
+
+**Every concentration feature loses to raw magnitude.** If the mechanism were "one document
+dominates," `top1_ratio` and `gap_ratio` would lead. They trail. The best feature is the
+absolute score, which is a function of term rarity (IDF) — so what separates the classes is
+*rare words*, not concentration. The hypothesis was wrong even though the numbers looked
+right.
+
+**BM25 cannot distinguish a rare brand from a rare product noun.** The one false positive
+above the best usable threshold is `silky durag for 360 waves with long tail straps`
+(`max_score` 62.9) — an *attribute* query outranking all 20 navigational ones. `durag` is as
+rare a token as `MEROKEETY`. At the level of term statistics they are the same object, so no
+BM25 feature can separate them; the distinction is semantic and lives above the retrieval
+score.
+
+**The base rate destroys the precision.** At 20% prevalence the best threshold holding
+precision ≥ 0.80 is `max_score ≥ 54.10`: recall 0.30, skipping generation on 7 queries per
+100 of which 1 is wrong — a mean saving of **127 ms** across all traffic. Pushing to full
+recall drops precision to 0.56. Precision is the metric that matters here because the two
+errors are not symmetric: a false negative forfeits a saving, a false positive silently
+drops the prose from a query that needed it. A 1-in-7 chance of the second, for 127 ms, is
+not a trade worth making.
+
+The negative control is load-bearing. BM25 sums over query terms, so a longer query scores
+higher mechanically, and the whole result could have been an artefact of navigational
+queries being wordier. `n_tokens` at AUC 0.416 (and `max_score` per token still at 0.915)
+rules that out — the signal is real, it is simply the wrong signal.
+
+Reproduce with `python eval/probe_navigational_router.py`; it needs only PostgreSQL and
+takes a few seconds. Full per-query output in `eval/navigational_router_results.json`.
 
 ---
 
@@ -567,7 +629,10 @@ mode nobody notices.
 100 QPS, but at three LLM calls per query the bill scales linearly with traffic while
 infrastructure cost stays roughly flat. At meaningful volume the correct move is not more
 replicas — it is to stop calling an LLM on every request: cache responses, and skip
-generation entirely for navigational queries where the product list *is* the answer.
+generation entirely for navigational queries where the product list *is* the answer. The
+cheap version of that routing decision has already been tested and rejected — BM25 score
+concentration does not identify the class precisely enough (*What didn't work*, item 8) —
+so it needs a real intent signal, which is why it is future work rather than a quick win.
 
 **What does *not* break early:** the cross-encoder reranker always sees exactly 20
 candidates regardless of catalogue size, so its ~120 ms is constant. Retrieval is
