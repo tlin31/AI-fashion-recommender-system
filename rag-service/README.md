@@ -27,10 +27,24 @@ judgments built by TREC-style pooling across three adjudication rounds.
 | Recall@10 | **0.6993** | ≥ 0.70 | miss by 0.0007 — [structurally capped at 0.7615](#why-recall10-is-structurally-capped-at-07615) |
 | Faithfulness | **0.9580** | ≥ 0.85 | pass |
 
-Load: 0% failures at 1/5/10/20 concurrent users; p50 3.3 s and 1.81 RPS at 10 users.
-Latency is dominated by OpenAI round-trips, not local infrastructure.
+Latency, measured p50 over warm queries:
 
-116 unit tests, fully mocked. A regression gate blocks metric drops over 5%.
+| | `/query` | `/query/stream` |
+|---|---:|---:|
+| First visible result | 2424 ms | **527 ms** |
+| First token of prose | — | 1276 ms |
+| Complete answer | 2424 ms | 2583 ms |
+
+Streaming does not make generation faster — it stops the caller waiting on work
+that already finished. Products are ranked once reranking completes and are sent
+then, rather than being held until the last token is written. **78% cut in
+time-to-first-content.** See
+[Latency: where the time goes](#latency-where-the-time-goes).
+
+Load: 0% failures at 1/5/10/20 concurrent users; 1.81 RPS at 10 users. Latency is
+dominated by OpenAI round-trips, not local infrastructure.
+
+127 unit tests, fully mocked. A regression gate blocks metric drops over 5%.
 
 **Three things worth knowing before reading further**, because they are the parts most
 projects leave out:
@@ -45,44 +59,56 @@ projects leave out:
 
 ## Architecture
 
-Each `POST /query` passes through five stages:
+Two endpoints run the identical pipeline and differ only in how the answer is
+delivered — `POST /query` returns it complete, `POST /query/stream` streams it.
 
 ```
-POST /query
+POST /query  ·  POST /query/stream
   │
-  ├─ 1. Guardrail
-  │      GPT-4o-mini zero-shot classifier: is this a fashion query?
-  │      Off-topic queries are rejected without touching the index.
-  │      Fails OPEN — a classifier timeout lets the query through.
+  ├─ Guardrail STARTED, not awaited ────────────────────────┐
+  │    GPT-4o-mini zero-shot: is this a fashion query?      │
+  │    Redis guard:{sha256}, TTL 24h — hit is ~0 ms         │  runs concurrently
+  │    Fails OPEN: a timeout lets the query through         │  with everything
+  │                                                         │  below it
+  ├─ 1. Hybrid Retrieval          ~20 ms                    │
+  │    BM25 (in-memory, built from Postgres at startup)     │
+  │    ∥ Milvus HNSW  → RRF fusion (k=60) → top-20 chunks   │
+  │    Metadata pre-filter applied inside the ANN search.   │
+  │    Dense path unavailable → BM25-only, degraded[] set   │
+  │                                                         │
+  ├─ 2. CRAG Corrective Loop      ~0.2 ms                   │
+  │    Mean cosine over candidates — no extra API call.     │
+  │    ≥ HIGH → reranker ("synthesize")                     │
+  │    middle → rewrite + retry ("retry")                   │
+  │    < LOW  → best real candidates ("best_effort")        │
+  │    Trending only when retrieval returns nothing at all. │
+  │                                                         │
+  ├─ 3. Cross-Encoder Reranker    ~230 ms                   │
+  │    ms-marco-MiniLM-L-6-v2, all 20 candidates in one     │
+  │    batch forward pass. +0.05 description boost (a no-op │
+  │    today — every indexed chunk is a description).       │
+  │    Collapses to one chunk per product, so top_k counts  │
+  │    distinct products.                                   │
+  │                                                         │
+  ├─ 4. Guardrail GATE ⇦─────────────────────────────────────┘
+  │    Residual wait 0–131 ms against a ~511 ms call.
+  │    Last point where rejecting is free: everything above is
+  │    local, everything below costs an LLM call. NO → 400.
   │
-  ├─ 2. Hybrid Retrieval
-  │      BM25 over 5,000 product names/descriptions (in-memory, built at
-  │      startup from PostgreSQL) fused with Milvus HNSW dense search via
-  │      Reciprocal Rank Fusion (k=60). Metadata pre-filter applied inside
-  │      the ANN search. Returns top-20 chunks.
+  │    /query/stream: products emitted HERE, ~527 ms
   │
-  ├─ 3. CRAG Corrective Loop
-  │      Grades candidates by mean cosine similarity — no extra API call.
-  │      ≥ HIGH  → straight to reranking          ("synthesize")
-  │      middle  → rewrite query, retry retrieval ("retry")
-  │      < LOW   → return best real candidates    ("best_effort")
-  │      Trending products only when retrieval returns nothing at all.
-  │
-  ├─ 4. Cross-Encoder Reranker
-  │      ms-marco-MiniLM-L-6-v2 scores all 20 candidates in one batch
-  │      forward pass. +0.05 boost for description chunks — currently a
-  │      no-op, since every indexed chunk is a description (see below).
-  │      Collapses to one chunk per product (highest scorer wins), so
-  │      top_k counts distinct products.
-  │
-  └─ 5. Generator
-         GPT-4o-mini, temperature 0, pinned system prompt. Answers only
-         from supplied context. Returns cited product IDs.
+  └─ 5. Generator                 ~1700 ms
+       GPT-4o-mini, temperature 0, pinned system prompt.
+       Answers only from supplied context.
+       Failure → products returned without prose, degraded[] set.
 ```
 
 Every response carries a per-stage latency breakdown (`guardrail_ms`, `retrieval_ms`,
-`crag_ms`, `rerank_ms`, `generation_ms`, `total_ms`). That instrumentation is what
-identified the cross-encoder as the largest local cost and OpenAI as the real bottleneck.
+`crag_ms`, `rerank_ms`, `generation_ms`, `total_ms`) and a `degraded` list naming any
+component that failed. `guardrail_ms` is the **residual wait**, not the call duration —
+the call overlaps the stages above it.
+
+That instrumentation is what located the bottleneck; the section below is what it found.
 
 ---
 
@@ -159,6 +185,109 @@ independent of the swept parameter. It carries a fingerprint (embedding model, R
 candidate pool, chunk cap, retrieval top-k, Milvus row count) and the grid **refuses to run**
 if the live configuration has drifted. A stale cache is worse than no cache — it fails
 silently and produces confident, wrong answers.
+
+---
+
+## Latency: where the time goes
+
+The per-stage instrumentation exists so this section can be written from measurement
+rather than intuition. Every number below was measured on the golden query set.
+
+### Decomposing generation
+
+Generation is ~69% of a request. Fitting the two query classes — navigational at 108
+output tokens / 1817 ms, exploratory at 200 tokens / 2581 ms (n=36, correlation between
+output length and `generation_ms` = 0.738):
+
+```
+generation ≈ 920 ms  +  8.3 ms × output_tokens
+             └ TTFT      └ decode, ~120 tok/s
+```
+
+Median answer is 115 tokens and **nothing hits the 300-token cap** — `max_tokens=300`
+is currently inert. That decomposition rules several options in and out:
+
+| Option | Saving | Why |
+|---|---|---|
+| Lower `max_tokens` | **0 ms** | No query reaches the cap; the parameter does nothing today |
+| Shrink input context (`top_k` 5→3) | **≈0 ms** | Prefill is fast — this is a *cost* lever, not a latency one |
+| Halve output length | ~480 ms | Cuts decode only; the 920 ms TTFT floor is untouched |
+| **Stream the answer** | **1900 ms perceived** | Turns TTFT into the number the user experiences |
+| Skip generation entirely | 1817 ms | Only for classes where prose adds nothing |
+
+### What was done
+
+**Guardrail moved off the critical path.** It is a full GPT-4o-mini round-trip (~511 ms
+isolated) whose verdict is independent of retrieval, so it now starts first and is awaited
+just before the generator — overlapping retrieval, CRAG and rerank. Residual wait is
+0–131 ms.
+
+*The first attempt at this was wrong and is worth recording.* Gathering the guardrail with
+retrieval saved only **19 ms**, because retrieval is ~19 ms and **you can only hide the
+smaller of two concurrent tasks**. Moving the await later, so it overlaps ~250 ms of
+rerank instead, is what actually recovered the cost.
+
+**Guardrail verdicts cached.** `guard:{sha256}` in Redis, TTL 24 h against the embedding
+cache's 1 h, because a query's topic does not change. `guardrail_ms` drops to exactly 0.0
+on a hit. Only real verdicts are cached — the fail-open `True` from the exception path is
+never written, or one API blip would whitelist a query for a day.
+
+**Answer streamed, products first.** `POST /query/stream` emits Server-Sent Events:
+
+```
+event: products   products, retrieval_path, degraded      p50   527 ms
+event: token      one text delta, many of these           p50  1276 ms
+event: done       cited_sources, latency_ms               p50  2583 ms
+event: error      generation failed after products sent
+```
+
+| | `/query` | `/query/stream` |
+|---|---:|---:|
+| First visible result | 2424 ms | **527 ms** (−78%) |
+| Complete answer | 2424 ms | 2583 ms (unchanged) |
+
+Total time is deliberately unchanged. Products are ranked the moment reranking finishes
+and were previously held until the last token was written; the endpoint stops the caller
+waiting on work that already completed.
+
+Three implementation points that were not obvious:
+
+- Retrieval runs **before** `StreamingResponse` is returned, so a guardrail rejection is
+  still a clean `400`. Once bytes are on the wire the status code is committed and
+  failures can only be reported as events — hence `event: error` followed by `done`
+  rather than an aborted connection.
+- `cited_sources` ships in `done`, not with `products`: `[n]` references cannot be
+  resolved from a partial answer.
+- `X-Accel-Buffering: no` is set, because a buffering proxy would silently undo the
+  entire endpoint.
+
+A separate endpoint rather than a flag on `/query` keeps the JSON contract untouched —
+`eval/run_eval.py`, `eval/locustfile.py` and the regression gate all parse `/query` and
+none needed changing.
+
+### An honest limit on the measurement
+
+**End-to-end `total_ms` could not be shown to improve** by the guardrail work.
+`generation_ms` spans p10 1342 ms to p90 3317 ms on this machine, and even local CPU
+`rerank_ms` swings 227–771 ms between runs. A ~400 ms effect is not separable from that
+at n=30 — one run showed the cached condition as *slower*, which is plainly noise.
+
+The mechanism is confirmed at stage level (`guardrail_ms` falls from ~511 ms to 0–131 ms).
+The total is bounded by generation, and no amount of work elsewhere changes that.
+
+### What is left
+
+Skipping generation for navigational queries would save the full ~1817 ms rather than
+hiding it, and the data supports the premise: navigational NDCG@10 is 0.9359, so retrieval
+is near-perfect and the products *are* the answer. The obstacle is runtime classification —
+query `type` exists only as evaluation metadata.
+
+The first candidate signal, BM25 score concentration, was tested offline and **rejected**
+(`eval/probe_navigational_router.py`; see *What didn't work* item 8). A viable version needs
+an explicit intent signal rather than a retrieval-score heuristic: the guardrail already
+makes an LLM call that runs concurrently and is Redis-cached, so returning an `intent` field
+alongside `is_fashion` would cost no extra latency on the critical path. That is a session,
+not a patch, and it is not started.
 
 ---
 
@@ -366,6 +495,10 @@ the seeding script — reads only `rag_products`, calls only `chunk_description(
 hardcodes `chunk_type: "description"`. The only caller of `chunk_review()` is the Kafka
 consumer, which no review has ever been published to.
 
+**8. BM25 score concentration is not a usable query router.** A high AUC hid an unusable
+operating point, and the negative control showed the hypothesised mechanism was wrong.
+Details below.
+
 ### Reviews are not indexed
 
 All 6,337 vectors are product descriptions. Verified three ways: the seeding script's code
@@ -386,6 +519,60 @@ Two consequences worth stating plainly:
   from a marketing description — so the missing corpus and the weak query classes line up.
 
 64,744 reviews sit in the `rag_reviews` PostgreSQL table, ingested and unused.
+
+### BM25 concentration cannot route navigational queries
+
+Generation is 69% of request latency, and navigational queries score NDCG@10 0.9359 — the
+ranked products already answer them. Skipping the generator for that class would remove
+~1817 ms outright instead of hiding it behind streaming. The service cannot see a query's
+`type` at request time, so it needs a proxy.
+
+**Hypothesis:** a navigational query names one specific product, so its BM25 scores should
+concentrate on a few documents; an exploratory query matches many products weakly.
+
+Tested against the golden set's `type` labels (20 navigational / 80 other) with a
+2000-sample bootstrap, mirroring the CRAG calibration. Unlike the CRAG thresholds, these
+labels were assigned when the set was written, not derived from the system under test.
+
+| Feature | AUC | 95% CI |
+|---|---:|---|
+| `max_score` — raw top-1 BM25 | **0.924** | [0.866, 0.969] |
+| `top1_ratio` — top-1 share of the top-50 mass | 0.863 | [0.787, 0.926] |
+| `entropy` over top-50 (negated) | 0.844 | [0.757, 0.919] |
+| `top1_over_next9` | 0.834 | [0.740, 0.919] |
+| `gap_ratio` — (s₁ − s₂)/s₁ | 0.807 | [0.685, 0.904] |
+| `n_tokens` — *negative control* | 0.416 | [0.287, 0.552] |
+
+**AUC 0.924 looks deployable. It is not.** Three reasons, in order of how much they matter:
+
+**Every concentration feature loses to raw magnitude.** If the mechanism were "one document
+dominates," `top1_ratio` and `gap_ratio` would lead. They trail. The best feature is the
+absolute score, which is a function of term rarity (IDF) — so what separates the classes is
+*rare words*, not concentration. The hypothesis was wrong even though the numbers looked
+right.
+
+**BM25 cannot distinguish a rare brand from a rare product noun.** The one false positive
+above the best usable threshold is `silky durag for 360 waves with long tail straps`
+(`max_score` 62.9) — an *attribute* query outranking all 20 navigational ones. `durag` is as
+rare a token as `MEROKEETY`. At the level of term statistics they are the same object, so no
+BM25 feature can separate them; the distinction is semantic and lives above the retrieval
+score.
+
+**The base rate destroys the precision.** At 20% prevalence the best threshold holding
+precision ≥ 0.80 is `max_score ≥ 54.10`: recall 0.30, skipping generation on 7 queries per
+100 of which 1 is wrong — a mean saving of **127 ms** across all traffic. Pushing to full
+recall drops precision to 0.56. Precision is the metric that matters here because the two
+errors are not symmetric: a false negative forfeits a saving, a false positive silently
+drops the prose from a query that needed it. A 1-in-7 chance of the second, for 127 ms, is
+not a trade worth making.
+
+The negative control is load-bearing. BM25 sums over query terms, so a longer query scores
+higher mechanically, and the whole result could have been an artefact of navigational
+queries being wordier. `n_tokens` at AUC 0.416 (and `max_score` per token still at 0.915)
+rules that out — the signal is real, it is simply the wrong signal.
+
+Reproduce with `python eval/probe_navigational_router.py`; it needs only PostgreSQL and
+takes a few seconds. Full per-query output in `eval/navigational_router_results.json`.
 
 ---
 
@@ -442,7 +629,10 @@ mode nobody notices.
 100 QPS, but at three LLM calls per query the bill scales linearly with traffic while
 infrastructure cost stays roughly flat. At meaningful volume the correct move is not more
 replicas — it is to stop calling an LLM on every request: cache responses, and skip
-generation entirely for navigational queries where the product list *is* the answer.
+generation entirely for navigational queries where the product list *is* the answer. The
+cheap version of that routing decision has already been tested and rejected — BM25 score
+concentration does not identify the class precisely enough (*What didn't work*, item 8) —
+so it needs a real intent signal, which is why it is future work rather than a quick win.
 
 **What does *not* break early:** the cross-encoder reranker always sees exactly 20
 candidates regardless of catalogue size, so its ~120 ms is constant. Retrieval is
@@ -518,6 +708,15 @@ A cache on the full `QueryResponse`, keyed on canonicalised `(query, filters, to
 checked *before* the guardrail, makes a repeat query nearly free — caching after the
 guardrail still pays ~50 ms and an API call. Adds cache hit rate as a second metric. Half a
 day.
+
+**Skip generation where prose adds nothing.** Navigational queries score NDCG@10 0.9359 —
+retrieval is near-perfect and the ranked products *are* the answer, so the ~1817 ms
+generation call buys little. Streaming hides that cost; skipping it removes it. The
+obstacle is runtime classification: query `type` exists only as evaluation metadata. Next
+step is an offline test of whether BM25 score concentration separates navigational from
+exploratory queries, scored against the golden set's `type` labels — which, unlike the CRAG
+relevance judgments, were not self-assigned. Same method as the threshold calibration: test
+the signal before shipping it.
 
 **Deploy to AWS.** App Runner for the container, RDS for Postgres, ElastiCache for Redis,
 and **Zilliz Cloud** for vectors. Zilliz is the managed version of Milvus built by the same
@@ -644,6 +843,7 @@ uvicorn main:app --reload --port 8002
   ],
   "cited_sources": ["prod_0042", "prod_0107"],
   "retrieval_path": "synthesize",
+  "degraded": [],
   "latency_ms": {
     "guardrail_ms": 480, "retrieval_ms": 22, "crag_ms": 0,
     "rerank_ms": 95, "generation_ms": 1340, "total_ms": 1937
@@ -654,6 +854,43 @@ uvicorn main:app --reload --port 8002
 `retrieval_path` is `"synthesize"` (high confidence), `"retry"` (query rewritten),
 `"best_effort"` (low confidence — real candidates, weak signal), or `"fallback"` (retrieval
 returned nothing; trending products).
+
+`degraded` lists components that failed during the request — empty on the healthy path.
+Degradations are surfaced rather than raised, so a partial outage returns partial results
+instead of a 5xx:
+
+| Value | Meaning |
+|---|---|
+| `milvus_unavailable` | No Milvus client at startup — dense retrieval skipped |
+| `milvus_search_failed` | Milvus raised mid-query (collection unloaded, network drop) |
+| `embedding_failed` | `embed()` timed out or the API errored |
+| `bm25_only` | Results came from the sparse index alone; no semantic matching |
+| `generation_failed` | Products are real and ranked; the prose is a fallback sentence |
+
+### `POST /query/stream`
+
+Identical request body and pipeline as `/query`; the answer arrives as Server-Sent
+Events instead of a single JSON body. Use it when a client can render incrementally —
+products appear at ~527 ms rather than ~2.4 s.
+
+```
+event: products
+data: {"products": [...], "retrieval_path": "synthesize", "degraded": []}
+
+event: token
+data: {"text": "Here are"}
+
+event: done
+data: {"cited_sources": ["prod_0042"], "degraded": [], "latency_ms": {...}}
+```
+
+An off-topic query is still rejected with a plain `400` — retrieval runs before streaming
+begins, so the status code is not yet committed. If generation fails *after* products have
+been sent, an `event: error` is emitted and the stream still ends with `done` carrying
+`degraded: ["generation_failed"]`.
+
+`cited_sources` cannot be sent with `products`: resolving `[n]` references requires the
+complete answer text.
 
 ### `POST /ingest`
 
@@ -676,7 +913,7 @@ Milvus (queries return empty) and without Redis (caching silently disabled).
 | `MILVUS_PORT` | `19530` | Milvus gRPC port |
 | `MILVUS_COLLECTION` | `fashion_rag` | Do not change after the index is built without a full re-embed |
 | `POSTGRES_URL` | `postgresql://gorse:gorse_pass@localhost:5432/gorse` | BM25 index is built from `rag_products` at startup |
-| `REDIS_URL` | `redis://localhost:6379` | Embedding cache, TTL 1 h. Optional |
+| `REDIS_URL` | `redis://localhost:6379` | Embedding cache (`emb:`, TTL 1 h) and guardrail verdict cache (`guard:`, TTL 24 h). Optional |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Only for `POST /ingest` |
 | `KAFKA_INGEST_TOPIC` | `rag-ingest` | Async ingestion topic |
 | `CRAG_HIGH_THRESHOLD` | `0.45` | Grade at or above this → synthesize directly |
@@ -691,7 +928,7 @@ Thresholds were selected empirically — see
 
 ## Tests
 
-116 tests in about 10 seconds, no external services — OpenAI and Milvus are mocked.
+127 tests in about 10 seconds, no external services — OpenAI and Milvus are mocked.
 
 ```bash
 pytest tests/ -v

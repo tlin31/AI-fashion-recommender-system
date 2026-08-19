@@ -283,6 +283,86 @@ def _build_filter_expr(filters: dict | None) -> str:
 # Hybrid search
 # ---------------------------------------------------------------------------
 
+class _DenseUnavailable(Exception):
+    """Dense retrieval cannot run at all — no client. Not an error, a degradation."""
+
+
+def _degrade(acc: list[str] | None, reason: str) -> None:
+    """Record a degradation reason on the caller's accumulator, if it passed one."""
+    if acc is not None and reason not in acc:
+        acc.append(reason)
+
+
+def _bm25_only_chunks_sync(product_ids: list[str]) -> list[dict]:
+    """Build chunk-shaped rows from PostgreSQL for BM25-ranked products.
+
+    The dense path is the pipeline's only chunk *source*: RRF fusion iterates over
+    Milvus hits and uses BM25 purely as a rank boost, because BM25 indexes products
+    while everything downstream traffics in chunks. So when dense retrieval is
+    unavailable, sparse results have nowhere to attach and the whole search would
+    return empty despite a perfectly healthy in-memory index.
+
+    This synthesises a chunk per product from name + description so BM25 can stand
+    alone. Text is the full description rather than the indexed chunk, since chunk
+    boundaries live only in Milvus — good enough to rank and to ground an answer.
+    """
+    if not product_ids:
+        return []
+
+    conn = psycopg2.connect(_POSTGRES_URL)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT product_id, name, description,
+                       price_range, category, occasion, brand
+                FROM   rag_products
+                WHERE  product_id = ANY(%s)
+                """,
+                (product_ids,),
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    by_id = {r[0]: r for r in rows}
+    chunks: list[dict] = []
+    # Preserve BM25 rank order — the SQL IN clause does not.
+    for pid in product_ids:
+        row = by_id.get(pid)
+        if row is None:
+            continue
+        _, name, description, price_range, category, occasion, brand = row
+        chunks.append(
+            {
+                "chunk_id":     f"bm25_{pid}",
+                "product_id":   pid,
+                "text":         f"{name or ''}. {description or ''}".strip(". "),
+                "score":        0.0,
+                # No vector was computed, so the CRAG grader sees 0.0 and routes
+                # this to best_effort rather than claiming false confidence.
+                "milvus_score": 0.0,
+                "metadata": {
+                    "chunk_type":  "description",
+                    "price_range": price_range or "",
+                    "category":    category or "",
+                    "occasion":    occasion or "",
+                    "brand":       brand or "",
+                },
+            }
+        )
+    return chunks
+
+
+async def _bm25_only_chunks(product_ids: list[str]) -> list[dict]:
+    loop = asyncio.get_event_loop()
+    try:
+        return await loop.run_in_executor(None, _bm25_only_chunks_sync, product_ids)
+    except Exception as exc:
+        logger.error("BM25-only fallback query failed: %s", exc)
+        return []
+
+
 async def hybrid_search(
     query: str,
     filters: dict | None,
@@ -290,6 +370,7 @@ async def hybrid_search(
     bm25_index: tuple[BM25Okapi, list[str]] | None = None,
     milvus_client: Any = None,
     collection_name: str | None = None,
+    degradations: list[str] | None = None,
 ) -> list[dict]:
     """Retrieve top-k fashion product chunks using hybrid BM25 + dense search.
 
@@ -331,8 +412,12 @@ async def hybrid_search(
             }
         Sorted descending by score. Returns [] on empty query or service failure.
     """
-    if bm25_index is None or milvus_client is None:
+    # BM25 needs no external service, so a missing Milvus client is a degradation
+    # rather than an outage — the sparse-only path below still returns results.
+    if bm25_index is None:
         return []
+    if milvus_client is None:
+        _degrade(degradations, "milvus_unavailable")
 
     if collection_name is None:
         collection_name = os.environ.get("MILVUS_COLLECTION", "fashion_rag")
@@ -355,6 +440,8 @@ async def hybrid_search(
     # caught here, logged, and treated as a service failure → return [].
     dense_hits: list[dict] = []
     try:
+        if milvus_client is None:
+            raise _DenseUnavailable("milvus_client is None")
         # Hard 5s timeout guards against hung TCP connections to OpenAI.
         query_vector = await asyncio.wait_for(embed(query), timeout=_EMBED_TIMEOUT_S)
 
@@ -409,18 +496,20 @@ async def hybrid_search(
         except Exception as milvus_err:
             logger.error(
                 "Milvus search failed (collection may be unloaded); "
-                "returning [] so CRAG falls back to trending. Error: %s",
+                "degrading to BM25-only retrieval. Error: %s",
                 milvus_err,
             )
-            return []
+            _degrade(degradations, "milvus_search_failed")
 
+    except _DenseUnavailable:
+        pass          # already recorded above; fall through to the sparse path
     except Exception as embed_err:
         logger.error(
             "Dense path failed (embed timeout or API error); "
-            "returning [] so CRAG falls back to trending. Error: %s",
+            "degrading to BM25-only retrieval. Error: %s",
             embed_err,
         )
-        return []
+        _degrade(degradations, "embedding_failed")
 
     # ── 2. Sparse path ─────────────────────────────────────────────────────
     query_tokens = _tokenize(query)
@@ -450,6 +539,22 @@ async def hybrid_search(
             pid = corpus_product_ids[corpus_idx]
             if pid not in bm25_product_rank:
                 bm25_product_rank[pid] = rank
+
+    # ── 2b. Sparse-only fallback ───────────────────────────────────────────
+    # No dense hits means RRF has nothing to iterate over, so BM25 results would
+    # be silently discarded. Build chunks straight from Postgres instead and skip
+    # fusion — with one ranked list there is nothing to fuse.
+    if not dense_hits:
+        if not bm25_product_rank:
+            return []
+        ordered = sorted(bm25_product_rank, key=lambda pid: bm25_product_rank[pid])
+        sparse_chunks = await _bm25_only_chunks(ordered[:top_k])
+        logger.warning(
+            "Dense retrieval unavailable — returning %d BM25-only results",
+            len(sparse_chunks),
+        )
+        _degrade(degradations, "bm25_only")
+        return sparse_chunks
 
     # ── 3. RRF fusion ──────────────────────────────────────────────────────
     rrf_scores: dict[str, float] = {}
