@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Annotated
+from typing import Annotated, Any
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,14 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import TypedDict
 
+from agent.metrics import (
+    MetricsSink,
+    NodeMetric,
+    Pricing,
+    Stopwatch,
+    TurnMetrics,
+    extract_usage,
+)
 from agent.tools import make_tools
 from db.client import DBClient
 from db.gorse_client import GorseClient
@@ -101,6 +109,13 @@ class AgentResult(BaseModel):
     tokens_used: int = 0
     pending_approval: bool = False
     pending_trait_updates: list[dict] = Field(default_factory=list)
+    # ---- instrumentation (see agent/metrics.py) ----
+    latency_ms: float = 0.0
+    # None means "at least one model in this turn is missing from pricing.json",
+    # which is deliberately distinct from a genuine 0.0 (free-tier model).
+    cost_usd: float | None = None
+    # Per-node breakdown: one entry per node execution, in execution order.
+    node_metrics: list[dict] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +129,10 @@ class AgentState(TypedDict):
     iterations: int
     tokens_used: int
     pending_trait_updates: list[dict]  # staged by update_user_traits tool, flushed by write_traits node
+    # One NodeMetric dict per node execution this turn. No reducer (plain
+    # assignment), same as `trace`: each node returns previous + its own entry,
+    # and chat() resets it at the start of every turn.
+    node_metrics: list[dict]
 
 
 # ---------------------------------------------------------------------------
@@ -220,12 +239,19 @@ class AgentGraph:
         db: DBClient,
         gorse: GorseClient,
         checkpointer=None,
+        metrics_sink: MetricsSink | None = None,
+        pricing: Pricing | None = None,
     ) -> None:
         self._config = config
         self._checkpointer = checkpointer
         self._db = db
         self._gorse_sync = GorseSync(db, gorse)
         self._tools = make_tools(db, gorse)
+
+        # Instrumentation. Default sink is disabled — main.py opts in with a
+        # path so library/test use never writes files.
+        self._metrics_sink = metrics_sink or MetricsSink()
+        self._pricing = pricing or Pricing.load()
 
         # Router: Gemini with tools bound — makes every tool-call decision.
         self._router_model = ChatGoogleGenerativeAI(
@@ -247,6 +273,28 @@ class AgentGraph:
         max_iter = self._config.max_iterations
         token_budget = self._config.token_budget
 
+        def _record(state: AgentState, metric: NodeMetric) -> list[dict]:
+            """Append one NodeMetric to the turn's list (plain assignment state)."""
+            return list(state.get("node_metrics") or []) + [metric.as_dict()]
+
+        def _llm_metric(
+            node: str, model: str, resp: Any, latency_ms: float, iteration: int
+        ) -> NodeMetric:
+            """Build a NodeMetric for an LLM call, pricing it if the model is known."""
+            inp, out, total, available = extract_usage(resp)
+            return NodeMetric(
+                node=node,
+                latency_ms=latency_ms,
+                iteration=iteration,
+                model=model,
+                input_tokens=inp,
+                output_tokens=out,
+                total_tokens=total,
+                usage_available=available,
+                # No usage reported → cost is unknown, not zero.
+                cost_usd=self._pricing.cost(model, inp, out) if available else None,
+            )
+
         # ---- router_node ----
         # Mirrors the per-iteration body of Go's AgentChat() for-loop.
         async def router_node(state: AgentState) -> dict:
@@ -255,7 +303,8 @@ class AgentGraph:
             # ainvoke stands for Asynchronous Invoke of the model
             # After the AI responds, resp will typically contain either:A content string if the AI has the answer.
             # OR Tool calls if the AI needs more information.
-            resp: AIMessage = await self._router_model.ainvoke(state["messages"])
+            with Stopwatch() as sw:
+                resp: AIMessage = await self._router_model.ainvoke(state["messages"])
 
             # Tracking Loops: iterations counter is incremented.--> prevent the agent from looping indefinitely if it encounters an issue.
             new_iter = state.get("iterations", 0) + 1
@@ -290,10 +339,18 @@ class AgentGraph:
 
             # Accumulate token usage — usage_metadata is ephemeral on the response
             # object and cannot be reconstructed from message history (Fix 2A pattern).
-            usage = getattr(resp, "usage_metadata", None) or {}
-            new_tokens = state.get("tokens_used", 0) + usage.get("total_tokens", 0)
+            metric = _llm_metric(
+                "router", self._config.router_model, resp, sw.ms, new_iter
+            )
+            new_tokens = state.get("tokens_used", 0) + metric.total_tokens
 
-            return {"messages": [resp], "iterations": new_iter, "trace": trace, "tokens_used": new_tokens}
+            return {
+                "messages": [resp],
+                "iterations": new_iter,
+                "trace": trace,
+                "tokens_used": new_tokens,
+                "node_metrics": _record(state, metric),
+            }
 
         # ---- finalizer_node ----
         # Calls Gemma (no function-calling support) to write the polished answer.
@@ -380,13 +437,26 @@ class AgentGraph:
                     + ("\n\n(Note: Maximum reasoning iterations reached — please answer based on the information available.)" if exhausted else "")
                 )
 
-            resp: AIMessage = await self._final_model.ainvoke(
-                [HumanMessage(content=prompt)]
-            )
+            with Stopwatch() as sw:
+                resp: AIMessage = await self._final_model.ainvoke(
+                    [HumanMessage(content=prompt)]
+                )
             # Accumulate finalizer token cost for accurate per-turn total in AgentResult.
-            usage = getattr(resp, "usage_metadata", None) or {}
-            new_tokens = state.get("tokens_used", 0) + usage.get("total_tokens", 0)
-            return {"messages": [resp], "tokens_used": new_tokens}
+            # The per-node record keeps router and finalizer tokens separable —
+            # tokens_used alone cannot show what model tiering actually bought.
+            metric = _llm_metric(
+                "finalizer",
+                self._config.final_model,
+                resp,
+                sw.ms,
+                state.get("iterations", 0),
+            )
+            new_tokens = state.get("tokens_used", 0) + metric.total_tokens
+            return {
+                "messages": [resp],
+                "tokens_used": new_tokens,
+                "node_metrics": _record(state, metric),
+            }
 
         # ---- quality_gate_node ----
         # No-op waypoint: exists so LangGraph can attach a conditional edge here.
@@ -413,7 +483,13 @@ class AgentGraph:
                     "Try rephrasing your request, or share more specific details and I'll do my best to find something for you."
                 )
             )
-            return {"messages": [msg]}
+            # Recorded with no model/tokens: this is the guard's zero-LLM path,
+            # and its presence in node_metrics is how a turn is tagged
+            # path="fallback" for the hallucination A/B.
+            metric = NodeMetric(
+                node="fallback", latency_ms=0.0, iteration=state.get("iterations", 0)
+            )
+            return {"messages": [msg], "node_metrics": _record(state, metric)}
 
         # ---- routing logic ----
         def should_continue(state: AgentState) -> str:
@@ -474,31 +550,43 @@ class AgentGraph:
 
             user_id = state["user_id"]
 
-            try:
-                # Read current traits from DB so we merge rather than overwrite.
-                existing_row = await self._db.get_user_traits(user_id)
-                existing_traits: dict = (existing_row or {}).get("traits") or {}
-                existing_confidence: float = (existing_row or {}).get("confidence_score", 0.5)
+            # Timed because this node is pure I/O (Postgres write + Gorse HTTP)
+            # and it runs on the /agent-resume request, where it is the whole
+            # user-visible latency.
+            with Stopwatch() as sw:
+                try:
+                    # Read current traits from DB so we merge rather than overwrite.
+                    existing_row = await self._db.get_user_traits(user_id)
+                    existing_traits: dict = (existing_row or {}).get("traits") or {}
+                    existing_confidence: float = (existing_row or {}).get("confidence_score", 0.5)
 
-                merged = _merge_trait_updates(existing_traits, updates)
+                    merged = _merge_trait_updates(existing_traits, updates)
 
-                # Small confidence bump when the user explicitly confirms preferences.
-                new_confidence = min(existing_confidence + 0.1, 1.0)
+                    # Small confidence bump when the user explicitly confirms preferences.
+                    new_confidence = min(existing_confidence + 0.1, 1.0)
 
-                await self._db.save_user_traits(user_id, merged, new_confidence)
-                await self._gorse_sync.sync_user_traits(user_id)
-            except Exception as exc:
-                # Log and swallow — do NOT re-raise.  Re-raising here would leave
-                # the graph in a broken state with no way for the frontend to recover
-                # (the interrupt has already been consumed).  The pending list is
-                # still cleared so the graph advances to END cleanly.
-                # A retry / dead-letter queue can be layered on top in the future.
-                logger.error(
-                    "write_traits_node: failed to persist traits for user %s: %s",
-                    user_id, exc, exc_info=True,
-                )
+                    await self._db.save_user_traits(user_id, merged, new_confidence)
+                    await self._gorse_sync.sync_user_traits(user_id)
+                except Exception as exc:
+                    # Log and swallow — do NOT re-raise.  Re-raising here would leave
+                    # the graph in a broken state with no way for the frontend to recover
+                    # (the interrupt has already been consumed).  The pending list is
+                    # still cleared so the graph advances to END cleanly.
+                    # A retry / dead-letter queue can be layered on top in the future.
+                    logger.error(
+                        "write_traits_node: failed to persist traits for user %s: %s",
+                        user_id, exc, exc_info=True,
+                    )
 
-            return {"pending_trait_updates": []}
+            metric = NodeMetric(
+                node="write_traits",
+                latency_ms=sw.ms,
+                iteration=state.get("iterations", 0),
+            )
+            return {
+                "pending_trait_updates": [],
+                "node_metrics": _record(state, metric),
+            }
 
         # ---- should_write_traits routing ----
         # Only route through write_traits (and trigger the interrupt) when there
@@ -509,10 +597,33 @@ class AgentGraph:
                 return "write_traits"
             return END
 
+        # ---- tools_node ----
+        # Thin timing wrapper around the prebuilt ToolNode. Tool latency is the
+        # Gorse / Tavily / Postgres round-trip and is the only part of a turn we
+        # can actually optimise without changing models, so it needs its own row.
+        #
+        # ToolNode returns EITHER a dict of state updates, OR a list of updates
+        # when any tool returns a Command (update_user_traits does). Both shapes
+        # have to be preserved — hence the branch rather than a blanket dict merge.
+        _tool_node = ToolNode(self._tools)
+
+        async def tools_node(state: AgentState):
+            with Stopwatch() as sw:
+                result = await _tool_node.ainvoke(state)
+
+            metric = NodeMetric(
+                node="tools", latency_ms=sw.ms, iteration=state.get("iterations", 0)
+            )
+            if isinstance(result, dict):
+                return {**result, "node_metrics": _record(state, metric)}
+            # list[Command | dict] — LangGraph applies each entry in order, so an
+            # extra plain-dict update rides along without disturbing the Commands.
+            return list(result) + [{"node_metrics": _record(state, metric)}]
+
         # ---- wire graph ----
         graph = StateGraph(AgentState)
         graph.add_node("router", router_node)
-        graph.add_node("tools", ToolNode(self._tools))
+        graph.add_node("tools", tools_node)
         graph.add_node("quality_gate", quality_gate_node)
         graph.add_node("finalizer", finalizer_node)
         graph.add_node("fallback", fallback_node)
@@ -603,8 +714,13 @@ class AgentGraph:
             "iterations": 0,
             "tokens_used": 0,
             "pending_trait_updates": [],
+            "node_metrics": [],
         }
-        result = await self._compiled.ainvoke(initial, config)
+        # Wall-clock for the whole turn. Deliberately wider than the sum of node
+        # latencies: the gap between them is LangGraph + checkpointer overhead,
+        # and seeing that gap is the point.
+        with Stopwatch() as sw:
+            result = await self._compiled.ainvoke(initial, config)
 
         # gemini-2.5-flash can return content as a list of content blocks
         # (e.g. thinking + text); extract plain text.
@@ -626,6 +742,21 @@ class AgentGraph:
         # means the graph is suspended and waiting for the user to approve or reject.
         staged: list[dict] = result.get("pending_trait_updates") or []
 
+        # ---- assemble + persist this turn's metrics ----
+        node_metrics: list[dict] = result.get("node_metrics") or []
+        turn = TurnMetrics(
+            session_id=session_id,
+            user_id=user_id,
+            total_latency_ms=sw.ms,
+            nodes=node_metrics,
+            turn_type="chat",
+            iterations=result.get("iterations", 0),
+            # Which answer node ran — the A/B harness buckets turns on this.
+            path="fallback" if any(n["node"] == "fallback" for n in node_metrics) else "finalizer",
+            pricing_as_of=self._pricing.as_of,
+        )
+        self._metrics_sink.write(turn.as_record())
+
         return AgentResult(
             answer=answer,
             trace=trace,
@@ -633,6 +764,9 @@ class AgentGraph:
             tokens_used=result.get("tokens_used", 0),
             pending_approval=bool(staged),
             pending_trait_updates=staged,
+            latency_ms=round(sw.ms, 2),
+            cost_usd=turn.total_cost(),
+            node_metrics=node_metrics,
         )
 
     async def resume(self, session_id: str, approved: bool) -> None:
@@ -657,7 +791,26 @@ class AgentGraph:
 
         if approved:
             # Resume normally — write_traits_node fires and flushes the updates.
-            await self._compiled.ainvoke(None, config)
+            # Timed separately from chat(): on the approve path this request is
+            # pure I/O (Postgres + Gorse) with no LLM call, so mixing it into the
+            # chat latency distribution would skew both.
+            with Stopwatch() as sw:
+                result = await self._compiled.ainvoke(None, config)
+
+            resumed_nodes = [
+                n for n in (result.get("node_metrics") or [])
+                if n["node"] == "write_traits"
+            ]
+            self._metrics_sink.write(
+                TurnMetrics(
+                    session_id=session_id,
+                    user_id=result.get("user_id", ""),
+                    total_latency_ms=sw.ms,
+                    nodes=resumed_nodes,
+                    turn_type="resume",
+                    pricing_as_of=self._pricing.as_of,
+                ).as_record()
+            )
         else:
             # Inject the node's "result" directly so LangGraph advances past it.
             # as_node="write_traits" tells the checkpointer that write_traits ran

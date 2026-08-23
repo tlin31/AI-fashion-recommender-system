@@ -1,0 +1,58 @@
+{
+  "_README": [
+    "Token price table used by agent/metrics.py to convert measured token counts",
+    "into a USD cost per turn. Prices are an OPERATOR-SUPPLIED ASSUMPTION, not a",
+    "measurement — re-verify against the provider's current pricing page before",
+    "quoting any cost number, and bump `as_of` when you do.",
+    "",
+    "A model that is absent from `models` yields cost_usd = null (NOT 0.0), so an",
+    "unpriced model can never be silently reported as free.",
+    "",
+    "Units: USD per 1,000,000 tokens."
+  ],
+  "as_of": "2026-08-19",
+  "currency": "USD",
+  "unit": "per_1m_tokens",
+  "source": "https://ai.google.dev/gemini-api/docs/pricing",
+  "verified_by_operator": false,
+  "models": {
+    "gemini-2.5-flash": {
+      "input": 0.30,
+      "output": 2.50,
+      "note": "paid tier"
+    },
+    "gemini-2.5-flash-lite": {
+      "input": 0.10,
+      "output": 0.40,
+      "note": "paid tier"
+    },
+    "gemini-2.5-pro": {
+      "input": 1.25,
+      "output": 10.00,
+      "note": "paid tier, prompts <= 200k tokens"
+    },
+    "gemma-4-31b-it": {
+      "input": 0.0,
+      "output": 0.0,
+      "note": "ACTUAL finalizer model per .env (AGENT_FINAL_MODEL). Open-weights model served free on Google AI Studio; priced at 0 here. This is exactly why the two-model split looks cheap - see counterfactual_model below before claiming a saving."
+    },
+    "gemma-3-27b-it": {
+      "input": 0.0,
+      "output": 0.0,
+      "note": "code default in AgentConfig.final_model; same free-tier reasoning as above"
+    },
+    "gemma-3-12b-it": {
+      "input": 0.0,
+      "output": 0.0,
+      "note": "same as gemma-3-27b-it"
+    }
+  },
+  "counterfactual_model": "gemini-2.5-flash",
+  "counterfactual_note": [
+    "eval/aggregate_metrics.py reprices EVERY token (router + finalizer) at",
+    "counterfactual_model to answer: what would this cost as a single-model agent?",
+    "The reported saving is (counterfactual - actual) / counterfactual.",
+    "With gemma priced at 0 the saving is trivially the finalizer's whole share, so",
+    "the token-share breakdown is the honest headline number, not the dollar figure."
+  ]
+}

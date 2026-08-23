@@ -44,7 +44,15 @@ class AgentChatResponse(BaseModel):
     session_id: str
     iterations: int
     tokens_used: int = 0
+    # ---- instrumentation ----
+    latency_ms: float = 0.0
+    # None = at least one model used this turn is absent from agent/pricing.json.
+    # Distinct from 0.0, which means a genuinely free-tier model.
+    cost_usd: float | None = None
     trace: list[dict] | None = None
+    # Per-node latency/token breakdown, returned alongside the trace so the
+    # debug view shows where a slow turn actually spent its time.
+    node_metrics: list[dict] | None = None
     # HITL fields — non-empty when the graph paused at interrupt_before=["write_traits"]
     pending_approval: bool = False
     pending_trait_updates: list[dict] = Field(default_factory=list)
@@ -113,11 +121,14 @@ async def agent_chat(
         session_id=session_id,
         iterations=result.iterations,
         tokens_used=result.tokens_used,
+        latency_ms=result.latency_ms,
+        cost_usd=result.cost_usd,
         pending_approval=result.pending_approval,
         pending_trait_updates=result.pending_trait_updates,
     )
     if req.include_trace:
         resp.trace = [t.model_dump() for t in result.trace]
+        resp.node_metrics = result.node_metrics
     return resp
 
 
