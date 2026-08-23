@@ -30,6 +30,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from agent.graph import AgentConfig, AgentGraph
+from agent.metrics import MetricsSink
 from api.agent_handler import router as agent_router
 from db.client import DBClient
 from db.gorse_client import GorseClient
@@ -46,6 +47,11 @@ class Settings(BaseSettings):
 
     google_api_key: str = ""
     google_model: str = ""  # falls back to agent_final_model if not set in .env
+    # Must be declared here, not just on AgentConfig: extra="ignore" drops
+    # unknown env vars instead of storing them, so reading settings.agent_final_model
+    # without this field raises AttributeError at startup whenever GOOGLE_MODEL is
+    # unset (Docker/CI). Default mirrors AgentConfig.final_model.
+    agent_final_model: str = "gemma-3-27b-it"
 
     mock_ai: bool = False
 
@@ -56,6 +62,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://gorse:gorse_pass@localhost:5432/gorse"
     gorse_url: str = "http://localhost:8088"
     gorse_api_key: str = ""
+
+    # Per-turn latency/token/cost records, one JSON line each. Set to "" to
+    # disable. eval/aggregate_metrics.py consumes this file.
+    agent_metrics_path: str = "metrics/turns.jsonl"
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +98,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await checkpointer.setup()
 
         agent_cfg = AgentConfig()
-        graph = AgentGraph(agent_cfg, db, gorse, checkpointer=checkpointer)
+        metrics_sink = MetricsSink(settings.agent_metrics_path or None)
+        graph = AgentGraph(
+            agent_cfg, db, gorse,
+            checkpointer=checkpointer,
+            metrics_sink=metrics_sink,
+        )
 
         # ---- Mock mode (MOCK_AI=true) — bypasses all real LLM calls ----
         if settings.mock_ai:

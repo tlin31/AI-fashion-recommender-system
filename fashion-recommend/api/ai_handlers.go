@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"fashion-recommend/database"
 
@@ -85,11 +87,17 @@ func (s *Server) aiChat(c *gin.Context) {
 	}
 
 	// 5. 异步提取特质并同步到 Gorse
+	// 必须先脱离请求 context：handler 一返回 Gin 就取消 c.Request.Context()，
+	// goroutine 里再用它会稳定拿到 context canceled。WithoutCancel 保留 context
+	// 中的值（trace 等），只剥离取消信号；额外加超时避免 goroutine 永久悬挂。
+	bgCtx, cancel := context.WithTimeout(
+		context.WithoutCancel(c.Request.Context()), 60*time.Second)
 	go func() {
+		defer cancel()
 		messages, err := s.db.GetConversationMessages(sessionID, 100)
 		if err == nil && len(messages) >= 2 {
 			// 提取特质
-			if err := s.traitExtractor.AnalyzeAndSave(c.Request.Context(), userID, sessionID, messages); err != nil {
+			if err := s.traitExtractor.AnalyzeAndSave(bgCtx, userID, sessionID, messages); err != nil {
 				// 记录错误但不影响主流程
 				println("特质提取失败:", err.Error())
 			}

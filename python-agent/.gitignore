@@ -11,3 +11,7 @@ dist/
 build/
 .venv/
 venv/
+
+# Per-turn instrumentation written by agent/metrics.py (AGENT_METRICS_PATH).
+# Raw run output — commit only the aggregated numbers you actually cite.
+metrics/

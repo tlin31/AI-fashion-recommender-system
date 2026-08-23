@@ -132,6 +132,50 @@ pytest tests/test_merge_traits.py::test_price_sensitivity_override -v
 | `AGENT_FINAL_MODEL` | `gemma-3-27b-it` | Text-generation model for the polished final answer |
 | `AGENT_MAX_ITERATIONS` | `8` | Hard cap on ReAct loop iterations |
 | `AGENT_TOKEN_BUDGET` | `20000` | Cumulative token cap per turn (exits loop early if exceeded) |
+| `AGENT_METRICS_PATH` | `metrics/turns.jsonl` | Per-turn latency/token/cost JSONL. Set to `""` to disable |
+
+> Note: `.env` currently sets `AGENT_FINAL_MODEL=gemma-4-31b-it`, which differs from
+> the code default `gemma-3-27b-it` in `AgentConfig.final_model`. Both are priced in
+> `agent/pricing.json`.
+
+#### Instrumentation (latency / tokens / cost)
+
+`agent/metrics.py` records one `NodeMetric` per graph-node execution — wall-clock
+latency, plus input/output tokens and USD cost for the two LLM nodes. `AgentGraph.chat()`
+assembles them into a `TurnMetrics` record and appends one JSON line per turn to
+`AGENT_METRICS_PATH`. `/api/ai/agent-chat` returns `latency_ms` and `cost_usd` on every
+response, and the full `node_metrics` array when `include_trace: true`.
+
+```bash
+cd python-agent
+
+# Aggregate a run: latency percentiles, per-node breakdown, token split, cost
+python eval/aggregate_metrics.py
+
+# A specific file (e.g. one arm of an A/B), or machine-readable output
+python eval/aggregate_metrics.py --input metrics/arm_guard_on.jsonl
+python eval/aggregate_metrics.py --json
+
+# Chat turns only — /agent-resume turns are pure I/O and skew the distribution
+python eval/aggregate_metrics.py --turn-type chat
+```
+
+Two rules the code enforces, because breaking either produces plausible-looking wrong numbers:
+
+- **Missing usage ≠ zero usage.** `usage_metadata` is absent on mocked models and
+  some provider paths. `NodeMetric.usage_available` records the difference, and the
+  aggregator prints a coverage warning rather than silently under-reporting.
+- **Unpriced model ≠ free model.** A model absent from `agent/pricing.json` yields
+  `cost_usd = None`; one unpriced call collapses the whole turn's cost to `None`.
+
+`agent/pricing.json` is an **operator-supplied assumption**, not a measurement —
+`verified_by_operator` is `false` until someone checks it against the provider's
+current pricing page. The finalizer (Gemma, free tier) is priced at `0.0`, which makes
+any dollar "saving" from model tiering partly tautological; the aggregator therefore
+prints the **token share** alongside it, and that share is the number to quote.
+
+`counterfactual_model` in the price table reprices every token — router *and*
+finalizer — at the router model, answering "what would this cost as a single-model agent?"
 
 #### HITL (Human-in-the-Loop) flow
 
@@ -151,15 +195,18 @@ When the agent detects an explicit preference statement (e.g. "I like minimalist
 ```
 python-agent/
 ├── pytest.ini                              # asyncio_mode = auto
+├── eval/
+│   └── aggregate_metrics.py                # percentiles + token/cost roll-up over turns.jsonl
 └── tests/
     ├── conftest.py                         # shared fixtures (mock_db, agent_graph)
-    ├── test_merge_traits.py                # pure unit — _merge_trait_updates() (7 tests)
-    ├── test_update_user_traits_tool.py     # tool unit — validation, staging logic (5 tests)
-    ├── test_graph_routing.py               # routing conditions — should_write_traits (3 tests)
-    └── test_hitl_flow.py                   # integration — full chat→approve/reject cycle (5 tests)
+    ├── test_merge_traits.py                # pure unit — _merge_trait_updates()
+    ├── test_update_user_traits_tool.py     # tool unit — validation, staging logic
+    ├── test_graph_routing.py               # routing conditions — should_write_traits
+    ├── test_hitl_flow.py                   # integration — full chat→approve/reject cycle
+    └── test_metrics.py                     # instrumentation units + graph-wiring integration
 ```
 
-All 20 tests run in ~0.2 s with no external service dependencies (MemorySaver replaces Postgres; LLM calls are AsyncMocks).
+All 59 tests run in ~0.4 s with no external service dependencies (MemorySaver replaces Postgres; LLM calls are AsyncMocks).
 
 ### rag-service (rag-service/)
 
