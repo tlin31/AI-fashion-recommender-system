@@ -34,17 +34,17 @@
     "gemma-4-31b-it": {
       "input": 0.0,
       "output": 0.0,
-      "note": "ACTUAL finalizer model per .env (AGENT_FINAL_MODEL). Open-weights model served free on Google AI Studio; priced at 0 here. This is exactly why the two-model split looks cheap - see counterfactual_model below before claiming a saving."
+      "note": "Finalizer model — both the .env value and the code default (AgentConfig.final_model). Open-weights model served free on Google AI Studio; priced at 0 here. This is exactly why the two-model split looks cheap - see counterfactual_model below before claiming a saving."
     },
     "gemma-3-27b-it": {
       "input": 0.0,
       "output": 0.0,
-      "note": "code default in AgentConfig.final_model; same free-tier reasoning as above"
+      "note": "RETIRED 2026-08-23 - returns 404 NOT_FOUND from AI Studio. Kept priced so historical turns.jsonl records that reference it still cost out; do not use for new runs."
     },
     "gemma-3-12b-it": {
       "input": 0.0,
       "output": 0.0,
-      "note": "same as gemma-3-27b-it"
+      "note": "RETIRED 2026-08-23 - returns 404 NOT_FOUND from AI Studio. Same rationale as gemma-3-27b-it."
     }
   },
   "counterfactual_model": "gemini-2.5-flash",

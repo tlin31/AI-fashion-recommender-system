@@ -7,7 +7,7 @@ Key design decisions vs. Go:
   * Model tiering — two separate models:
       router_model  (gemini-2.5-flash) — function-calling capable; makes every
                     tool decision across all ReAct iterations.
-      final_model   (gemma-3-27b-it)  — text-generation only; writes the one
+      final_model   (gemma-4-31b-it)  — text-generation only; writes the one
                     polished answer at the end.
     Gemma does not support function calling, so finalizer_node reformats the
     full message history (which contains ToolMessages) into a plain
@@ -221,7 +221,10 @@ class AgentConfig(BaseSettings):
     # Router: must support function calling — only Gemini models qualify.
     # Finalizer: text-generation only, no tool calls needed — Gemma works fine.
     router_model: str = Field(default="gemini-2.5-flash", validation_alias="AGENT_ROUTER_MODEL")
-    final_model: str = Field(default="gemma-3-27b-it", validation_alias="AGENT_FINAL_MODEL")
+    # Defaults must name models the provider currently serves: Google AI Studio
+    # retires ids, and gemma-3-27b-it / gemma-3-12b-it now return 404 NOT_FOUND.
+    # A .env that overrides these hides the breakage — see MEMORY.md §2.
+    final_model: str = Field(default="gemma-4-31b-it", validation_alias="AGENT_FINAL_MODEL")
     max_iterations: int = Field(default=8, validation_alias="AGENT_MAX_ITERATIONS")
     token_budget: int = Field(default=20_000, validation_alias="AGENT_TOKEN_BUDGET")
 

@@ -4,9 +4,9 @@ Uses the same 9 environment variable names as the Go server so no .env
 changes are needed when running both services side-by-side:
 
   GOOGLE_API_KEY      – Google AI Studio API key (required)
-  GOOGLE_MODEL        – base model for trait extractor (default: gemma-3-12b-it)
-  AGENT_ROUTER_MODEL  – cheap routing model (default: gemma-3-12b-it)
-  AGENT_FINAL_MODEL   – strong answer model (default: gemma-3-27b-it)
+  GOOGLE_MODEL        – base model for trait extractor (default: agent_final_model)
+  AGENT_ROUTER_MODEL  – cheap routing model (default: gemini-2.5-flash)
+  AGENT_FINAL_MODEL   – strong answer model (default: gemma-4-31b-it)
   AGENT_MAX_ITERATIONS – ReAct iteration cap (default: 8)
   TAVILY_API_KEY      – Tavily web search API key (replaces DDG, no default)
   DATABASE_URL        – asyncpg connection string
@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     # unknown env vars instead of storing them, so reading settings.agent_final_model
     # without this field raises AttributeError at startup whenever GOOGLE_MODEL is
     # unset (Docker/CI). Default mirrors AgentConfig.final_model.
-    agent_final_model: str = "gemma-3-27b-it"
+    agent_final_model: str = "gemma-4-31b-it"
 
     mock_ai: bool = False
 

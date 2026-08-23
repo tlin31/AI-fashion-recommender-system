@@ -134,9 +134,11 @@ pytest tests/test_merge_traits.py::test_price_sensitivity_override -v
 | `AGENT_TOKEN_BUDGET` | `20000` | Cumulative token cap per turn (exits loop early if exceeded) |
 | `AGENT_METRICS_PATH` | `metrics/turns.jsonl` | Per-turn latency/token/cost JSONL. Set to `""` to disable |
 
-> Note: `.env` currently sets `AGENT_FINAL_MODEL=gemma-4-31b-it`, which differs from
-> the code default `gemma-3-27b-it` in `AgentConfig.final_model`. Both are priced in
-> `agent/pricing.json`.
+> Note: Google AI Studio retires model ids. As of 2026-08-23 `gemma-3-27b-it` and
+> `gemma-3-12b-it` return **404 NOT_FOUND**; the working pair is `gemini-2.5-flash`
+> (router) and `gemma-4-31b-it` (finalizer), which are now both the `.env` values and
+> the code defaults. `test_connections.py` probes both tiers — checking only the router
+> is how the dead finalizer default stayed hidden. See `python-agent/MEMORY.md`.
 
 #### Instrumentation (latency / tokens / cost)
 
