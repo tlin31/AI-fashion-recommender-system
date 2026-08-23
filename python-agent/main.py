@@ -46,6 +46,11 @@ class Settings(BaseSettings):
 
     google_api_key: str = ""
     google_model: str = ""  # falls back to agent_final_model if not set in .env
+    # Must be declared here, not just on AgentConfig: extra="ignore" drops
+    # unknown env vars instead of storing them, so reading settings.agent_final_model
+    # without this field raises AttributeError at startup whenever GOOGLE_MODEL is
+    # unset (Docker/CI). Default mirrors AgentConfig.final_model.
+    agent_final_model: str = "gemma-3-27b-it"
 
     mock_ai: bool = False
 
