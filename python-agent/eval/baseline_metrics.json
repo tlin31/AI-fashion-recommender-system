@@ -1,0 +1,218 @@
+{
+  "_README": [
+    "Locked baseline for the LangGraph agent, produced by eval/run_turns.py and",
+    "aggregated by eval/aggregate_metrics.py. The raw per-turn JSONL is gitignored,",
+    "so THIS FILE is the durable record \u2014 regenerate it whenever you re-run.",
+    "",
+    "Two arms are kept because they differ in more than price: free-tier Gemma is",
+    "throttled roughly 2x, so the free arm is not a valid latency baseline.",
+    "Quote the paid arm. The free arm is kept only as the throttling evidence."
+  ],
+  "locked_at": "2026-08-25",
+  "pricing_as_of": "2026-08-25",
+  "pricing_verified_by_operator": true,
+  "arms": {
+    "paid": {
+      "turns": 42,
+      "latency": {
+        "p50_ms": 24804.9,
+        "p95_ms": 46375.4,
+        "p99_ms": 52626.1,
+        "mean_ms": 27659.3,
+        "max_ms": 55176.0,
+        "unattributed_ms_total": 4551.0,
+        "unattributed_share": 0.0039
+      },
+      "nodes": {
+        "finalizer": {
+          "runs": 42,
+          "runs_per_turn": 1.0,
+          "p50_ms": 20983.0,
+          "p95_ms": 40108.3,
+          "mean_ms": 23708.2,
+          "total_ms": 995746.3,
+          "share_of_node_time": 0.8605
+        },
+        "router": {
+          "runs": 79,
+          "runs_per_turn": 1.88,
+          "p50_ms": 1275.3,
+          "p95_ms": 5025.8,
+          "mean_ms": 1833.2,
+          "total_ms": 144826.1,
+          "share_of_node_time": 0.1252
+        },
+        "tools": {
+          "runs": 37,
+          "runs_per_turn": 0.88,
+          "p50_ms": 47.8,
+          "p95_ms": 2043.0,
+          "mean_ms": 447.8,
+          "total_ms": 16568.6,
+          "share_of_node_time": 0.0143
+        }
+      },
+      "tokens": {
+        "grand_total": 317488,
+        "per_turn": 7559.2,
+        "by_node": {
+          "router": {
+            "input": 237479,
+            "output": 18619,
+            "total": 256098,
+            "share": 0.8066
+          },
+          "finalizer": {
+            "input": 27513,
+            "output": 33877,
+            "total": 61390,
+            "share": 0.1934
+          }
+        },
+        "by_model": {
+          "gemini-2.5-flash": {
+            "input": 237479,
+            "output": 18619,
+            "total": 256098,
+            "share": 0.8066
+          },
+          "gemma-4-31b-it": {
+            "input": 27513,
+            "output": 33877,
+            "total": 61390,
+            "share": 0.1934
+          }
+        },
+        "llm_calls": 121,
+        "llm_calls_with_usage": 121,
+        "usage_coverage": 1.0
+      },
+      "cost": {
+        "available": true,
+        "pricing_as_of": "2026-08-25",
+        "total_usd": 0.1177912,
+        "per_turn_usd": 0.002804552380952381,
+        "by_model_usd": {
+          "gemini-2.5-flash": 0.1177912,
+          "gemma-4-31b-it": 0.0
+        },
+        "counterfactual_model": "gemini-2.5-flash",
+        "counterfactual_total_usd": 0.21073759999999997,
+        "saving_vs_counterfactual": 0.4410527594506153
+      },
+      "paths": {
+        "finalizer": 42
+      },
+      "iterations_per_turn": 1.88,
+      "_note": "Billing enabled. THE baseline. n=42 supports p95; p99 sits near the sample max, do not quote it.",
+      "_source_file": "metrics/turns.jsonl",
+      "_source_sha256_16": "a4ffbd5e1fcf6243"
+    },
+    "free_tier": {
+      "turns": 9,
+      "latency": {
+        "p50_ms": 47599.0,
+        "p95_ms": 113760.7,
+        "p99_ms": 127650.9,
+        "mean_ms": 47138.0,
+        "max_ms": 131123.4,
+        "unattributed_ms_total": 2252.6,
+        "unattributed_share": 0.0053
+      },
+      "nodes": {
+        "finalizer": {
+          "runs": 7,
+          "runs_per_turn": 0.78,
+          "p50_ms": 48819.1,
+          "p95_ms": 81884.5,
+          "mean_ms": 48941.8,
+          "total_ms": 342592.6,
+          "share_of_node_time": 0.8119
+        },
+        "router": {
+          "runs": 20,
+          "runs_per_turn": 2.22,
+          "p50_ms": 1450.3,
+          "p95_ms": 7041.3,
+          "mean_ms": 3897.8,
+          "total_ms": 77956.6,
+          "share_of_node_time": 0.1847
+        },
+        "tools": {
+          "runs": 11,
+          "runs_per_turn": 1.22,
+          "p50_ms": 24.8,
+          "p95_ms": 597.5,
+          "mean_ms": 130.9,
+          "total_ms": 1440.3,
+          "share_of_node_time": 0.0034
+        },
+        "fallback": {
+          "runs": 2,
+          "runs_per_turn": 0.22,
+          "p50_ms": 0.0,
+          "p95_ms": 0.0,
+          "mean_ms": 0.0,
+          "total_ms": 0.0,
+          "share_of_node_time": 0.0
+        }
+      },
+      "tokens": {
+        "grand_total": 79168,
+        "per_turn": 8796.4,
+        "by_node": {
+          "router": {
+            "input": 62480,
+            "output": 4804,
+            "total": 67284,
+            "share": 0.8499
+          },
+          "finalizer": {
+            "input": 5899,
+            "output": 5985,
+            "total": 11884,
+            "share": 0.1501
+          }
+        },
+        "by_model": {
+          "gemini-2.5-flash": {
+            "input": 62480,
+            "output": 4804,
+            "total": 67284,
+            "share": 0.8499
+          },
+          "gemma-4-31b-it": {
+            "input": 5899,
+            "output": 5985,
+            "total": 11884,
+            "share": 0.1501
+          }
+        },
+        "llm_calls": 27,
+        "llm_calls_with_usage": 27,
+        "usage_coverage": 1.0
+      },
+      "cost": {
+        "available": true,
+        "pricing_as_of": "2026-08-25",
+        "total_usd": 0.030754,
+        "per_turn_usd": 0.0034171111111111112,
+        "by_model_usd": {
+          "gemini-2.5-flash": 0.030754,
+          "gemma-4-31b-it": 0.0
+        },
+        "counterfactual_model": "gemini-2.5-flash",
+        "counterfactual_total_usd": 0.0474862,
+        "saving_vs_counterfactual": 0.35235921172888124
+      },
+      "paths": {
+        "finalizer": 7,
+        "fallback": 2
+      },
+      "iterations_per_turn": 2.22,
+      "_note": "Free tier. n=9 and the run was cut short by a 20 req/day cap on gemini-2.5-flash. Latency is throttled; retained as evidence, not as a baseline.",
+      "_source_file": "metrics/turns_freetier.jsonl",
+      "_source_sha256_16": "5ad375533072b054"
+    }
+  }
+}
