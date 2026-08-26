@@ -8,7 +8,7 @@ changes are needed when running both services side-by-side:
   AGENT_ROUTER_MODEL  – cheap routing model (default: gemini-2.5-flash)
   AGENT_FINAL_MODEL   – strong answer model (default: gemma-4-31b-it)
   AGENT_MAX_ITERATIONS – ReAct iteration cap (default: 8)
-  TAVILY_API_KEY      – Tavily web search API key (replaces DDG, no default)
+  TAVILY_API_KEY      – Tavily web search API key, backs search_fashion_trends
   DATABASE_URL        – asyncpg connection string
   GORSE_URL           – Gorse HTTP endpoint (default: http://localhost:8088)
   GORSE_API_KEY       – optional Gorse API key

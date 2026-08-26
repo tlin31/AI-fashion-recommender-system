@@ -1,9 +1,16 @@
-"""LangGraph ReAct agent — port of fashion-recommend/ai/agent.go.
+"""LangGraph ReAct agent — the only ReAct implementation in this project.
 
-Key design decisions vs. Go:
-  * StateGraph(AgentState) replaces the hand-rolled for-loop in AgentChat().
-  * ToolNode replaces executeToolCall() + injectDefaultUserID() + the
-    manual role="tool" message appending (~40 lines of Go).
+The Go side (fashion-recommend/ai/service.go) makes single-shot LLM calls only;
+the Go API proxies /api/ai/agent-chat and /api/ai/agent-resume here.
+
+Why a graph runtime rather than a hand-rolled ReAct for-loop:
+  * StateGraph(AgentState) owns the loop, so the loop is inspectable — every
+    node can be timed and priced individually (see agent/metrics.py).
+  * interrupt_before=["write_traits"] lets a turn SUSPEND mid-flight and resume
+    from Postgres several requests later. A for-loop cannot do this, and it is
+    what makes the HITL approval gate expressible at all.
+  * ToolNode replaces hand-written tool dispatch, arg injection and the manual
+    role="tool" message appending.
   * Model tiering — two separate models:
       router_model  (gemini-2.5-flash) — function-calling capable; makes every
                     tool decision across all ReAct iterations.

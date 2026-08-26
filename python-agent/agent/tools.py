@@ -49,8 +49,8 @@ def make_tools(
 ) -> list:
     """Return all the agent tools, each closed over the shared clients.
 
-    Tavily replaces the custom DuckDuckGo client — TAVILY_API_KEY is read
-    from the environment automatically by the SDK.
+    Web search is Tavily; TAVILY_API_KEY is read from the environment
+    automatically by the SDK.
     """
 
     # ------------------------------------------------------------------
@@ -261,7 +261,7 @@ def make_tools(
             return f"Failed to retrieve item details: {exc}"
 
     # ------------------------------------------------------------------
-    # Tool 4: search_fashion_trends  (Tavily — replaces DuckDuckGo client)
+    # Tool 4: search_fashion_trends  (Tavily)
     # ------------------------------------------------------------------
     # TavilySearchResults is already a @tool; we just configure it.
     # Renaming it keeps trace output consistent with the Go implementation.

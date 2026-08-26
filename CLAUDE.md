@@ -92,7 +92,12 @@ pm2 restart admin-dashboard
 
 ### python-agent (python-agent/)
 
-A LangGraph-based ReAct agent that replaces the Go `fashion-recommend/ai/agent.go` implementation. Exposes a FastAPI server that mirrors the same `/api/ai/agent-chat` interface, adds PostgreSQL-backed multi-turn memory via LangGraph checkpointing, and implements HITL (Human-in-the-Loop) trait approval.
+A LangGraph-based ReAct agent — **the only ReAct implementation in this repo**. The Go
+side has no agent: `fashion-recommend/ai/service.go` is single-shot LLM calls only, and
+the Go API simply proxies `/api/ai/agent-chat` and `/api/ai/agent-resume` through to this
+service (`proxyToPythonAgent` in `api/server.go`). Exposes a FastAPI server with
+PostgreSQL-backed multi-turn memory via LangGraph checkpointing and HITL (Human-in-the-Loop)
+trait approval.
 
 ```bash
 cd python-agent
@@ -129,7 +134,7 @@ pytest tests/test_merge_traits.py::test_price_sensitivity_override -v
 | `DATABASE_URL` | `postgresql://gorse:gorse_pass@localhost:5432/gorse` | asyncpg DSN for LangGraph checkpointer + trait storage |
 | `GORSE_URL` | `http://localhost:8088` | Gorse master HTTP endpoint |
 | `AGENT_ROUTER_MODEL` | `gemini-2.5-flash` | Function-calling model for ReAct tool decisions |
-| `AGENT_FINAL_MODEL` | `gemma-3-27b-it` | Text-generation model for the polished final answer |
+| `AGENT_FINAL_MODEL` | `gemma-4-31b-it` | Text-generation model for the polished final answer |
 | `AGENT_MAX_ITERATIONS` | `8` | Hard cap on ReAct loop iterations |
 | `AGENT_TOKEN_BUDGET` | `20000` | Cumulative token cap per turn (exits loop early if exceeded) |
 | `AGENT_METRICS_PATH` | `metrics/turns.jsonl` | Per-turn latency/token/cost JSONL. Set to `""` to disable |
@@ -298,10 +303,10 @@ go test -v ./logics/...
 | `AI_API_KEY` | (Aliyun DashScope key) | LLM API key |
 | `AI_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible LLM endpoint |
 | `AI_MODEL` | `qwen-plus` | LLM model name |
-| `AGENT_ROUTER_MODEL` | `qwen-plus` | Cheap model used for ReAct tool-call routing iterations |
-| `AGENT_FINAL_MODEL` | `qwen-max` | Strong model called once to synthesize the final agent answer |
-| `AGENT_MAX_ITERATIONS` | `8` | Hard cap on ReAct loop iterations before forcing a final answer |
-| `WEB_SEARCH_URL` | `https://api.duckduckgo.com/` | Base URL for the `search_fashion_trends` tool (DuckDuckGo by default) |
+
+> The Go service has no agent of its own — no ReAct loop, no tools, no model tiering.
+> `AGENT_*` belongs to `python-agent/` only (see its table above), and web search there
+> is Tavily via `TAVILY_API_KEY` — there is no `WEB_SEARCH_URL` anywhere in this repo.
 
 ## Architecture
 
@@ -330,7 +335,7 @@ Recommendations are built by chaining multiple algorithms with fallbacks:
 A Gin-based HTTP API that sits in front of Gorse. Key packages:
 
 - `api/` — route handlers organized by domain (auth, AI, comments, likes, items, users, recommendations)
-- `ai/` — OpenAI-compatible client (default: Aliyun DashScope qwen-plus) + autonomous ReAct agent (`agent.go`, `tools.go`, `web_search.go`)
+- `ai/` — OpenAI-compatible client for single-shot LLM calls (`service.go`, default: Aliyun DashScope qwen-plus). No agent lives here; agentic behaviour is `python-agent/`, reached via the proxy routes in `api/server.go`
 - `client/` — HTTP client for Gorse master/server APIs
 - `traits/` — LLM-powered user style preference extraction; syncs traits back to Gorse as user labels
 - `database/` — PostgreSQL models for conversations, messages, user traits, and social interactions (comments, likes)
@@ -358,10 +363,12 @@ The **Milvus** backend (`milvus.go`) is the most full-featured: it uses the offi
 
 - `logics/chat.go` — LLM re-ranking within Gorse core (uses Ollama/qwen2.5 by default per `config/config.toml`)
 - `fashion-recommend/ai/service.go` — single-shot chat, recommendation explanation, style advice (uses Aliyun DashScope qwen-plus)
-- `fashion-recommend/ai/agent.go` — stateful ReAct agent (`POST /api/ai/agent-chat`); router model handles tool-call iterations, final model synthesizes the answer; returns optional per-iteration trace (`include_trace: true`)
-  - Tool 1 `search_items_by_vector` — personalized item recommendations or item-similarity search via Gorse
-  - Tool 2 `get_user_preferences` — fetches stored `TraitsData` (style, color, price, brands, occasions) from PostgreSQL
-  - Tool 3 `search_fashion_trends` — external trend lookup via DuckDuckGo Instant Answer API (no key required; swap `WebSearchClient.Search()` to adopt Brave/Tavily)
+- `python-agent/agent/graph.py` — the stateful ReAct agent serving `POST /api/ai/agent-chat` (the Go route of that name is a proxy). Router model handles tool-call iterations, final model synthesizes the answer; returns an optional per-iteration trace and per-node metrics (`include_trace: true`). Five tools, all in `python-agent/agent/tools.py`:
+  - `get_recommendations` — personalized item recommendations via Gorse
+  - `get_user_preferences` — stored trait data (style, colour, price, brands, occasions) from PostgreSQL
+  - `get_item_details` — single-item lookup via Gorse
+  - `search_fashion_trends` — external trend lookup via Tavily (`TAVILY_API_KEY`)
+  - `update_user_traits` — stages trait updates for HITL approval; returns a `Command`, which is why the tools node has to handle both return shapes
 - `fashion-recommend/traits/extractor.go` — extracts structured style/color/occasion preferences from user text; maps Chinese keywords to English Gorse labels
 
 ### Data Flow
