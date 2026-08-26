@@ -1,20 +1,35 @@
 {
   "_README": [
     "Token price table used by agent/metrics.py to convert measured token counts",
-    "into a USD cost per turn. Prices are an OPERATOR-SUPPLIED ASSUMPTION, not a",
-    "measurement — re-verify against the provider's current pricing page before",
-    "quoting any cost number, and bump `as_of` when you do.",
+    "into a USD cost per turn. Prices are OPERATOR-SUPPLIED, not measured — re-verify",
+    "against the provider's current pricing page whenever `as_of` goes stale, and set",
+    "`verified_by_operator` back to false until someone actually has. See",
+    "`verification_notes` for what was checked and what it ruled out.",
     "",
     "A model that is absent from `models` yields cost_usd = null (NOT 0.0), so an",
     "unpriced model can never be silently reported as free.",
     "",
     "Units: USD per 1,000,000 tokens."
   ],
-  "as_of": "2026-08-19",
+  "as_of": "2026-08-25",
   "currency": "USD",
   "unit": "per_1m_tokens",
   "source": "https://ai.google.dev/gemini-api/docs/pricing",
-  "verified_by_operator": false,
+  "verified_by_operator": true,
+  "verification_notes": [
+    "Checked against the pricing page by the operator on 2026-08-25.",
+    "",
+    "1. Gemini 2.5 output price INCLUDES thinking/reasoning tokens — there is no",
+    "   separate reasoning rate. This matters more here than it looks: reasoning is",
+    "   74-97% of output on both tiers (MEMORY.md section 1), so a separate rate would",
+    "   have invalidated every cost number in this project. It does not — pricing",
+    "   output_tokens at the output rate is the complete and correct calculation.",
+    "",
+    "2. No context-length tiering on gemini-2.5-flash at the volumes used here.",
+    "",
+    "3. Gemma has NO paid tier — the pricing page lists the paid column as unavailable.",
+    "   Priced 0.0 here, which is correct, but see its note below for the consequence."
+  ],
   "models": {
     "gemini-2.5-flash": {
       "input": 0.30,
@@ -34,17 +49,17 @@
     "gemma-4-31b-it": {
       "input": 0.0,
       "output": 0.0,
-      "note": "ACTUAL finalizer model per .env (AGENT_FINAL_MODEL). Open-weights model served free on Google AI Studio; priced at 0 here. This is exactly why the two-model split looks cheap - see counterfactual_model below before claiming a saving."
+      "note": "Finalizer model — both the .env value and the code default (AgentConfig.final_model). Genuinely 0.0: Gemma has NO paid tier, it is served free only. Two consequences. (a) The two-model split looks cheap partly by construction — see counterfactual_model below before quoting a dollar saving. (b) Free-only means it keeps free-tier rate limits EVEN on a billing-enabled project, so the finalizer, not the paid router, is now the component that can hit a quota wall. Measured 2026-08-25 over 42 real turns at a median 34 output tokens/sec on the billing-enabled project, versus 16 tok/sec on the free tier — so free-tier Gemma is throttled roughly 2x. Even at the faster paid rate it is 86% of wall-clock while costing nothing, which is the central cost-vs-latency inversion of this agent."
     },
     "gemma-3-27b-it": {
       "input": 0.0,
       "output": 0.0,
-      "note": "code default in AgentConfig.final_model; same free-tier reasoning as above"
+      "note": "RETIRED 2026-08-23 - returns 404 NOT_FOUND from AI Studio. Kept priced so historical turns.jsonl records that reference it still cost out; do not use for new runs."
     },
     "gemma-3-12b-it": {
       "input": 0.0,
       "output": 0.0,
-      "note": "same as gemma-3-27b-it"
+      "note": "RETIRED 2026-08-23 - returns 404 NOT_FOUND from AI Studio. Same rationale as gemma-3-27b-it."
     }
   },
   "counterfactual_model": "gemini-2.5-flash",

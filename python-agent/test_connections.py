@@ -34,26 +34,56 @@ def info(msg: str) -> None: print(f"     {msg}")
 
 
 # ── 1. Google AI Studio / Gemma ──────────────────────────────────────────────
+def _as_text(content) -> str:
+    """AIMessage.content may be a list of content blocks, not a string.
+
+    Both gemini-2.5-flash and gemma-4-31b-it return thinking + text blocks, so
+    calling .strip() on the raw value raises AttributeError. See MEMORY.md §3.
+    """
+    if isinstance(content, list):
+        return " ".join(
+            b.get("text", "") if isinstance(b, dict) else str(b)
+            for b in content
+            if not (isinstance(b, dict) and b.get("type") == "thinking")
+        ).strip()
+    return (content or "").strip()
+
+
 async def check_openai() -> bool:
-    print("\n[1/4] Google AI Studio / Gemma LLM")
+    """Probe BOTH tiered models, not just the router.
+
+    Checking only AGENT_ROUTER_MODEL is how a dead AGENT_FINAL_MODEL default
+    stayed hidden: the smoke test passed while every final answer 404'd.
+    """
+    print("\n[1/4] Google AI Studio — router + finalizer")
     api_key = os.environ.get("GOOGLE_API_KEY", "")
-    model   = os.environ.get("AGENT_ROUTER_MODEL", "gemma-3-12b-it")
 
     if not api_key or api_key == "your-google-ai-studio-key-here":
         fail("GOOGLE_API_KEY is not set in .env")
         return False
 
+    models = {
+        "router":    os.environ.get("AGENT_ROUTER_MODEL", "gemini-2.5-flash"),
+        "finalizer": os.environ.get("AGENT_FINAL_MODEL", "gemma-4-31b-it"),
+    }
+
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI
         from langchain_core.messages import HumanMessage
-
-        llm = ChatGoogleGenerativeAI(model=model, google_api_key=api_key)
-        resp = await llm.ainvoke([HumanMessage(content="Reply with just the word: OK")])
-        ok(f"model={model}  reply={resp.content.strip()!r}")
-        return True
     except Exception as exc:
         fail(str(exc))
         return False
+
+    all_ok = True
+    for role, model in models.items():
+        try:
+            llm = ChatGoogleGenerativeAI(model=model, google_api_key=api_key)
+            resp = await llm.ainvoke([HumanMessage(content="Reply with just the word: OK")])
+            ok(f"{role:<9} model={model}  reply={_as_text(resp.content)[:20]!r}")
+        except Exception as exc:
+            fail(f"{role:<9} model={model}  {exc}")
+            all_ok = False
+    return all_ok
 
 
 # ── 2. Tavily ────────────────────────────────────────────────────────────────
