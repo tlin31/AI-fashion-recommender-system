@@ -41,6 +41,20 @@ go test -v ./api/...
 make init-data
 # or: go run data/init_data.go
 
+# Seed Gorse from rag_products (items + demo feedback)
+python3 data/seed_gorse.py
+
+# Audit the item-label schema without writing anything (no Gorse needed).
+# Prints per-prefix cardinality, how many labels Gorse's frequency filter will
+# drop, and style/colour tagging coverage.
+python3 data/seed_gorse.py --dry-run
+
+# Seed a larger catalogue (default 1,000)
+SEED_N_PRODUCTS=5000 python3 data/seed_gorse.py
+
+# Label-schema regression tests (pure units, no DB/network)
+python3 -m pytest data/test_seed_labels.py -v
+
 # Go proxy (China mainland users — set before downloading dependencies)
 export GOPROXY=https://goproxy.cn,direct
 go mod download
@@ -52,6 +66,45 @@ make docker-up
 # Stop infrastructure
 make docker-down
 ```
+
+#### Two catalogue sizes — do not conflate
+
+`rag_products` holds 5,000 normalised Amazon products, but `seed_gorse.py` posts
+only the top `SEED_N_PRODUCTS` (default **1,000**) by `rating_count`. Gorse never
+sees the rest, so **catalog-coverage denominators must use the seeded count, not
+the table size**. Every seed run prints both numbers.
+
+#### Item label schema
+
+Gorse indexes a label only on its **second** occurrence (`master/tasks.go:307-330`);
+singletons are dropped and never reach the CTR model. `--dry-run` reports the drop
+rate per prefix. Current state at N=1,000:
+
+| prefix | distinct | dropped | note |
+|---|---|---|---|
+| `style:` | 6 | 0 | heuristic tags, 68.9% of items covered |
+| `color:` | 10 | 0 | canonical palette, 49.4% covered |
+| `price_range:` | 4 | 0 | includes `unknown` |
+| `occasion:` | 24 | 6 | |
+| `avg_rating:` | 18 | 2 | rounded to 1 dp to bound cardinality |
+| `brand:` | 649 | 538 | long tail — dropping singletons is correct |
+| `material:` | 35 | 27 | free text, known gap |
+| `item_name:`, `price:` | — | ~all | **carriers, not features** — `api/server.go:246` parses them for the API response; removing `price:` would zero out `item.Price` in the frontend |
+
+Two content-tagging assumptions, both heuristic rather than ground truth:
+
+- **`style:`** — `rag_products` has no style column, so labels come from keyword
+  matching over name + description. The six classes mirror `traits/extractor.go`
+  so the user and item sides share a vocabulary; that file's keywords are Chinese
+  and the catalogue is English, so it cannot be reused directly.
+- **`color:`** — the `colour` column is empty for 941/1,000 items and the rest is
+  uncontrolled free text (`cut vines`, `3x`, `smokey quartz`). Labels are mapped
+  onto the same ten-colour palette the user side uses.
+
+`price_range:unknown` exists because `rag-service/data/normalize.py:340` assigns
+`"mid"` to every price-less product. 68% of the catalogue has no price, so 672 of
+803 `mid` items at N=1,000 actually meant "no data". normalize.py belongs to
+rag-service, whose eval baseline is locked, so this is corrected at seed time.
 
 ### Frontend (fashion-recommend/frontend/)
 
