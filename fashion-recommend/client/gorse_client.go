@@ -105,21 +105,32 @@ func (c *GorseClient) GetRecommend(userId string, category string, n int) ([]mod
 	return items, nil
 }
 
+// gorseScore 对应 Gorse 的 cache.Score（storage/cache/database.go:166）。
+//
+// 注意它和 /api/recommend 的返回形状不同：recommend 默认返回裸的 item id 数组
+// （server/rest.go:914 `Ok(response, results)`，只有带 X-API-Version: 2 时才返回
+// score 对象），而 neighbors 走 SearchDocuments，永远返回 [{Id, Score}]。
+// 这两个形状之前被当成同一个来解析，导致 GetItemNeighbors 恒定报错。
+type gorseScore struct {
+	Id    string  `json:"Id"`
+	Score float64 `json:"Score"`
+}
+
 // GetItemNeighbors 获取相似商品
 func (c *GorseClient) GetItemNeighbors(itemId string, n int) ([]models.RecommendItem, error) {
 	url := fmt.Sprintf("%s/api/item/%s/neighbors?n=%d", c.endpoint, itemId, n)
-	var itemIds []string
-	err := c.doRequest("GET", url, nil, &itemIds)
+	var scores []gorseScore
+	err := c.doRequest("GET", url, nil, &scores)
 	if err != nil {
 		return nil, err
 	}
-	
-	// 转换为 RecommendItem 格式
-	items := make([]models.RecommendItem, len(itemIds))
-	for i, id := range itemIds {
+
+	// Gorse 已按 score 降序返回，这里保留它给出的真实分数，不再用序号伪造分数。
+	items := make([]models.RecommendItem, len(scores))
+	for i, s := range scores {
 		items[i] = models.RecommendItem{
-			ItemId: id,
-			Score:  float64(len(itemIds) - i), // 简单的分数，按顺序递减
+			ItemId: s.Id,
+			Score:  s.Score,
 		}
 	}
 	return items, nil
