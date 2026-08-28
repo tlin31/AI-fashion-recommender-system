@@ -87,6 +87,10 @@ python3 data/build_interactions.py --sweep-catalogue 1000,5000,20000,50000,all
 python3 data/build_interactions.py --build             # ~24s
 python3 data/build_interactions.py --build --dry-run   # report only
 
+# Load the TRAIN split into Gorse (~67s), then check it landed
+python3 data/build_interactions.py --push-gorse
+python3 data/build_interactions.py --verify-gorse
+
 # Graph-maths regression tests (pure units)
 python3 -m pytest data/test_interactions.py -v
 ```
@@ -132,6 +136,34 @@ q=0.70 (2020-11-23) is chosen because the evaluable warm cohort peaks there
 
 > The warm cohort is ~859 users either way — small, and that is the corpus, not a
 > bug. Cold-start is where the volume is: 156,935 cold test users.
+
+##### Pushing to Gorse
+
+`--push-gorse` loads **only the train split** (391,258 events) plus all 95,335
+items. Sending test events would put held-out interactions inside the model being
+evaluated; `--verify-gorse` samples users and asserts no test event reached Gorse.
+
+**Three gotchas, all of which look like failures but are not:**
+
+1. **`/api/dashboard/stats` lags.** The master recomputes it on a schedule, so
+   right after a push it still reports the old numbers. Verify by sampling
+   entities through the API (what `--verify-gorse` does), not by reading counters.
+2. **There are two Postgres instances.** Gorse's data store is the *Docker*
+   Postgres (`fashion-postgres`, not published on the host); `rag_products` and
+   `reco_*` live in the *host* Postgres. Same credentials, different databases.
+   Check Gorse's side with
+   `docker exec fashion-postgres psql -U gorse -d gorse -c "select count(*) from feedback"`.
+3. **`fit_period = "24h"`** (`config/config.toml:77`), so the CF model does not
+   retrain on newly pushed data for up to a day. `docker restart fashion-gorse-master`
+   forces a reload.
+
+**`dislike` is stored but not trained on.** `config.toml:29-30` sets
+`positive_feedback_types = ["purchase", "favorite", "add_to_cart"]` and
+`read_feedback_types = ["view"]` — `dislike` is in neither. After the push Gorse
+reports 276,194 positive + 51,280 read = 327,474 against 391,258 events sent; the
+~64k difference is exactly the dislikes. The explicit-negative signal is present
+in `reco_interactions` but inert in the model, which is the knob the Day 5
+ablation turns, not a bug to fix silently.
 
 Key measured facts (see `--stats` for the full table):
 

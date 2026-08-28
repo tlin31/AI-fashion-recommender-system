@@ -32,6 +32,7 @@ import argparse
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -680,12 +681,24 @@ def sweep(args, u, i, item_names) -> None:
 # a bigger rag_products would contain, we are defining our own catalogue by a
 # rule that is stated and reproducible.
 
+# Both tables are fully derived from the dump, so --build drops and recreates
+# them rather than migrating. CREATE TABLE IF NOT EXISTS silently keeps an old
+# column layout, which is how a schema change turns into a confusing runtime
+# error two steps later; dropping makes a schema edit take effect on the next
+# build with no migration to remember.
 SCHEMA_SQL = """
+DROP TABLE IF EXISTS reco_interactions;
+DROP TABLE IF EXISTS reco_products;
+
 CREATE TABLE IF NOT EXISTS reco_products (
     product_id   TEXT PRIMARY KEY,
     name         TEXT NOT NULL,
     brand        TEXT,
     category     TEXT,
+    -- Carried so that style/colour tagging has the same text to work from as
+    -- seed_gorse.py does. Tagging from the title alone drops style coverage
+    -- from 68.9% to 37.8%, and the content arms depend on that signal.
+    description  TEXT,
     price        DOUBLE PRECISION,
     price_range  TEXT,
     avg_rating   DOUBLE PRECISION,
@@ -872,16 +885,13 @@ def build(args, table) -> None:
     conn.autocommit = False
     try:
         with conn.cursor() as cur:
+            # SCHEMA_SQL drops both tables first, so this is inherently
+            # re-runnable: a second build replaces, it never appends.
             cur.execute(SCHEMA_SQL)
-
-            # Re-runnable: replace the contents rather than appending. The
-            # interactions go first because of the foreign key.
-            cur.execute("TRUNCATE reco_interactions")
-            cur.execute("TRUNCATE reco_products CASCADE")
 
             prices = cat["price"].to_numpy()
             rows = [
-                (r.product_id, r.title[:500], r.brand, r.category,
+                (r.product_id, r.title[:500], r.brand, r.category, r.description,
                  None if r.price < 0 else float(r.price),
                  price_band(r.price, prices),
                  float(r.avg_rating) if r.avg_rating else None,
@@ -890,7 +900,8 @@ def build(args, table) -> None:
             ]
             execute_values(cur, """
                 INSERT INTO reco_products (product_id, name, brand, category,
-                                           price, price_range, avg_rating, rating_count)
+                                           description, price, price_range,
+                                           avg_rating, rating_count)
                 VALUES %s
             """, rows, page_size=5000)
             print(f"\nwrote reco_products    : {len(rows):,}")
@@ -932,6 +943,214 @@ def price_band(price: float, all_prices: np.ndarray) -> str:
         return "unknown"
     p33, p67 = np.quantile(valid, [0.33, 0.67])
     return "budget" if price < p33 else ("mid" if price < p67 else "premium")
+
+
+# ── Push: load the built dataset into Gorse ───────────────────────────────────
+
+GORSE_URL = os.environ.get("GORSE_URL", "http://localhost:8088")
+
+
+def _post_batched(path: str, payload: list, label: str, batch: int = 2000) -> int:
+    import httpx
+
+    sent = 0
+    for start in range(0, len(payload), batch):
+        chunk = payload[start:start + batch]
+        for attempt in range(1, 5):
+            try:
+                resp = httpx.post(f"{GORSE_URL}{path}", json=chunk, timeout=120)
+                resp.raise_for_status()
+                break
+            except Exception as e:
+                if attempt == 4:
+                    raise
+                wait = attempt * 2
+                print(f"  {label} {start:,}: {type(e).__name__}, retry in {wait}s")
+                time.sleep(wait)
+        sent += len(chunk)
+        if (start // batch) % 10 == 0 or sent == len(payload):
+            print(f"  {label}: {sent:,}/{len(payload):,}")
+    return sent
+
+
+def push_gorse(args) -> None:
+    """Load reco_products + the TRAIN half of reco_interactions into Gorse.
+
+    ONLY the training split is pushed. Sending test events would put the
+    held-out interactions inside the model being evaluated, which silently
+    inflates every metric and is unrecoverable once the model is fitted -- the
+    numbers would look good and mean nothing. The WHERE clause below is the
+    single most important line in this function.
+    """
+    import psycopg2
+    import psycopg2.extras
+
+    sys.path.insert(0, str(Path(__file__).parent))
+    from seed_gorse import _colour_labels, _normalise_category, _style_labels
+
+    conn = psycopg2.connect(POSTGRES_URL)
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT product_id, name, brand, category, description,
+                       price, price_range, avg_rating
+                FROM reco_products
+            """)
+            products = cur.fetchall()
+
+            cur.execute("""
+                SELECT user_id, product_id, feedback_type, ts
+                FROM reco_interactions
+                WHERE split = 'train'
+            """)
+            feedback = cur.fetchall()
+
+            cur.execute("SELECT count(*) AS n FROM reco_interactions WHERE split='test'")
+            n_test = cur.fetchone()["n"]
+    finally:
+        conn.close()
+
+    print(f"loaded {len(products):,} products, {len(feedback):,} TRAIN events "
+          f"({n_test:,} test events deliberately withheld)")
+
+    # ── Item labels ──────────────────────────────────────────────────────────
+    items, style_hits, colour_hits = [], 0, 0
+    for p in products:
+        labels = []
+        if p["brand"]:
+            labels.append(f"brand:{p['brand']}")
+        colours = _colour_labels(None, p["name"], p["description"])
+        styles = _style_labels(p["name"], p["description"])
+        labels.extend(f"color:{c}" for c in colours)
+        labels.extend(f"style:{s}" for s in styles)
+        labels.append(f"price_range:{p['price_range'] or 'unknown'}")
+        if p["name"]:
+            labels.append(f"item_name:{p['name']}")
+        if p["price"] is not None:
+            labels.append(f"price:{int(p['price'])}")
+        if p["avg_rating"] is not None:
+            labels.append(f"avg_rating:{round(float(p['avg_rating']), 1)}")
+        style_hits += bool(styles)
+        colour_hits += bool(colours)
+        items.append({
+            "ItemId":     p["product_id"],
+            "Categories": [_normalise_category(p["category"])],
+            "Labels":     labels,
+            "Comment":    (p["description"] or "")[:500],
+            "Timestamp":  datetime.now(timezone.utc).isoformat() + "Z",
+        })
+
+    n = len(products)
+    print(f"label coverage: style {style_hits / n:.1%}, colour {colour_hits / n:.1%}")
+
+    events = [{
+        "FeedbackType": f["feedback_type"],
+        "UserId":       f["user_id"],
+        "ItemId":       f["product_id"],
+        "Timestamp":    f["ts"].isoformat(),
+    } for f in feedback]
+
+    by_type: dict[str, int] = {}
+    for e in events:
+        by_type[e["FeedbackType"]] = by_type.get(e["FeedbackType"], 0) + 1
+    print(f"feedback types: {by_type}")
+    print("  NOTE: config.toml lists positive_feedback_types = "
+          "[purchase, favorite, add_to_cart] and read_feedback_types = [view].")
+    print("        'dislike' is in neither, so Gorse stores it but the CF model")
+    print("        does not currently train on it. That is a modelling decision")
+    print("        for the ablation, not something this script should change.")
+
+    if args.dry_run:
+        print("\n--dry-run: nothing pushed.")
+        return
+
+    print(f"\nPushing to Gorse ({GORSE_URL})...")
+    _post_batched("/api/items", items, "items")
+    _post_batched("/api/feedback", events, "feedback")
+    print("\nPush complete.")
+
+
+def verify_gorse(sample: int = 40) -> None:
+    """Check the push landed, by sampling entities rather than reading counters.
+
+    /api/dashboard/stats is NOT a verification source: the master recomputes it
+    on a schedule, so immediately after a push it still reports the previous
+    numbers. Reading it and concluding the push failed is exactly the wrong
+    call, so this samples real records through the API instead -- which also
+    makes the check independent of where Gorse happens to persist (its data
+    store is the Docker Postgres, while reco_* live in the host Postgres; these
+    are two different databases).
+
+    Two things are checked, and the second matters more:
+      1. every sampled train event is present in Gorse
+      2. NO sampled test event is present -- if a held-out interaction reached
+         the model, every metric computed later is inflated and worthless
+    """
+    import random
+
+    import httpx
+    import psycopg2
+
+    conn = psycopg2.connect(POSTGRES_URL)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM reco_products")
+            n_products = cur.fetchone()[0]
+            cur.execute("""SELECT feedback_type, count(*) FROM reco_interactions
+                           WHERE split='train' GROUP BY 1 ORDER BY 2 DESC""")
+            by_type = cur.fetchall()
+
+            cur.execute("""SELECT user_id FROM reco_interactions WHERE split='train'
+                           GROUP BY 1 HAVING count(*) >= 2 LIMIT 4000""")
+            train_users = [r[0] for r in cur.fetchall()]
+            picked = random.Random(0).sample(train_users, min(sample, len(train_users)))
+
+            cur.execute("""SELECT user_id, product_id FROM reco_interactions
+                           WHERE split='test' AND user_id = ANY(%s)""", (picked,))
+            test_pairs = cur.fetchall()
+
+            cur.execute("""SELECT user_id, count(*) FROM reco_interactions
+                           WHERE split='train' AND user_id = ANY(%s)
+                           GROUP BY 1""", (picked,))
+            pg_counts = dict(cur.fetchall())
+    finally:
+        conn.close()
+
+    rule_hdr("GORSE CROSS-CHECK")
+    print(f"postgres reco_products      : {n_products:,}")
+    print(f"postgres train events       : {sum(n for _, n in by_type):,}  "
+          f"{{{', '.join(f'{t}: {n:,}' for t, n in by_type)}}}")
+
+    stats = httpx.get(f"{GORSE_URL}/api/dashboard/stats", timeout=30).json()
+    print(f"gorse dashboard NumItems    : {stats.get('NumItems', 0):,}  "
+          f"(recomputed on a schedule — stale right after a push)")
+    print(f"gorse user labels indexed   : {stats.get('NumUserLabels', 0):,}"
+          + ("   <- 0 confirms the trait-sync bug is still live"
+             if not stats.get("NumUserLabels") else ""))
+
+    missing_train, wrong_count, leaked = 0, 0, 0
+    for uid in picked:
+        try:
+            got = httpx.get(f"{GORSE_URL}/api/user/{uid}/feedback", timeout=30).json()
+        except Exception:
+            missing_train += 1
+            continue
+        in_gorse = {(f["ItemId"]) for f in (got or [])}
+        if len(in_gorse) < pg_counts.get(uid, 0):
+            wrong_count += 1
+        for u2, pid in test_pairs:
+            if u2 == uid and pid in in_gorse:
+                leaked += 1
+
+    print()
+    print(f"sampled {len(picked)} users with >= 2 training events:")
+    print(f"  users unreachable in Gorse       : {missing_train}")
+    print(f"  users with fewer events in Gorse : {wrong_count}")
+    print(f"  HELD-OUT test events found       : {leaked}")
+    ok = missing_train == 0 and wrong_count == 0 and leaked == 0
+    print()
+    print("PASS: train data present, no test leakage into Gorse." if ok
+          else "FAIL: see the counts above before trusting any metric.")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -1029,6 +1248,10 @@ def main() -> None:
     p.add_argument("--split-quantile", type=float, default=0.70,
                    help="with --split temporal: where to cut (default 0.70, "
                         "which peaks the evaluable warm cohort)")
+    p.add_argument("--push-gorse", action="store_true",
+                   help="load reco_products + the TRAIN split into Gorse")
+    p.add_argument("--verify-gorse", action="store_true",
+                   help="cross-check Gorse's counters against Postgres")
     p.add_argument("--sweep-catalogue", metavar="N,N,...",
                    help="report the evaluable warm cohort at each catalogue "
                         "size, e.g. 1000,5000,20000,50000,100000,all")
@@ -1041,14 +1264,22 @@ def main() -> None:
                    help="only read the first N lines (smoke test; not cached)")
     args = p.parse_args()
 
-    if not (args.stats or args.sweep_catalogue or args.build):
-        p.error("pass at least one of --stats, --sweep-catalogue, --build")
+    if not (args.stats or args.sweep_catalogue or args.build
+            or args.push_gorse or args.verify_gorse):
+        p.error("pass at least one of --stats, --sweep-catalogue, --build, "
+                "--push-gorse, --verify-gorse")
 
     if args.stats:
         run_stats(args)
 
     if args.build:
         build(args, load_events(refresh=False))
+
+    if args.push_gorse:
+        push_gorse(args)
+
+    if args.verify_gorse:
+        verify_gorse()
 
     if args.sweep_catalogue:
         table = load_events(refresh=False)
