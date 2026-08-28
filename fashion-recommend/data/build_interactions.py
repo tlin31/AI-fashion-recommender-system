@@ -45,9 +45,18 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 RAW_REVIEWS = (REPO_ROOT / "rag-service" / "amazon_data" / "raw" /
                "review_categories" / "Amazon_Fashion.jsonl")
 
+RAW_META = (REPO_ROOT / "rag-service" / "amazon_data" / "raw" /
+            "meta_categories" / "meta_Amazon_Fashion.jsonl")
+
 # Extracted columns are cached so that repeated analysis (and the catalogue-size
 # sweep, which needs many passes) does not re-parse 1 GB of JSON every time.
 CACHE_PATH = Path(__file__).parent / "cache" / "amazon_fashion_events.parquet"
+META_CACHE_PATH = Path(__file__).parent / "cache" / "amazon_fashion_meta.parquet"
+
+# Where the demo catalogue's product images live. The sweep reports the overlap
+# because the eval catalogue and the demo catalogue are deliberately different
+# things: eval needs scale and no images, the demo needs images and no scale.
+IMAGES_DIR = Path(__file__).parent.parent / "public" / "images"
 
 POSTGRES_URL = os.environ.get(
     "POSTGRES_URL", "postgresql://gorse:gorse_pass@localhost:5432/gorse"
@@ -200,7 +209,7 @@ def degree_table(u: np.ndarray, n_users: int) -> list[dict]:
 
 # ── Stage 3: reporting ────────────────────────────────────────────────────────
 
-def rule(title: str = "") -> None:
+def rule_hdr(title: str = "") -> None:
     print(f"\n{'─' * 78}")
     if title:
         print(title)
@@ -212,7 +221,7 @@ def report_corpus(u: np.ndarray, i: np.ndarray, raw_events: int, label: str) -> 
     n_items = int(i.max()) + 1
     events = len(u)
 
-    rule(f"{label}: interaction graph")
+    rule_hdr(f"{label}: interaction graph")
     print("Degrees and cores below are computed on DISTINCT (user, item) edges,")
     print("not raw events — that is what the graph is, and what the")
     print("reco_interactions PRIMARY KEY (user_id, product_id) will store.")
@@ -227,7 +236,7 @@ def report_corpus(u: np.ndarray, i: np.ndarray, raw_events: int, label: str) -> 
     print(f"events/item        : {events / n_items:.2f}")
 
     rows, counts = degree_table(u, n_users)
-    rule(f"{label}: user degree distribution (one-pass filter)")
+    rule_hdr(f"{label}: user degree distribution (one-pass filter)")
     print(f"{'threshold':<20} {'users':>12} {'% of users':>12} {'events':>14}")
     exactly_one = int((counts == 1).sum())
     print(f"{'users == 1 event':<20} {exactly_one:>12,} "
@@ -236,7 +245,7 @@ def report_corpus(u: np.ndarray, i: np.ndarray, raw_events: int, label: str) -> 
         print(f"{'users >= ' + str(r['k']) + ' events':<20} {r['users']:>12,} "
               f"{r['pct']:>11.2%} {r['events']:>14,}")
 
-    rule(f"{label}: iterative bipartite k-core (user >= k AND item >= k)")
+    rule_hdr(f"{label}: iterative bipartite k-core (user >= k AND item >= k)")
     print("A one-pass filter and a k-core are different things. The collapse")
     print("between the two columns below is the sparsity of this corpus.")
     print()
@@ -266,7 +275,7 @@ def report_cohorts(u: np.ndarray, n_users: int, label: str) -> None:
     cold = int((counts == 1).sum())
     warm = int((counts >= 2).sum())
 
-    rule(f"{label}: cohorts and training history")
+    rule_hdr(f"{label}: cohorts and training history")
     print(f"cold cohort (exactly 1 event) : {cold:>10,}  {cold / n_users:>7.2%}")
     print(f"warm cohort (>= 2 events)     : {warm:>10,}  {warm / n_users:>7.2%}")
     print()
@@ -306,7 +315,7 @@ def report_feedback_taxonomy(rating: np.ndarray, verified: np.ndarray,
     distribution times the overall verified rate. These are the measured
     cross-tab counts, which is what any claim about the taxonomy has to cite.
     """
-    rule(f"{label}: feedback taxonomy — measured cross-tab (verified x rating)")
+    rule_hdr(f"{label}: feedback taxonomy — measured cross-tab (verified x rating)")
     print(f"{'rating':>7} {'verified':>12} {'not verified':>14} {'total':>12}")
     for r in (1, 2, 3, 4, 5):
         sel = rating == r
@@ -326,7 +335,7 @@ def report_feedback_taxonomy(rating: np.ndarray, verified: np.ndarray,
     view_v3 = int((verified & (rating == 3)).sum())
     view_nv = int((~verified & (rating >= 3)).sum())
 
-    rule(f"{label}: feedback taxonomy — applied mapping")
+    rule_hdr(f"{label}: feedback taxonomy — applied mapping")
     print("precedence: rating <= 2 -> dislike, before any verified/unverified rule")
     print()
     print(f"{'gorse feedback type':<22} {'events':>12} {'share':>8}   rule")
@@ -397,6 +406,242 @@ def load_catalogue(n: int | None) -> list[str] | None:
         conn.close()
 
 
+# ── Catalogue-size sweep ──────────────────────────────────────────────────────
+#
+# THE QUESTION THIS ANSWERS, AND THE ONE IT DOES NOT
+# --------------------------------------------------
+# Answers: how large must the catalogue be before the warm cohort is big enough
+# to carry a credible NDCG comparison? At the current 5,000 products there are
+# 370 users with >= 2 training events, which is not enough to lock a baseline on.
+#
+# Does NOT answer: exactly which ASINs a larger rag_products would contain. That
+# is normalize.py's business, and reproducing its filter chain here was tried and
+# abandoned -- a faithful re-implementation of its published steps still only
+# reproduces 56% of the actual 5,000-row catalogue, so any "predicted catalogue"
+# would be a fiction with a precise-looking membership.
+#
+# So the sweep reports the SHAPE of the curve under two independent
+# catalogue-selection rules. If both rules agree on the catalogue size needed,
+# the decision is robust to the thing that could not be reproduced exactly.
+
+def extract_meta() -> pa.Table:
+    """parent_asin + the fields normalize.py filters on, from the metadata dump."""
+    if not RAW_META.exists():
+        sys.exit(f"Product metadata not found at {RAW_META}")
+
+    sys.path.insert(0, str(REPO_ROOT / "rag-service" / "data"))
+    try:
+        from normalize import _derive_category, _parse_price
+    except ImportError as e:
+        sys.exit(f"Could not import rag-service/data/normalize.py helpers: {e}")
+
+    asins, counts, titles, brands, feats, descs, prices = [], [], [], [], [], [], []
+    started = time.time()
+    print(f"Scanning {RAW_META.name} "
+          f"({RAW_META.stat().st_size / 1e6:,.0f} MB)...")
+
+    with open(RAW_META, "rb") as fh:
+        for n, line in enumerate(fh, 1):
+            try:
+                r = orjson.loads(line)
+            except orjson.JSONDecodeError:
+                continue
+            title = r.get("title") or ""
+            f = r.get("features") or []
+            d = r.get("description") or []
+            asins.append(r.get("parent_asin") or "")
+            counts.append(r.get("rating_number") or 0)
+            titles.append(title)
+            brands.append((r.get("store") or "").lower().strip())
+            feats.append(len(f) if isinstance(f, list) else 0)
+            descs.append(len(" ".join(d)) if isinstance(d, list) else 0)
+            prices.append(_parse_price(r.get("price")) or -1.0)
+            if n % 500_000 == 0:
+                print(f"  {n:,} lines ({n / (time.time() - started):,.0f}/s)")
+
+    print(f"  done: {len(asins):,} products in {time.time() - started:.0f}s")
+
+    # Category derivation is the expensive per-row step; do it once, here.
+    cats = [(_derive_category(t) or "") for t in titles]
+    return pa.table({
+        "product_id":   pa.array(asins),
+        "rating_count": pa.array(counts, type=pa.float64()),
+        "title_len":    pa.array([len(t) for t in titles], type=pa.int32()),
+        "brand":        pa.array(brands).dictionary_encode(),
+        "feat_n":       pa.array(feats, type=pa.int32()),
+        "desc_len":     pa.array(descs, type=pa.int32()),
+        "price":        pa.array(prices, type=pa.float64()),
+        "category":     pa.array(cats).dictionary_encode(),
+    })
+
+
+def load_meta_pool(refresh: bool = False):
+    """The pool normalize.py subsamples from, as best it can be reconstructed.
+
+    Only the FINAL step of normalize.py's pipeline depends on catalogue size
+    (`nlargest(SUBSAMPLE_SIZE, rating_count)`); everything before it is
+    size-independent. So reconstructing the pool once lets any N be taken from
+    it. The reconstruction is imperfect (see the section header) and its
+    fidelity is measured and printed rather than assumed.
+    """
+    import pandas as pd
+
+    if META_CACHE_PATH.exists() and not refresh:
+        print(f"Using cached product metadata: {META_CACHE_PATH}")
+        table = pq.read_table(META_CACHE_PATH)
+    else:
+        table = extract_meta()
+        META_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        pq.write_table(table, META_CACHE_PATH, compression="zstd")
+        print(f"  cached -> {META_CACHE_PATH}")
+
+    df = table.to_pandas()
+    stages = [("raw metadata", len(df))]
+    df = df[df["category"] != ""];                     stages.append(("fashion keyword", len(df)))
+    df = df[(df["title_len"] >= 60) &
+            ((df["feat_n"] >= 2) | (df["desc_len"] >= 100))]
+    stages.append(("richness", len(df)))
+    df = df[df["rating_count"] >= 5];                  stages.append(("rating_count >= 5", len(df)))
+    df = df[(df["price"] < 0) | (df["price"] <= 500)]; stages.append(("price <= 500 or null", len(df)))
+    df = df.sort_values("rating_count", ascending=False)
+    df = df.drop_duplicates(subset=["product_id"]);    stages.append(("dedup parent_asin", len(df)))
+
+    print("\nreconstructed selection pool (normalize.py's filter chain):")
+    for name, n in stages:
+        print(f"  {name:<24} {n:>10,}")
+    return df
+
+
+def sweep(args, u, i, item_names) -> None:
+    import pandas as pd
+
+    sizes = []
+    for tok in args.sweep_catalogue.split(","):
+        tok = tok.strip().lower()
+        sizes.append(None if tok == "all" else int(tok))
+
+    code_of = {pid: n for n, pid in enumerate(item_names)}
+    n_items_total = len(item_names)
+
+    # Rule B key: how many times each item is actually interacted with here.
+    dump_counts = np.bincount(i, minlength=n_items_total)
+
+    # Rule A key: metadata rating_count, over the reconstructed pool.
+    pool = load_meta_pool(refresh=args.refresh)
+    pool_codes = np.array([code_of.get(p, -1) for p in pool["product_id"]])
+    pool_rank = pool_codes[pool_codes >= 0]  # already sorted by rating_count desc
+
+    # Fidelity of the reconstruction, measured at the one size where ground
+    # truth exists. Printed, never assumed.
+    real = load_catalogue(None)
+    if real:
+        real_set = {code_of[p] for p in real if p in code_of}
+        recon = set(pool_rank[:len(real)].tolist())
+        ov = len(real_set & recon)
+        print(f"\nreconstruction fidelity at N={len(real):,}: "
+              f"{ov:,}/{len(real):,} = {ov / len(real):.1%} of the real "
+              f"rag_products catalogue")
+        print("  -> the sweep therefore reports curve SHAPE, not a predicted "
+              "catalogue membership")
+
+    have_image = set()
+    if IMAGES_DIR.exists():
+        have_image = {p.stem for p in IMAGES_DIR.glob("*.jpg")}
+
+    rows = []
+    for rule, order in (("meta rating_count", pool_rank),
+                        ("dump review count", np.argsort(-dump_counts))):
+        seen_sizes = set()
+        for N in sizes:
+            picked = order if N is None else order[:N]
+            # A requested N larger than the available pool clamps to the pool,
+            # which would otherwise emit the same row twice under two labels.
+            if len(picked) in seen_sizes:
+                continue
+            seen_sizes.add(len(picked))
+            sel_items = np.zeros(n_items_total, dtype=bool)
+            sel_items[picked] = True
+            sel = sel_items[i]
+            cu = u[sel]
+            if not len(cu):
+                continue
+            cu_d = np.unique(cu, return_inverse=True)[1]
+            ci_d = np.unique(i[sel], return_inverse=True)[1]
+            deg = np.bincount(cu_d)
+            core3 = iterative_core(cu_d, ci_d, 3)
+            imgs = sum(1 for c in picked if item_names[c] in have_image)
+            rows.append({
+                "rule": rule,
+                "N": len(picked),
+                "events": len(cu),
+                "users": len(deg),
+                "warm": int((deg >= 2).sum()),
+                "evaluable": int((deg >= 3).sum()),
+                "core3_users": core3["users"],
+                "images": imgs,
+            })
+
+    rule_hdr("CATALOGUE-SIZE SWEEP")
+    print("evaluable = users with >= 2 TRAINING events (>= 3 total, under")
+    print("leave-last-out). That is the population user-based CF can serve,")
+    print("and the number that decides whether an eval baseline is lockable.")
+    print()
+    print(f"{'selection rule':<19} {'catalogue N':>12} {'events':>11} "
+          f"{'users':>10} {'warm':>9} {'evaluable':>10} {'3-core u':>9} {'imgs':>6}")
+    last_rule = None
+    for r in rows:
+        if r["rule"] != last_rule:
+            print(f"{'─' * 96}")
+            last_rule = r["rule"]
+        flag = "" if r["evaluable"] >= 1000 else "  <- too small"
+        print(f"{r['rule']:<19} {r['N']:>12,} {r['events']:>11,} "
+              f"{r['users']:>10,} {r['warm']:>9,} {r['evaluable']:>10,} "
+              f"{r['core3_users']:>9,} {r['images']:>6,}{flag}")
+
+    rule_hdr("READING THE SWEEP")
+    df = pd.DataFrame(rows)
+    thresholds = {}
+    for rname in df["rule"].unique():
+        sub = df[df["rule"] == rname]
+        ok = sub[sub["evaluable"] >= 1000]
+        thresholds[rname] = int(ok.iloc[0]["N"]) if len(ok) else None
+        if thresholds[rname]:
+            print(f"{rname:<19}: >= 1,000 evaluable warm users from N = "
+                  f"{thresholds[rname]:,}")
+        else:
+            print(f"{rname:<19}: never reaches 1,000 evaluable warm users")
+
+    print()
+    print("THE TWO RULES DISAGREE, AND ONLY ONE OF THEM IS HONEST.")
+    print()
+    print("'dump review count' selects items BECAUSE they have many observed")
+    print("interactions, then measures how many interactions the selection has.")
+    print("That is selection on the outcome: it inflates the density it reports")
+    print("and cannot predict what a real catalogue would look like. It is shown")
+    print("only as the optimistic bound.")
+    print()
+    print("'meta rating_count' is the rule normalize.py actually keys on, and it")
+    print("is independent of this dump's interaction counts. Size the catalogue")
+    print("from that row.")
+
+    pool_rows = df[df["rule"] == "meta rating_count"]
+    if len(pool_rows):
+        ceiling = pool_rows.iloc[-1]
+        print()
+        print("CEILING: normalize.py's quality filters (fashion keyword, richness,")
+        print(f"         rating_count >= 5, price) leave only {ceiling['N']:,} candidate")
+        print("         products in total. The catalogue cannot be grown past that")
+        print(f"         without relaxing those filters, which caps the evaluable")
+        print(f"         warm cohort at {ceiling['evaluable']:,} users.")
+
+    print()
+    print("NOTE: eval catalogue != demo catalogue. The 'imgs' column is how many")
+    print(f"      of the {len(have_image):,} downloaded product images fall inside each")
+    print("      catalogue; it saturates early because images were fetched for the")
+    print("      top of the same ranking. The demo front-end stays on the")
+    print("      image-backed subset regardless of how large the eval catalogue grows.")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def run_stats(args) -> None:
@@ -417,7 +662,7 @@ def run_stats(args) -> None:
     # otherwise the taxonomy counts a duplicate edge the graph has dropped.
     rating_d, verified_d, ts_d = rating[keep], verified[keep], ts_ms[keep]
 
-    rule("FULL CORPUS")
+    rule_hdr("FULL CORPUS")
     print("Every review in the dump, over the complete Amazon Fashion catalogue.")
     print("This is the population the architecture argument is about.")
     usable_full = report_scope(u, i, rating_d, verified_d, ts_d,
@@ -445,7 +690,7 @@ def run_stats(args) -> None:
         return
 
     size_label = args.catalogue_size or len(catalogue)
-    rule(f"CATALOGUE-RESTRICTED  (top {size_label:,} rag_products by rating_count)")
+    rule_hdr(f"CATALOGUE-RESTRICTED  (top {size_label:,} rag_products by rating_count)")
     print("Only events on products the recommender actually knows about.")
     print("Coverage denominators below use the CATALOGUE size, not the corpus.")
     print()
@@ -460,7 +705,7 @@ def run_stats(args) -> None:
     usable_cat = report_scope(cu, ci, rating_d[sel], verified_d[sel],
                               ts_d[sel], len(cu), f"catalogue({size_label})")
 
-    rule("WHAT THIS MEANS FOR THE EVALUATION")
+    rule_hdr("WHAT THIS MEANS FOR THE EVALUATION")
     print(f"full corpus      : {usable_full:,} users have >= 2 training events")
     print(f"catalogue({size_label:,})  : {usable_cat:,} users have >= 2 training events")
     print()
@@ -480,6 +725,9 @@ def main() -> None:
         description="Measure and build the Amazon Fashion interaction dataset.")
     p.add_argument("--stats", action="store_true",
                    help="measure only, write nothing")
+    p.add_argument("--sweep-catalogue", metavar="N,N,...",
+                   help="report the evaluable warm cohort at each catalogue "
+                        "size, e.g. 1000,5000,20000,50000,100000,all")
     p.add_argument("--catalogue-size", type=int, default=None,
                    help="restrict the join to the top-N rag_products by "
                         "rating_count (default: the whole table)")
@@ -489,10 +737,21 @@ def main() -> None:
                    help="only read the first N lines (smoke test; not cached)")
     args = p.parse_args()
 
-    if not args.stats:
-        p.error("only --stats is implemented so far; "
-                "--build and --sweep-catalogue are the next step")
-    run_stats(args)
+    if not (args.stats or args.sweep_catalogue):
+        p.error("pass --stats and/or --sweep-catalogue; "
+                "--build is the next step")
+
+    if args.stats:
+        run_stats(args)
+
+    if args.sweep_catalogue:
+        table = load_events(refresh=False)
+        i_col = table.column("product_id").combine_chunks()
+        u_all = (table.column("user_id").combine_chunks()
+                 .indices.to_numpy().astype(np.int64))
+        i_all = i_col.indices.to_numpy().astype(np.int64)
+        keep = dedupe_edges(u_all, i_all)
+        sweep(args, u_all[keep], i_all[keep], i_col.dictionary.to_pylist())
 
 
 if __name__ == "__main__":

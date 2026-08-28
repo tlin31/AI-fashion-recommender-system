@@ -67,6 +67,49 @@ make docker-up
 make docker-down
 ```
 
+#### Interaction dataset (`data/build_interactions.py`)
+
+Measures the real interaction graph from the 2.5M-review McAuley Amazon Fashion
+dump. Writes nothing; caches extracted columns to `data/cache/*.parquet`
+(gitignored, ~4s to rebuild) so repeated analysis is instant.
+
+```bash
+# Sparsity analysis: degree distribution, iterative k-core, cohorts, taxonomy
+python3 data/build_interactions.py --stats
+
+# Restrict the join to a catalogue size
+python3 data/build_interactions.py --stats --catalogue-size 5000
+
+# How large must the catalogue be for the warm cohort to be evaluable?
+python3 data/build_interactions.py --sweep-catalogue 1000,5000,20000,50000,all
+
+# Graph-maths regression tests (pure units)
+python3 -m pytest data/test_interactions.py -v
+```
+
+Key measured facts (see `--stats` for the full table):
+
+- 86.18% of users appear exactly once. The **iterative 5-core is empty** — not
+  small, empty. 3-core is 2,223 users out of 2,035,490.
+- k-core is computed on **distinct `(user, item)` edges**, not raw events;
+  26,564 duplicate edges exist and counting them shifts every degree threshold.
+- Under leave-last-out a 2-event user has **one** training event, and 72.7% of
+  the "warm" cohort is exactly that. Report warm metrics stratified by training
+  history or the warm number is measuring near-cold users.
+- At the current 5,000-product catalogue only **370 users** have ≥2 training
+  events. Do not lock an eval baseline there.
+- `--sweep-catalogue` sizes the catalogue at **N ≈ 50,000**, and shows the hard
+  ceiling: normalize.py's quality filters leave only 95,335 candidate products
+  in total, capping the evaluable warm cohort at ~3,420 users.
+
+> The sweep reports curve **shape**, not a predicted catalogue membership. A
+> faithful re-implementation of normalize.py's published filter chain reproduces
+> only 58.6% of the actual 5,000-row catalogue, so the ASIN-level composition of
+> a hypothetical larger catalogue is not claimed. Two selection rules are shown;
+> `dump review count` is selection-on-the-outcome (it picks items *because* they
+> have many interactions, then reports how many interactions they have) and is
+> included only as the optimistic bound. Size from `meta rating_count`.
+
 #### Two catalogue sizes — do not conflate
 
 `rag_products` holds 5,000 normalised Amazon products, but `seed_gorse.py` posts
