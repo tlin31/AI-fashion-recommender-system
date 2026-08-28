@@ -436,6 +436,7 @@ def extract_meta() -> pa.Table:
         sys.exit(f"Could not import rag-service/data/normalize.py helpers: {e}")
 
     asins, counts, titles, brands, feats, descs, prices = [], [], [], [], [], [], []
+    desc_txt, ratings_avg = [], []
     started = time.time()
     print(f"Scanning {RAW_META.name} "
           f"({RAW_META.stat().st_size / 1e6:,.0f} MB)...")
@@ -453,9 +454,16 @@ def extract_meta() -> pa.Table:
             counts.append(r.get("rating_number") or 0)
             titles.append(title)
             brands.append((r.get("store") or "").lower().strip())
+            joined = " ".join(d) if isinstance(d, list) else ""
             feats.append(len(f) if isinstance(f, list) else 0)
-            descs.append(len(" ".join(d)) if isinstance(d, list) else 0)
+            descs.append(len(joined))
             prices.append(_parse_price(r.get("price")) or -1.0)
+            # Kept for --build: the eval catalogue needs the same text the
+            # seeder tags style/colour from. Truncated because only the first
+            # few hundred characters carry the descriptive keywords, and the
+            # full field would triple the cache for no labelling gain.
+            desc_txt.append(joined[:300])
+            ratings_avg.append(r.get("average_rating") or 0.0)
             if n % 500_000 == 0:
                 print(f"  {n:,} lines ({n / (time.time() - started):,.0f}/s)")
 
@@ -466,11 +474,14 @@ def extract_meta() -> pa.Table:
     return pa.table({
         "product_id":   pa.array(asins),
         "rating_count": pa.array(counts, type=pa.float64()),
+        "title":        pa.array(titles),
         "title_len":    pa.array([len(t) for t in titles], type=pa.int32()),
         "brand":        pa.array(brands).dictionary_encode(),
         "feat_n":       pa.array(feats, type=pa.int32()),
         "desc_len":     pa.array(descs, type=pa.int32()),
+        "description":  pa.array(desc_txt),
         "price":        pa.array(prices, type=pa.float64()),
+        "avg_rating":   pa.array(ratings_avg, type=pa.float64()),
         "category":     pa.array(cats).dictionary_encode(),
     })
 
@@ -486,7 +497,14 @@ def load_meta_pool(refresh: bool = False):
     """
     import pandas as pd
 
-    if META_CACHE_PATH.exists() and not refresh:
+    required = {"product_id", "rating_count", "title", "brand", "feat_n",
+                "desc_len", "description", "price", "avg_rating", "category"}
+    stale = (META_CACHE_PATH.exists()
+             and not required.issubset(set(pq.read_schema(META_CACHE_PATH).names)))
+    if stale:
+        print("Cached metadata predates the current schema — re-extracting.")
+
+    if META_CACHE_PATH.exists() and not refresh and not stale:
         print(f"Using cached product metadata: {META_CACHE_PATH}")
         table = pq.read_table(META_CACHE_PATH)
     else:
@@ -642,6 +660,280 @@ def sweep(args, u, i, item_names) -> None:
     print("      image-backed subset regardless of how large the eval catalogue grows.")
 
 
+# ── Build: write the eval dataset to Postgres ─────────────────────────────────
+#
+# WHY A SEPARATE CATALOGUE TABLE
+# ------------------------------
+# The obvious route -- raise normalize.py's SUBSAMPLE_SIZE and regrow
+# rag_products -- was rejected. rag_products is rag-service's RETRIEVAL CORPUS:
+# the BM25 index is built from it (rag-service/main.py:98,
+# pipeline/retrieval.py:170) and CRAG queries it. Growing it 5,000 -> 95,335
+# would change retrieval for every query, require re-embedding 19x more products
+# into Milvus, and silently invalidate the 1,481 locked relevance judgments,
+# because products entering the corpus unjudged count as non-relevant and would
+# depress NDCG/Recall for reasons that have nothing to do with retrieval quality.
+# That is a large cascading cost to another subsystem's locked baseline, and it
+# buys the recommender nothing.
+#
+# So the eval catalogue is its own table. This also dissolves the fidelity
+# problem the sweep had to hedge around: we are no longer trying to predict what
+# a bigger rag_products would contain, we are defining our own catalogue by a
+# rule that is stated and reproducible.
+
+SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS reco_products (
+    product_id   TEXT PRIMARY KEY,
+    name         TEXT NOT NULL,
+    brand        TEXT,
+    category     TEXT,
+    price        DOUBLE PRECISION,
+    price_range  TEXT,
+    avg_rating   DOUBLE PRECISION,
+    rating_count BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS reco_interactions (
+    user_id       TEXT NOT NULL,
+    product_id    TEXT NOT NULL REFERENCES reco_products(product_id),
+    feedback_type TEXT NOT NULL,
+    rating        SMALLINT,
+    verified      BOOLEAN,
+    ts            TIMESTAMPTZ NOT NULL,
+    split         TEXT NOT NULL,          -- train | test
+    cohort        TEXT NOT NULL,          -- warm | cold
+    PRIMARY KEY (user_id, product_id)
+);
+
+CREATE INDEX IF NOT EXISTS reco_interactions_split_cohort
+    ON reco_interactions (split, cohort);
+CREATE INDEX IF NOT EXISTS reco_interactions_user
+    ON reco_interactions (user_id);
+"""
+
+
+def assign_feedback_type(rating: np.ndarray, verified: np.ndarray) -> np.ndarray:
+    """Map (rating, verified) to a Gorse feedback type.
+
+    Precedence is explicit: an explicit negative wins over the verified split,
+    so an unverified 1-star is a dislike rather than a view. The plan's table
+    left this ambiguous, and the two readings differ by tens of thousands of
+    events.
+    """
+    out = np.full(len(rating), "view", dtype=object)
+    out[(rating >= 4) & verified] = "purchase"
+    out[rating <= 2] = "dislike"
+    return out
+
+
+def global_temporal_split(ts: np.ndarray, quantile: float) -> tuple[np.ndarray, int]:
+    """Split at a single wall-clock cutoff: everything after it is test.
+
+    WHY THIS IS THE DEFAULT, AND NOT LEAVE-LAST-OUT
+    ----------------------------------------------
+    Leave-last-out is the textbook protocol, but on a corpus where 86% of users
+    appear exactly once it sends ~95% of all events to test. Measured on this
+    catalogue it leaves 30,798 training events and gives only 17,644 of 95,335
+    items (18.5%) any training signal at all. An item with no training
+    interaction cannot be recommended by CF, popularity, or item-to-item, so
+    catalog coverage would be structurally capped at 18.5% and Gini would be
+    computed over a truncated universe -- the beyond-accuracy metrics that are
+    supposed to be the interesting part would be measuring the protocol rather
+    than the recommender.
+
+    A single global cutoff fixes that (65% item coverage at q=0.70) and is
+    strictly MORE leak-proof than leave-last-out, not less: leave-last-out will
+    happily train on a 2022 event while testing a 2015 event belonging to a
+    different user, which is future-to-past leakage across users. One cutoff
+    makes every training event older than every test event.
+
+    The plan's prohibition was on a global RANDOM split, which this is not.
+    """
+    cutoff = int(np.quantile(ts, quantile))
+    return ts > cutoff, cutoff
+
+
+def leave_last_out_split(u: np.ndarray, ts: np.ndarray, pid: np.ndarray) -> np.ndarray:
+    """Leave-last-out per user. Returns a boolean mask: True = test.
+
+    The last event by timestamp goes to test, everything earlier to train. A
+    single-event user therefore contributes one test row and NO training row,
+    which is not an edge case to paper over -- it IS the definition of the cold
+    cohort, and it is 86% of this corpus.
+
+    Kept as an option because it maximises the evaluable warm cohort (3,420
+    users vs 859 under a global cutoff); see the docstring above for what that
+    costs on the item side.
+    """
+    # Ties on timestamp are common (same-day imports). Break them on product_id
+    # so that a re-run produces the identical split rather than a new one.
+    order = np.lexsort((pid, ts, u))
+    is_test = np.zeros(len(u), dtype=bool)
+    su = u[order]
+    last_of_user = np.empty(len(order), dtype=bool)
+    last_of_user[-1] = True
+    np.not_equal(su[1:], su[:-1], out=last_of_user[:-1])
+    is_test[order[last_of_user]] = True
+    return is_test
+
+
+def build(args, table) -> None:
+    import pandas as pd
+    import psycopg2
+    from psycopg2.extras import execute_values
+
+    sys.path.insert(0, str(Path(__file__).parent))
+    from seed_gorse import _colour_labels, _style_labels  # noqa: F401  (used by push)
+
+    i_col = table.column("product_id").combine_chunks()
+    item_names = i_col.dictionary.to_pylist()
+    u_all = table.column("user_id").combine_chunks()
+    user_names = u_all.dictionary.to_pylist()
+
+    u = u_all.indices.to_numpy().astype(np.int64)
+    i = i_col.indices.to_numpy().astype(np.int64)
+    rating = table.column("rating").to_numpy().astype(np.int8)
+    verified = table.column("verified").to_numpy(zero_copy_only=False)
+    ts_ms = table.column("ts_ms").to_numpy()
+
+    keep = dedupe_edges(u, i)
+    u, i, rating, verified, ts_ms = (u[keep], i[keep], rating[keep],
+                                     verified[keep], ts_ms[keep])
+
+    # ── Select the eval catalogue ────────────────────────────────────────────
+    pool = load_meta_pool(refresh=False)
+    n = args.catalogue_size
+    cat = pool if n is None else pool.nlargest(n, "rating_count")
+    code_of = {pid: c for c, pid in enumerate(item_names)}
+    cat = cat[cat["product_id"].isin(code_of)]
+    print(f"\neval catalogue: {len(cat):,} products "
+          f"({'entire filtered pool' if n is None else f'top {n:,} by rating_count'})")
+
+    cat_codes = np.zeros(len(item_names), dtype=bool)
+    cat_codes[[code_of[p] for p in cat["product_id"]]] = True
+    sel = cat_codes[i]
+    u, i, rating, verified, ts_ms = (u[sel], i[sel], rating[sel],
+                                     verified[sel], ts_ms[sel])
+    print(f"joined events : {len(u):,}")
+
+    # ── Split and cohort ─────────────────────────────────────────────────────
+    u_dense = np.unique(u, return_inverse=True)[1]
+    n_users = int(u_dense.max()) + 1
+
+    if args.split == "temporal":
+        is_test, cutoff = global_temporal_split(ts_ms, args.split_quantile)
+        import datetime as _dt
+        cut_date = _dt.datetime.fromtimestamp(cutoff / 1000, _dt.timezone.utc)
+        print(f"split         : global temporal at q={args.split_quantile} "
+              f"({cut_date:%Y-%m-%d})")
+        # Cohort is decided by history BEFORE the cutoff -- that is the only
+        # information a recommender would have had at prediction time.
+        train_hist = np.bincount(u_dense[~is_test], minlength=n_users)
+        cohort = np.where(train_hist[u_dense] >= 1, "warm", "cold")
+        evaluable = int((train_hist[np.unique(u_dense[is_test])] >= 2).sum())
+        cold_test = int((train_hist[np.unique(u_dense[is_test])] == 0).sum())
+    else:
+        is_test = leave_last_out_split(u_dense, ts_ms, i)
+        deg = np.bincount(u_dense, minlength=n_users)
+        print("split         : leave-last-out per user")
+        cohort = np.where(deg[u_dense] >= 2, "warm", "cold")
+        train_hist = np.bincount(u_dense[~is_test], minlength=n_users)
+        evaluable = int((deg >= 3).sum())
+        cold_test = int((deg == 1).sum())
+        # Under this protocol a cold user must contribute exactly one test row
+        # and no training row; that is what makes them cold.
+        cold_train = int(((cohort == "cold") & ~is_test).sum())
+        assert cold_train == 0, f"{cold_train} cold-cohort rows landed in train"
+
+    ftype = assign_feedback_type(rating, verified)
+
+    n_train, n_test = int((~is_test).sum()), int(is_test.sum())
+    train_items = len(np.unique(i[~is_test]))
+    n_cat = len(cat)
+    print(f"train / test  : {n_train:,} / {n_test:,}")
+    print(f"users         : {n_users:,}")
+    print(f"  cold test   : {cold_test:,} (no history before the split)")
+    print(f"  evaluable   : {evaluable:,} test users with >= 2 training events")
+    print(f"items w/ train: {train_items:,} / {n_cat:,} = {train_items / n_cat:.1%}")
+    if train_items / n_cat < 0.30:
+        print("  WARNING: most of the catalogue has no training signal, so catalog")
+        print("           coverage and Gini will measure the split, not the model.")
+
+    # No training event may be newer than the oldest test event under a global
+    # cutoff -- that is the property the whole protocol is bought for.
+    if args.split == "temporal" and n_train and n_test:
+        assert ts_ms[~is_test].max() <= ts_ms[is_test].min(), "temporal split leaked"
+
+    if args.dry_run:
+        print("\n--dry-run: nothing written.")
+        return
+
+    # ── Write ────────────────────────────────────────────────────────────────
+    conn = psycopg2.connect(POSTGRES_URL)
+    conn.autocommit = False
+    try:
+        with conn.cursor() as cur:
+            cur.execute(SCHEMA_SQL)
+
+            # Re-runnable: replace the contents rather than appending. The
+            # interactions go first because of the foreign key.
+            cur.execute("TRUNCATE reco_interactions")
+            cur.execute("TRUNCATE reco_products CASCADE")
+
+            prices = cat["price"].to_numpy()
+            rows = [
+                (r.product_id, r.title[:500], r.brand, r.category,
+                 None if r.price < 0 else float(r.price),
+                 price_band(r.price, prices),
+                 float(r.avg_rating) if r.avg_rating else None,
+                 int(r.rating_count))
+                for r in cat.itertuples()
+            ]
+            execute_values(cur, """
+                INSERT INTO reco_products (product_id, name, brand, category,
+                                           price, price_range, avg_rating, rating_count)
+                VALUES %s
+            """, rows, page_size=5000)
+            print(f"\nwrote reco_products    : {len(rows):,}")
+
+            inter = [
+                (user_names[uu], item_names[ii], ft, int(rt), bool(vf),
+                 int(t), "test" if te else "train", ch)
+                for uu, ii, ft, rt, vf, t, te, ch
+                in zip(u, i, ftype, rating, verified, ts_ms, is_test, cohort)
+            ]
+            execute_values(cur, """
+                INSERT INTO reco_interactions (user_id, product_id, feedback_type,
+                                               rating, verified, ts, split, cohort)
+                VALUES %s
+            """, inter, template="(%s,%s,%s,%s,%s,to_timestamp(%s/1000.0),%s,%s)",
+                page_size=10000)
+            print(f"wrote reco_interactions: {len(inter):,}")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    print("\nBuild complete. Re-running replaces both tables; it does not append.")
+
+
+def price_band(price: float, all_prices: np.ndarray) -> str:
+    """Terciles over the catalogue's own priced products.
+
+    Mirrors normalize.py's bucket_price, except that a missing price is
+    'unknown' rather than being folded into 'mid' -- see seed_gorse.py for why
+    that conflation matters.
+    """
+    if price is None or price < 0:
+        return "unknown"
+    valid = all_prices[all_prices >= 0]
+    if not len(valid):
+        return "unknown"
+    p33, p67 = np.quantile(valid, [0.33, 0.67])
+    return "budget" if price < p33 else ("mid" if price < p67 else "premium")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def run_stats(args) -> None:
@@ -725,6 +1017,18 @@ def main() -> None:
         description="Measure and build the Amazon Fashion interaction dataset.")
     p.add_argument("--stats", action="store_true",
                    help="measure only, write nothing")
+    p.add_argument("--build", action="store_true",
+                   help="write reco_products + reco_interactions to Postgres")
+    p.add_argument("--dry-run", action="store_true",
+                   help="with --build: compute and report, write nothing")
+    p.add_argument("--split", choices=("temporal", "leave-last-out"),
+                   default="temporal",
+                   help="temporal (default): one global cutoff, keeps item "
+                        "signal. leave-last-out: per-user, maximises the warm "
+                        "cohort but starves 81%% of the catalogue")
+    p.add_argument("--split-quantile", type=float, default=0.70,
+                   help="with --split temporal: where to cut (default 0.70, "
+                        "which peaks the evaluable warm cohort)")
     p.add_argument("--sweep-catalogue", metavar="N,N,...",
                    help="report the evaluable warm cohort at each catalogue "
                         "size, e.g. 1000,5000,20000,50000,100000,all")
@@ -737,12 +1041,14 @@ def main() -> None:
                    help="only read the first N lines (smoke test; not cached)")
     args = p.parse_args()
 
-    if not (args.stats or args.sweep_catalogue):
-        p.error("pass --stats and/or --sweep-catalogue; "
-                "--build is the next step")
+    if not (args.stats or args.sweep_catalogue or args.build):
+        p.error("pass at least one of --stats, --sweep-catalogue, --build")
 
     if args.stats:
         run_stats(args)
+
+    if args.build:
+        build(args, load_events(refresh=False))
 
     if args.sweep_catalogue:
         table = load_events(refresh=False)

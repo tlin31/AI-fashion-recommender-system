@@ -83,9 +83,55 @@ python3 data/build_interactions.py --stats --catalogue-size 5000
 # How large must the catalogue be for the warm cohort to be evaluable?
 python3 data/build_interactions.py --sweep-catalogue 1000,5000,20000,50000,all
 
+# Build the eval dataset into Postgres (re-entrant: replaces, never appends)
+python3 data/build_interactions.py --build             # ~24s
+python3 data/build_interactions.py --build --dry-run   # report only
+
 # Graph-maths regression tests (pure units)
 python3 -m pytest data/test_interactions.py -v
 ```
+
+##### The eval dataset (`reco_products` + `reco_interactions`)
+
+`--build` writes **95,335 products / 558,940 interactions**. Two decisions are
+baked in and both are deliberate.
+
+**The eval catalogue is its own table — `rag_products` is not touched.** The
+obvious route (raise `SUBSAMPLE_SIZE` in `rag-service/data/normalize.py` and
+regrow `rag_products` to 95k) was rejected: that table is rag-service's
+**retrieval corpus**, BM25 is built from it at startup (`rag-service/main.py:98`,
+`pipeline/retrieval.py:170`). Growing it 19× would change retrieval for every
+query, require re-embedding 95k products into Milvus, shift the CRAG score
+distribution the 0.45/0.43 thresholds were calibrated on, and — worst — make the
+1,481 locked relevance judgments incomplete, since products entering the corpus
+unjudged count as non-relevant and would depress NDCG/Recall for reasons
+unrelated to retrieval quality. That damage is not repairable by re-running the
+eval; it needs re-adjudication.
+
+**The default split is a single global temporal cutoff, not leave-last-out.**
+
+| protocol | train events | items with training signal | evaluable warm test users |
+|---|---|---|---|
+| `--split temporal` (default, q=0.70) | 391,258 | 62,006 (**65%**) | 859 |
+| `--split leave-last-out` | 30,798 | 17,644 (**18.5%**) | 3,420 |
+
+Leave-last-out is the textbook choice, but on a corpus where 86% of users appear
+once it sends 95% of events to test and leaves 81.5% of the catalogue with *no
+training signal at all*. An item with no training interaction cannot be
+recommended by CF, popularity, or item-to-item, so catalog coverage would be
+structurally capped at 18.5% and Gini computed over a truncated universe — the
+beyond-accuracy metrics would be measuring the protocol, not the recommender.
+
+A global cutoff is also **more** leak-proof, not less: leave-last-out will train
+on a 2022 event while testing a 2015 event of a different user. One cutoff makes
+every training event older than every test event, and `--build` asserts it. The
+plan's prohibition was on a global *random* split, which this is not.
+
+q=0.70 (2020-11-23) is chosen because the evaluable warm cohort peaks there
+(704 → 859 → 843 across q=0.40…0.75) while item coverage keeps rising.
+
+> The warm cohort is ~859 users either way — small, and that is the corpus, not a
+> bug. Cold-start is where the volume is: 156,935 cold test users.
 
 Key measured facts (see `--stats` for the full table):
 

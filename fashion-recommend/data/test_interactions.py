@@ -12,7 +12,13 @@
 import numpy as np
 import pytest
 
-from build_interactions import dedupe_edges, iterative_core
+from build_interactions import (
+    assign_feedback_type,
+    dedupe_edges,
+    global_temporal_split,
+    iterative_core,
+    leave_last_out_split,
+)
 
 
 # ── Deduplication ─────────────────────────────────────────────────────────────
@@ -155,3 +161,112 @@ def test_core_result_actually_satisfies_the_degree_condition(k):
         assert idg[np.unique(i[alive])].min() >= k
 
     assert iterative_core(u, i, k)["events"] == int(alive.sum())
+
+
+# ── Train/test splits ─────────────────────────────────────────────────────────
+
+def test_leave_last_out_holds_out_exactly_one_event_per_user():
+    u = np.array([0, 0, 0, 1, 1, 2])
+    ts = np.array([10, 30, 20, 5, 7, 99])
+    pid = np.array([1, 2, 3, 4, 5, 6])
+    test = leave_last_out_split(u, ts, pid)
+    assert test.sum() == 3, "one test event per user, no more"
+    # The held-out event must be each user's LATEST.
+    assert ts[test & (u == 0)][0] == 30
+    assert ts[test & (u == 1)][0] == 7
+    assert ts[test & (u == 2)][0] == 99
+
+
+def test_leave_last_out_gives_a_single_event_user_no_training_row():
+    """This is the definition of the cold cohort, and 86% of this corpus."""
+    u = np.array([0])
+    test = leave_last_out_split(u, np.array([100]), np.array([1]))
+    assert test.all()
+
+
+def test_leave_last_out_is_deterministic_under_timestamp_ties():
+    """Same-timestamp events are common; a re-run must reproduce the split."""
+    u = np.array([0, 0, 0])
+    ts = np.array([50, 50, 50])
+    pid = np.array([9, 3, 7])
+    first = leave_last_out_split(u, ts, pid)
+    second = leave_last_out_split(u, ts, pid)
+    assert (first == second).all()
+    assert first.sum() == 1
+
+
+def test_global_temporal_split_puts_every_train_event_before_every_test_event():
+    """The property the protocol exists to guarantee."""
+    rng = np.random.default_rng(1)
+    ts = rng.integers(0, 10_000, 5000)
+    test, cutoff = global_temporal_split(ts, 0.7)
+    assert ts[~test].max() <= ts[test].min()
+    assert ts[~test].max() <= cutoff < ts[test].min()
+
+
+def test_global_temporal_split_respects_the_requested_quantile():
+    ts = np.arange(1000)
+    test, _ = global_temporal_split(ts, 0.7)
+    assert abs((~test).sum() - 700) <= 1
+
+
+def test_global_temporal_split_never_leaks_across_users():
+    """Leave-last-out CAN train on a later event than it tests, across users.
+
+    That is the asymmetry that makes the global cutoff the safer default, so
+    pin it: construct a case where leave-last-out leaks and confirm the global
+    split does not.
+    """
+    # User 0 has events at t=500 and t=900, so t=500 is a TRAINING event.
+    # User 1's only event is at t=100, which is held out as a test event.
+    # Leave-last-out therefore trains on t=500 while testing t=100: the model
+    # sees the future of one user to predict the past of another.
+    u = np.array([0, 0, 1])
+    ts = np.array([500, 900, 100])
+    pid = np.array([1, 2, 3])
+
+    llo = leave_last_out_split(u, ts, pid)
+    assert ts[~llo].max() > ts[llo].min(), "fixture should exhibit the leak"
+
+    gts, _ = global_temporal_split(ts, 0.5)
+    assert ts[~gts].max() <= ts[gts].min()
+
+
+# ── Feedback taxonomy ─────────────────────────────────────────────────────────
+
+def test_explicit_negative_wins_over_the_verified_split():
+    """An unverified 1-star is a dislike, not a view.
+
+    The plan's table left this ambiguous and the two readings differ by tens of
+    thousands of events, so the precedence is pinned here.
+    """
+    rating = np.array([1, 2, 1, 2])
+    verified = np.array([True, True, False, False])
+    assert list(assign_feedback_type(rating, verified)) == ["dislike"] * 4
+
+
+def test_verified_high_rating_is_a_purchase():
+    rating = np.array([4, 5])
+    verified = np.array([True, True])
+    assert list(assign_feedback_type(rating, verified)) == ["purchase"] * 2
+
+
+def test_unverified_high_rating_is_only_a_view():
+    rating = np.array([4, 5])
+    verified = np.array([False, False])
+    assert list(assign_feedback_type(rating, verified)) == ["view"] * 2
+
+
+def test_three_star_is_a_view_regardless_of_verification():
+    rating = np.array([3, 3])
+    verified = np.array([True, False])
+    assert list(assign_feedback_type(rating, verified)) == ["view"] * 2
+
+
+def test_every_event_gets_exactly_one_feedback_type():
+    rng = np.random.default_rng(11)
+    rating = rng.integers(1, 6, 5000)
+    verified = rng.random(5000) > 0.5
+    got = assign_feedback_type(rating, verified)
+    assert set(got) <= {"purchase", "dislike", "view"}
+    assert len(got) == len(rating)
