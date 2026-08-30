@@ -45,7 +45,13 @@ services:
   # 两次快照间隔却始终是 61s（`save 60 10000` 在持续写入下每分钟必触发）。
   # 快照变慢的速度超过了间隔 = 死亡螺旋。mem_limit 留了 2g 给这个 fork 峰值。
   #
-  # ⚠️ 跑 eval 之前：maxmemory 必须大到装得下整个工作集，并且跑完要验证
+  # ⚠️ 驱逐策略是给**服务**用的，不是给**批量构建**用的。批量任务在写整个缓存
+  #    时，LRU 会把刚写进去的东西淘汰掉 —— 工作集一旦超过 maxmemory，这个构建
+  #    **永远不会收敛**，而且全程不报一个错。第一次设 maxmemory=1gb 就撞上了：
+  #    evicted_keys 直接到 24 万，等于邻居数据写进去多少扔掉多少。
+  #
+  #    所以 allkeys-lru 只是兜底（服务期降级好过宕机），真正的要求是
+  #    **maxmemory 大到装得下整个工作集**，并且构建完必须验证：
   #      docker exec fashion-redis redis-cli INFO stats | grep evicted_keys
   #    不为 0 的那次 eval 结果作废 —— 驱逐会安静地压低指标，不报错。
   #
@@ -53,13 +59,19 @@ services:
   #    重算，但实测要几十分钟）：
   #      redis-cli CONFIG SET save ""      # 批量前
   #      redis-cli CONFIG SET save "900 1" && redis-cli BGSAVE   # 批量后
+  # 实测（2026-08-30，Load Dataset 期间采样）：
+  #   master 峰值 1,110 MiB   ← 注意：曾经看到的 2.4 GiB 是它在 Redis 已死、
+  #                              空转重试时的状态，不是正常工作负载
+  #   redis  顶满当时的 2 GiB 上限，且 evicted_keys 已到 24 万
+  # VM 共 7.75 GiB，停掉 rag 那套后总占用约 4 GiB —— 所以 Redis 的瓶颈是
+  # 上限设小了，不是内存不够。
   redis:
     image: redis/redis-stack-server:latest
     container_name: fashion-redis
     logging: *default-logging
-    mem_limit: 2g
+    mem_limit: 4500m
     environment:
-      REDIS_ARGS: "--maxmemory 1gb --maxmemory-policy allkeys-lru"
+      REDIS_ARGS: "--maxmemory 3500mb --maxmemory-policy allkeys-lru"
     ports:
       - "6379:6379"
     volumes:
