@@ -84,17 +84,27 @@ services:
 
   # Gorse Master 节点
   #
-  # 故意**不设** mem_limit。稳态实测 2.46 GiB，但 Load Dataset 的峰值没测过，
-  # 上限设低了只会把「Redis 被杀」换成「master 被杀」—— 制造一个新的失败模式，
-  # 而不是消除旧的。要设的话先测峰值：
-  #   docker stats --no-stream fashion-gorse-master   # 在 Load Dataset 运行期间采样
-  # 在此之前靠「跑批量任务时停掉 rag-service 那套」来保证余量：
+  # 实测内存（2026-08-30，健康状态下采样 —— 这点很重要，见下）：
+  #   Load Dataset 峰值          1,110 MiB
+  #   user-to-user 工作区间      2.40 – 2.73 GiB   ← 这才是决定上限的数字
+  #
+  # ⚠️ 3g 对 2.73 GiB 的观测峰值只有约 10% 余量，偏紧。Go 不读 cgroup 限制
+  #    （除非设 GOMEMLIMIT），超限不会先激进 GC，而是直接被 OOM 杀掉。
+  #    item-to-item 阶段的峰值还没测过，如果它比 user-to-user 更吃内存，
+  #    这个上限会咬人。观察到 master 出现 137 退出码就往 4g 提。
+  #
+  # 另外记一条踩过的坑：先前记录的「稳态 2.46 GiB」是 master 在 Redis 已死、
+  # 无退避空转重试时的读数 —— 拿一个 bug 的行为做容量规划。**容量基线必须在
+  # 系统健康时采集。**
+  #
+  # 跑批量任务时仍然要停掉 rag-service 那套来保余量：
   #   docker compose stop milvus kafka minio etcd     # 约 650 MB + Kafka 的 CPU
   # 它们的状态都在卷里，来回切换无损。
   gorse-master:
     image: zhenghaoz/gorse-master:latest
     container_name: fashion-gorse-master
     logging: *default-logging
+    mem_limit: 3g
     ports:
       - "8086:8086"
       - "8088:8088"
