@@ -90,8 +90,18 @@ services:
   #
   # ⚠️ 3g 对 2.73 GiB 的观测峰值只有约 10% 余量，偏紧。Go 不读 cgroup 限制
   #    （除非设 GOMEMLIMIT），超限不会先激进 GC，而是直接被 OOM 杀掉。
-  #    item-to-item 阶段的峰值还没测过，如果它比 user-to-user 更吃内存，
-  #    这个上限会咬人。观察到 master 出现 137 退出码就往 4g 提。
+  #    观察到 master 出现 137 退出码就往 4g 提。
+  #
+  # 【待决 · 2026-08-30】3g 这个值是**临时的，等 item-to-item 的实测峰值再定**。
+  #    那一阶段要在 95,865 个 item 上建 HNSW 索引，尚未采样过，完全可能比
+  #    user-to-user 更吃内存。等 `Generate item-to-item recommendation` 跑完，
+  #    拿分阶段峰值回来敲定这两个上限。
+  #
+  # ⚠️⚠️ 定值时的硬约束：**所有 mem_limit 之和必须留出余量，不能超过 VM 内存。**
+  #    VM 只有 7.75 GiB。master 4g + redis 4.5g = 8.5 GiB 就已经超了 —— 两边
+  #    都以为自己有余量，实际先撞墙的还是内核，等于白设。要提 master 就得同步
+  #    压 redis：例如 master 4g + redis 3.5g + 其余约 0.5g ≈ 8g，仍然偏紧。
+  #    现在 master 无限制所以这个矛盾没暴露，一旦两边都设限就必须一起算。
   #
   # 另外记一条踩过的坑：先前记录的「稳态 2.46 GiB」是 master 在 Redis 已死、
   # 无退避空转重试时的读数 —— 拿一个 bug 的行为做容量规划。**容量基线必须在
