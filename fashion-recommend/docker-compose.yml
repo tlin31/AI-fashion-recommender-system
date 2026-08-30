@@ -34,10 +34,32 @@ services:
       retries: 5
 
   # Redis 缓存（使用 Redis Stack 支持 RediSearch）
+  #
+  # maxmemory 是这里唯一真正重要的护栏。原来跑的是原厂默认 maxmemory=0，
+  # 也就是**无上限**：master 批量写邻居数据时 Redis 一路涨到被内核 SIGKILL
+  # （退出码 137）。对一个只存派生数据的缓存来说，正确的失败模式是**驱逐**
+  # 而不是死亡 —— 降级，不是宕机。
+  #
+  # 压垮它的是 BGSAVE 的 fork：写时复制的开销趋近于再复制一份数据集，
+  # 实测 CoW 峰值 741 MB → 977 MB 且还在涨，而快照耗时 66s → 180s、
+  # 两次快照间隔却始终是 61s（`save 60 10000` 在持续写入下每分钟必触发）。
+  # 快照变慢的速度超过了间隔 = 死亡螺旋。mem_limit 留了 2g 给这个 fork 峰值。
+  #
+  # ⚠️ 跑 eval 之前：maxmemory 必须大到装得下整个工作集，并且跑完要验证
+  #      docker exec fashion-redis redis-cli INFO stats | grep evicted_keys
+  #    不为 0 的那次 eval 结果作废 —— 驱逐会安静地压低指标，不报错。
+  #
+  # ⚠️ 批量导入期间临时关掉快照，别永久关（Redis 里的东西虽然都能从 Postgres
+  #    重算，但实测要几十分钟）：
+  #      redis-cli CONFIG SET save ""      # 批量前
+  #      redis-cli CONFIG SET save "900 1" && redis-cli BGSAVE   # 批量后
   redis:
     image: redis/redis-stack-server:latest
     container_name: fashion-redis
     logging: *default-logging
+    mem_limit: 2g
+    environment:
+      REDIS_ARGS: "--maxmemory 1gb --maxmemory-policy allkeys-lru"
     ports:
       - "6379:6379"
     volumes:
@@ -49,6 +71,14 @@ services:
       retries: 5
 
   # Gorse Master 节点
+  #
+  # 故意**不设** mem_limit。稳态实测 2.46 GiB，但 Load Dataset 的峰值没测过，
+  # 上限设低了只会把「Redis 被杀」换成「master 被杀」—— 制造一个新的失败模式，
+  # 而不是消除旧的。要设的话先测峰值：
+  #   docker stats --no-stream fashion-gorse-master   # 在 Load Dataset 运行期间采样
+  # 在此之前靠「跑批量任务时停掉 rag-service 那套」来保证余量：
+  #   docker compose stop milvus kafka minio etcd     # 约 650 MB + Kafka 的 CPU
+  # 它们的状态都在卷里，来回切换无损。
   gorse-master:
     image: zhenghaoz/gorse-master:latest
     container_name: fashion-gorse-master
