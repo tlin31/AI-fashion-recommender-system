@@ -405,14 +405,45 @@ days. Symptoms, in the order they appear and none of which name the cause:
   the disk fills, not after
 
 The host Mac having hundreds of GB free is irrelevant; the limit is Docker
-Desktop's disk image size. After recovering, cap it so this cannot recur —
-add to each service in `docker-compose.yml`:
+Desktop's disk image size. `docker-compose.yml` now caps `json-file` logging on
+every service (50m × 3), but **that only applies to containers created after the
+change** — `docker compose up -d` must actually recreate them.
 
-```yaml
-    logging:
-      driver: json-file
-      options: { max-size: "50m", max-file: "3" }
+##### The other resource wall: Redis gets OOM-killed and the master keeps "working"
+
+The Docker VM has ~7.75 GiB. `Load Dataset` on this corpus spikes the master well
+above its ~2.5 GiB steady state, and the whole rag-service stack (milvus, kafka,
+minio, etcd) is running alongside. Redis, holding a ~500 MB RDB, is what gets
+killed:
+
 ```
+fashion-redis :: Exited (137)          # 137 = 128 + SIGKILL
+```
+
+**The failure mode is worse than a crash, because nothing crashes.** Docker's
+embedded DNS drops records for stopped containers, so the master starts logging
+
+```
+failed to save user neighbors to cache
+error: dial tcp: lookup redis on 127.0.0.11:53: no such host
+```
+
+for every single user — while sitting at ~98% CPU with its task still marked
+`Running`. Since task progress is itself stored in Redis, the counter stays
+pinned at `0/1484868`, which reads as "slow" rather than "every write is
+failing". It will sit there indefinitely.
+
+**Check `docker ps -a` for exit code 137 before concluding a task is merely
+slow.** Recovery is `docker start fashion-redis` then `docker restart
+fashion-gorse-master` — the master does not recover on its own, because it
+resolves the hostname per operation and never re-establishes the connection
+pool. Before a long run, free memory by stopping the rag-service stack
+(`docker compose stop milvus kafka minio etcd`); their state lives in volumes,
+so nothing is lost.
+
+> This is the third variant of the same lesson in this file: **Gorse looks busy
+> and reports progress while doing nothing useful.** Task status said `Complete`
+> for the failing expr tasks, and says `Running` here. Neither is evidence.
 
 ### Frontend (fashion-recommend/frontend/)
 
