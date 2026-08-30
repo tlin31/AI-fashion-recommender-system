@@ -337,7 +337,32 @@ covered by `TestPriceRangeNamespace` instead.
 > those users' *feedback* withheld — which Day 1 already loaded. That is a
 > deliberate Gorse-state decision for Day 5, not a side effect of a Day 2 fix.
 
-#### `column` is an expr expression, not a column name
+#### The config is full of expr expressions, and three of them never ran
+
+`fashion-recommend/config/config.toml` is mostly expr expressions, not literals.
+Three separate ones were broken, and **only one of them failed at compile time** —
+the other two compiled cleanly and failed on every evaluation, where the symptom
+is one error line per item while the dashboard still reports the task `Complete`.
+
+| expression | failure | recommender affected |
+|---|---|---|
+| `column = "Labels"` | compile — unresolvable identifier | tags item-to-item, tags user-to-user |
+| `duration('7d')` / `duration('30d')` | **runtime** — `time.ParseDuration` has no `d` unit (only `ns/us/ms/s/m/h`) | `trending`, `new_arrivals` |
+| `float(now() - item.Timestamp)` | **runtime** — `now() - item.Timestamp` is a `time.Duration` and expr's `float()` rejects it | `new_arrivals` (so it was broken on score *and* filter) |
+
+`config/fashion_config_test.go` (in the gorse module, not fashion-recommend)
+compiles **and evaluates** every expression in that file. Evaluation is the whole
+point: compile-only checking catches one of these three. The test lives on the
+gorse side because the semantics — which variables each env binds, what
+`duration()` accepts — are defined by `logics/`, and asserting them from a module
+that does not depend on gorse would just be restating them from memory. The third
+bug above was found by this test, not by the logs.
+
+```bash
+go test ./config/ -run TestFashion -v   # from the repo root, not fashion-recommend
+```
+
+##### `column` is an expr expression, not a column name
 
 Both tags-based similarity arms in `fashion-recommend/config/config.toml` were set
 to `column = "Labels"`, which Gorse compiles as an expr expression whose only bound
@@ -364,12 +389,14 @@ itself.
 > `0.0s`.** Task status is not evidence here; the error existed only in
 > `docker logs fashion-gorse-master`.
 
-**The bug filled the Docker VM's disk.** The master logs one error line per failed
-item, so each task cycle wrote ~383k lines, hourly, for days. Symptoms, in the
-order they appear and none of which name the cause:
+**These bugs filled the Docker VM's disk.** The master logs one error line per
+failed item, so each task cycle wrote several hundred thousand lines, hourly, for
+days. Symptoms, in the order they appear and none of which name the cause:
 
 - `docker logs fashion-gorse-master` hangs indefinitely (even with `--tail`)
-- the master exits with code 2 and `restart: unless-stopped` does not bring it back
+- the master exits and `restart: unless-stopped` does not bring it back
+  (exit code 2 is Gorse's generic fatal exit — it is *not* diagnostic of disk;
+  the same code appears when Redis is still loading its RDB at startup)
 - `docker compose up` finally says it plainly:
   `mkdir /var/lib/docker/overlay2/…: no space left on device`
 - `docker system df` accounts for only ~7.5 GB of a 60 GB `Docker.raw`, because
