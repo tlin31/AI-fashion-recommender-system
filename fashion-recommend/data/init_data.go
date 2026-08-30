@@ -50,7 +50,7 @@ func createUsers() []models.User {
 			WithGender("female").
 			WithAgeGroup("25-34").
 			WithStyle("minimalist", "casual").
-			WithPricePreference("mid-range").
+			WithPricePreference("mid").
 			WithFavoriteBrands("zara", "uniqlo").
 			WithComment("喜欢简约风格的职场女性").
 			Build(),
@@ -68,7 +68,7 @@ func createUsers() []models.User {
 			WithGender("male").
 			WithAgeGroup("25-34").
 			WithStyle("business", "classic").
-			WithPricePreference("high-end").
+			WithPricePreference("premium").
 			WithFavoriteBrands("hugo_boss", "armani").
 			WithComment("商务人士").
 			Build(),
@@ -77,7 +77,7 @@ func createUsers() []models.User {
 			WithGender("female").
 			WithAgeGroup("35-44").
 			WithStyle("elegant", "classic").
-			WithPricePreference("luxury").
+			WithPricePreference("premium").
 			WithFavoriteBrands("chanel", "dior").
 			WithComment("追求品质的成熟女性").
 			Build(),

@@ -2,12 +2,23 @@ package models
 
 import "time"
 
-// User 用户模型
+// User 用户模型。
+//
+// 字段名必须和 Gorse REST API 的线格式完全一致（UserId / Labels / ...），
+// 跟下面的 Item 一样。原来这里是 snake_case 的 user_id / labels，后果是
+// POST /api/user(s) 发出去的 user_id 对不上 Gorse 的 UserId 字段 ——
+// encoding/json 反序列化对大小写不敏感，所以 labels 侥幸能对上 Labels，
+// 但带下划线的 user_id 对不上，于是 Gorse 收到的每个用户 UserId 都是空串，
+// 全部写进同一行空 ID 记录。trait 同步因此从来没有真正落到过任何用户身上。
+//
+// 这个 bug 躲过了 server_test.go，因为那里的 mock Gorse 用同一个 struct
+// 编码响应、再用同一个 struct 解码，tag 不一致在往返中被抵消了。参见
+// models_wire_test.go —— 那里断言的是字面 JSON key，不是往返。
 type User struct {
-	UserId    string   `json:"user_id"`
-	Labels    []string `json:"labels"`
-	Comment   string   `json:"comment,omitempty"`
-	Subscribe []string `json:"subscribe,omitempty"`
+	UserId    string   `json:"UserId"`
+	Labels    []string `json:"Labels"`
+	Comment   string   `json:"Comment,omitempty"`
+	Subscribe []string `json:"Subscribe,omitempty"`
 }
 
 // Item 商品模型
@@ -20,14 +31,19 @@ type Item struct {
 	Timestamp  time.Time `json:"Timestamp"`
 }
 
-// Feedback 反馈模型
+// Feedback 反馈模型。
+//
+// 和 User 一样，字段名必须匹配 Gorse 的线格式。storage/data/database.go 的
+// Feedback / FeedbackKey 没有 json tag，所以 Gorse 认的是 Go 字段名本身：
+// FeedbackType / UserId / ItemId / Value / Timestamp。原来这里的 snake_case
+// 带下划线，对不上，反馈写进去时三个 key 全是空的。
 type Feedback struct {
-	FeedbackType string    `json:"feedback_type"`
-	UserId       string    `json:"user_id"`
-	ItemId       string    `json:"item_id"`
-	Value        float64   `json:"value"`
-	Timestamp    time.Time `json:"timestamp"`
-	Comment      string    `json:"comment,omitempty"`
+	FeedbackType string    `json:"FeedbackType"`
+	UserId       string    `json:"UserId"`
+	ItemId       string    `json:"ItemId"`
+	Value        float64   `json:"Value"`
+	Timestamp    time.Time `json:"Timestamp"`
+	Comment      string    `json:"Comment,omitempty"`
 }
 
 // RecommendRequest 推荐请求
@@ -82,14 +98,19 @@ func (b *FashionUserBuilder) WithStyle(styles ...string) *FashionUserBuilder {
 	return b
 }
 
+// WithPricePreference 写入 price_range: 前缀 —— 和 item 侧同名。
+// priceRange 应取 item 侧的词表（budget / mid / premium），不是自造的
+// mid-range / high-end / luxury 之类。
 func (b *FashionUserBuilder) WithPricePreference(priceRange string) *FashionUserBuilder {
-	b.user.Labels = append(b.user.Labels, "price_preference:"+priceRange)
+	b.user.Labels = append(b.user.Labels, "price_range:"+priceRange)
 	return b
 }
 
+// WithFavoriteBrands 写入 brand: 前缀 —— 和 item 侧同名，原来的
+// favorite_brand: 让同一个品牌在两侧永远是两个不同的字符串。
 func (b *FashionUserBuilder) WithFavoriteBrands(brands ...string) *FashionUserBuilder {
 	for _, brand := range brands {
-		b.user.Labels = append(b.user.Labels, "favorite_brand:"+brand)
+		b.user.Labels = append(b.user.Labels, "brand:"+brand)
 	}
 	return b
 }

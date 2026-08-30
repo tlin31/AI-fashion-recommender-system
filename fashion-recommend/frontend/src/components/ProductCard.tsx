@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Heart, MessageCircle } from 'lucide-react'
 import CommentDrawer from './CommentDrawer'
@@ -15,15 +15,55 @@ interface ProductCardProps {
   onAddToCart?: () => void
 }
 
-export default function ProductCard({ id, name, score, price, priceRange, avgRating }: ProductCardProps) {
+export default function ProductCard({ id, name, price, priceRange, avgRating, onAddToCart }: ProductCardProps) {
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [showComments, setShowComments] = useState(false)
   const [loading, setLoading] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const viewSent = useRef(false)
 
   useEffect(() => {
     loadLikeInfo()
+  }, [id])
+
+  // 曝光埋点：卡片一半以上进入视口、且停留超过 1 秒，才算一次 view。
+  //
+  // 两个约束都是必要的。没有面积阈值，快速滚过屏幕边缘就会算曝光；没有停留
+  // 时间，一次滑到底会给整页商品刷满 view。Gorse 把 view 归在
+  // read_feedback_types，噪声会直接稀释正反馈的相对权重。
+  //
+  // viewSent 用 ref 而不是 state：它只用来去重，不该触发重渲染，而且 state
+  // 的异步更新会让同一张卡在 observer 连续回调里重复发送。
+  useEffect(() => {
+    viewSent.current = false
+    const node = cardRef.current
+    if (!node || typeof IntersectionObserver === 'undefined') return
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !viewSent.current) {
+          timer = setTimeout(() => {
+            if (viewSent.current) return
+            viewSent.current = true
+            apiService.sendFeedback('view', id)
+            observer.disconnect()
+          }, 1000)
+        } else if (timer) {
+          clearTimeout(timer)
+          timer = undefined
+        }
+      },
+      { threshold: 0.5 }
+    )
+    observer.observe(node)
+
+    return () => {
+      if (timer) clearTimeout(timer)
+      observer.disconnect()
+    }
   }, [id])
 
   const loadLikeInfo = async () => {
@@ -66,9 +106,16 @@ export default function ProductCard({ id, name, score, price, priceRange, avgRat
     setShowComments(true)
   }
 
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    apiService.sendFeedback('add_to_cart', id)
+    onAddToCart?.()
+  }
+
   return (
     <>
       <motion.div
+        ref={cardRef}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -172,6 +219,7 @@ export default function ProductCard({ id, name, score, price, priceRange, avgRat
 
               {/* Add to Cart Button */}
               <motion.button
+                onClick={handleAddToCart}
                 whileHover={{ scale: 1.05, boxShadow: '0 10px 20px rgba(217, 119, 6, 0.3)' }}
                 whileTap={{ scale: 0.95 }}
                 className="px-4 py-1.5 bg-gradient-to-r from-orange-500 to-red-600 text-white text-xs font-serif font-medium rounded-lg hover:shadow-lg transition-all"

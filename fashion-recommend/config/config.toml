@@ -48,10 +48,18 @@ score = "len(filter(feedback, {.FeedbackType == 'purchase'}))"
 filter = ""
 
 # 物品相似度推荐配置
+#
+# column 是一个 expr 表达式，不是列名。它编译时唯一绑定的环境变量在
+# logics/item_to_item.go:199 是 "item"、在 logics/user_to_user.go:167 是 "user"，
+# 所以裸写 "Labels" 是一个无法解析的标识符，master 日志里是：
+#   failed to update item-to-item recommendation
+#   error: unknown name Labels (1:1)
+# 这两个任务因此从来没有真正跑过 —— 而 dashboard 把它们报成
+# Complete 383,460/383,460、耗时 0.0s。任务状态在这里不是成功的证据。
 [[recommend.item-to-item]]
 name = "style_similarity"
 type = "tags"
-column = "Labels"
+column = "item.Labels"
 
 [[recommend.item-to-item]]
 name = "behavior_similarity"
@@ -59,10 +67,13 @@ type = "users"
 column = ""
 
 # 用户相似度推荐配置
+#
+# 注意这里是 user.Labels 不是 item.Labels：user-to-user 的 expr 环境绑的是
+# user（logics/user_to_user.go:112,167），照抄 item 侧的值同样编译不过。
 [[recommend.user-to-user]]
 name = "style_match"
 type = "tags"
-column = "Labels"
+column = "user.Labels"
 
 [[recommend.user-to-user]]
 name = "purchase_pattern"

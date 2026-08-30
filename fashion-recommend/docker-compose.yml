@@ -1,10 +1,24 @@
 version: '3'
 
+# 日志轮转上限。Gorse master 在 item-to-item 的 column 表达式写错时，每个任务
+# 周期会给 383,460 个 item 各写一行错误日志，每小时一轮，写了好几天，最后把
+# Docker VM 的磁盘写满 —— 表现是 master 退出码 2、docker logs 直接卡死、
+# 连 docker rmi 都清不动。json-file 驱动默认无上限，所以这不是假想的风险。
+#
+# 注意 docker system df 不把日志算进 Containers 的 SIZE 列，所以磁盘满了以后
+# 从 df 上完全看不出来是日志的问题。
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   # PostgreSQL 数据库
   postgres:
     image: postgres:15
     container_name: fashion-postgres
+    logging: *default-logging
     environment:
       POSTGRES_DB: gorse
       POSTGRES_USER: gorse
@@ -23,6 +37,7 @@ services:
   redis:
     image: redis/redis-stack-server:latest
     container_name: fashion-redis
+    logging: *default-logging
     ports:
       - "6379:6379"
     volumes:
@@ -37,6 +52,7 @@ services:
   gorse-master:
     image: zhenghaoz/gorse-master:latest
     container_name: fashion-gorse-master
+    logging: *default-logging
     ports:
       - "8086:8086"
       - "8088:8088"
@@ -55,6 +71,7 @@ services:
   gorse-server:
     image: zhenghaoz/gorse-server:latest
     container_name: fashion-gorse-server
+    logging: *default-logging
     ports:
       - "8087:8087"
     command: 
@@ -70,6 +87,7 @@ services:
   gorse-worker:
     image: zhenghaoz/gorse-worker:latest
     container_name: fashion-gorse-worker
+    logging: *default-logging
     command:
       - --master-host=gorse-master
       - --master-port=8086
@@ -82,6 +100,7 @@ services:
   etcd:
     image: quay.io/coreos/etcd:v3.5.14
     container_name: fashion-milvus-etcd
+    logging: *default-logging
     environment:
       ETCD_AUTO_COMPACTION_MODE: revision
       ETCD_AUTO_COMPACTION_RETENTION: "1000"
@@ -103,6 +122,7 @@ services:
   minio:
     image: minio/minio:RELEASE.2023-03-13T19-46-17Z
     container_name: fashion-milvus-minio
+    logging: *default-logging
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -131,6 +151,7 @@ services:
   kafka:
     image: bitnamilegacy/kafka:3.7
     container_name: fashion-kafka
+    logging: *default-logging
     ports:
       - "9092:9092" # EXTERNAL — host processes
       - "9093:9093" # INTERNAL — Docker containers (exposed so host can verify)
@@ -155,6 +176,7 @@ services:
   milvus:
     image: milvusdb/milvus:v2.4.0
     container_name: fashion-milvus
+    logging: *default-logging
     command: ["milvus", "run", "standalone"]
     environment:
       ETCD_ENDPOINTS: etcd:2379

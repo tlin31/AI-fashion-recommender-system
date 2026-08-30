@@ -212,6 +212,23 @@ rate per prefix. Current state at N=1,000:
 | `material:` | 35 | 27 | free text, known gap |
 | `item_name:`, `price:` | — | ~all | **carriers, not features** — `api/server.go:246` parses them for the API response; removing `price:` would zero out `item.Price` in the frontend |
 
+**The carriers are not free once tags item-to-item actually runs.** That arm's
+distance (`logics/item_to_item.go:337`) divides the shared-tag weight by
+`sqrt(weightedSum(a)) · sqrt(weightedSum(b))`, and `weightedSum` runs over *all*
+of an item's tags. `item_name:` and `price:` are near-unique per item, so their
+IDF is ≈ `log(95335) ≈ 11.5` each, against ≈ 1.5 for a genuinely shared
+`style:` tag. Two carriers therefore contribute ~23 to a norm that the real
+features barely move, pushing every pair's similarity toward the maximum
+distance. Expect non-empty neighbours with compressed, weakly-separated scores;
+report "neighbours exist" and "scores are usable" as two separate findings.
+
+Fixing it properly means restructuring item labels into map form so the
+features and the carriers sit on different paths (`column = "item.Labels.f"`),
+which requires re-seeding the catalogue — deliberately out of Day 2's scope.
+Note that the map form is not free either: `dataset.processLabels` turns a
+numeric leaf into a value that `logics`' `flatten` does not handle, so anything
+placed under a numeric key disappears from tags similarity entirely.
+
 Two content-tagging assumptions, both heuristic rather than ground truth:
 
 - **`style:`** — `rag_products` has no style column, so labels come from keyword
@@ -226,6 +243,149 @@ Two content-tagging assumptions, both heuristic rather than ground truth:
 `"mid"` to every price-less product. 68% of the catalogue has no price, so 672 of
 803 `mid` items at N=1,000 actually meant "no data". normalize.py belongs to
 rag-service, whose eval baseline is locked, so this is corrected at seed time.
+
+#### User label schema — three bugs, not one
+
+`NumUserLabels = 0` against `NumItemLabels = 15,332` was **three independent
+defects stacked**, each of which alone was enough to zero the count. Any fix that
+addressed only one would have looked like it failed.
+
+**1. The score was baked into the label string** (`traits/gorse_sync.go`).
+`fmt.Sprintf("style:%s:%.1f", …)` turned one preference into as many distinct
+strings as there were distinct scores. Gorse indexes a label only on its **second
+occurrence across users** (`master/tasks.go:295-330`), so every scored label was a
+singleton and every singleton was dropped. Fixed: the score now gates only, and
+the emitted string is a flat `prefix:value` — same shape the item side always had.
+
+**2. The gate was above the reachable score range.** `score > 0.5`, but
+`extractor.go:312` max-normalises the keyword pass (top-1 = 1.0) and
+`extractor.go:197` merges as `keyword*0.4 + ai*0.6`. When the LLM leg is absent or
+fails, the merged ceiling is **0.4** — so the gate silently discarded every
+keyword-only extraction. Measured on live data: of 10 rows in `user_traits`, three
+had any style/colour at all and only one cleared 0.5. Default is now **0.35**,
+below that 0.4 ceiling and above the second tier.
+
+**3. `models.User` serialised as `user_id`, Gorse reads `UserId`.**
+`encoding/json` matches field names case-insensitively but not across
+underscores, so `labels` happened to reach `Labels` while `user_id` never reached
+`UserId`. Every user the Go service ever inserted landed in **one row with an
+empty id**. Verified by hand:
+
+```
+POST /api/users [{"user_id":"x","labels":["style:minimalist"]}]
+  → {"RowAffected":1}   and   GET /api/users → {"UserId":"", "Labels":[...]}
+```
+
+`models.Feedback` had the identical defect (`feedback_type` / `user_id` /
+`item_id`), so feedback posted through the Go client was equally keyless. Both
+structs now use Gorse's wire names, as `models.Item` always did.
+
+> This one survived `api/server_test.go` because the mock Gorse encodes its
+> response with the *same* struct the client decodes with — a tag error cancels
+> itself out in a round trip. `models/models_wire_test.go` asserts literal JSON
+> keys instead, which is the only shape of test that can catch it.
+
+**Namespace alignment (user side → item side):** `price:low` → `price_range:budget`,
+`price_preference:` → `price_range:`, `favorite_brand:` → `brand:`. The values are
+mapped too, not just the prefixes — the item side's vocabulary is
+`budget/mid/premium` while traits produce `low/medium/high` and
+`data/init_data.go` had invented a third set (`mid-range/high-end/luxury`).
+Renaming a prefix without mapping its values leaves the two sides just as
+disjoint as before.
+
+> Note the CTR model indexes user and item labels in **separate** feature spaces
+> (`userLabelIndex` vs `itemLabelIndex`, `master/tasks.go`), so the FM does not
+> *require* string equality to learn a cross. Alignment matters for the Day 5
+> aggregation arm — where user labels are literally derived from item labels — and
+> for tags user-to-user, not for making the FM work at all.
+
+| env | default | meaning |
+|---|---|---|
+| `TRAIT_LABEL_MIN_SCORE` | `0.35` | style/colour score gate; the ablation sweeps this |
+| `TRAIT_LABEL_MAX_PER_PREFIX` | `5` | cap per prefix, so label *count* is not a confound between ablation arms |
+
+Labels are also sorted (score desc, then name) before being written. Go's map
+iteration is randomised, so the previous implementation wrote a differently
+ordered array on every sync of unchanged traits.
+
+##### Verifying it (A/B in one master reload)
+
+`traits/gorse_sync_live_test.go` pushes four fixture users in a single batch:
+`fx_old_a`/`fx_old_b` carry the pre-fix label shape, `fx_new_a`/`fx_new_b` carry
+what the fixed function actually emits. Both pairs share the same preferences and
+differ only in score, so the old pair's strings are all singletons and the new
+pair's are not. One reload, one `NumUserLabels` reading, and the delta is
+attributable to label shape alone — which sequential before/after runs cannot
+claim, since the master's task cycle and dataset snapshot move in between.
+
+```bash
+GORSE_LIVE_TEST=1 go test ./traits/ -run TestLivePushFixtures -v
+docker restart fashion-gorse-master        # forces a dataset reload
+curl -s localhost:8088/api/dashboard/stats | grep NumUserLabels
+GORSE_LIVE_TEST=1 GORSE_CLEANUP=1 go test ./traits/ -run TestLiveCleanupFixtures
+```
+
+The control arm deliberately omits `price:`. That label carries no score, so both
+old users share it and it *would* be indexed — including it would let the control
+arm contribute to the delta and destroy the attribution. The prefix rename is
+covered by `TestPriceRangeNamespace` instead.
+
+> **Why not verify with the real 24,850 warm users** (aggregating train-split item
+> labels into user labels)? Because that population is the middle arm of the Day 5
+> ablation. Pushing those labels into the live Gorse now means the "no profile"
+> arm has to delete them again, and the simulated cold-start design also needs
+> those users' *feedback* withheld — which Day 1 already loaded. That is a
+> deliberate Gorse-state decision for Day 5, not a side effect of a Day 2 fix.
+
+#### `column` is an expr expression, not a column name
+
+Both tags-based similarity arms in `fashion-recommend/config/config.toml` were set
+to `column = "Labels"`, which Gorse compiles as an expr expression whose only bound
+variable is `item` (`logics/item_to_item.go:199`) or `user`
+(`logics/user_to_user.go:112,167`). A bare `Labels` is an unresolvable identifier,
+so both tasks failed on every entity:
+
+```
+failed to update item-to-item recommendation
+error: unknown name Labels (1:1)
+```
+
+Correct values are `item.Labels` for `[[recommend.item-to-item]] style_similarity`
+and **`user.Labels`** for `[[recommend.user-to-user]] style_match` — the two envs
+bind different variables, so copying the item-to-item value across does not
+compile either.
+
+Flat `[]string` labels do work here: `dataset.processLabels`
+(`dataset/dataset.go:366`) converts a string array to `[]ID`, which is one of the
+three types `logics`' `flatten` accepts. No re-seeding is needed for the fix
+itself.
+
+> **The dashboard reported these failing tasks as `Complete 383,460/383,460` in
+> `0.0s`.** Task status is not evidence here; the error existed only in
+> `docker logs fashion-gorse-master`.
+
+**The bug filled the Docker VM's disk.** The master logs one error line per failed
+item, so each task cycle wrote ~383k lines, hourly, for days. Symptoms, in the
+order they appear and none of which name the cause:
+
+- `docker logs fashion-gorse-master` hangs indefinitely (even with `--tail`)
+- the master exits with code 2 and `restart: unless-stopped` does not bring it back
+- `docker compose up` finally says it plainly:
+  `mkdir /var/lib/docker/overlay2/…: no space left on device`
+- `docker system df` accounts for only ~7.5 GB of a 60 GB `Docker.raw`, because
+  container log files are not counted in its `SIZE` column
+- once the filesystem is full, `docker rmi` itself wedges — clean up *before*
+  the disk fills, not after
+
+The host Mac having hundreds of GB free is irrelevant; the limit is Docker
+Desktop's disk image size. After recovering, cap it so this cannot recur —
+add to each service in `docker-compose.yml`:
+
+```yaml
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "3" }
+```
 
 ### Frontend (fashion-recommend/frontend/)
 
@@ -680,24 +840,40 @@ The existing `/api` proxy (→ `:5001`) still handles all Go backend routes.
 
 ## Known Gaps / Future Work
 
-### Feedback not reaching Gorse (high priority)
-User interactions from the frontend are **not** being sent to Gorse as feedback signals.
-The recommendation algorithms train on seed data only.
+### Feedback loop (wired — pipeline only, not a training signal source)
 
-| Interaction | Status | Fix needed |
+Frontend interactions now reach Gorse. Treat this as **plumbing, not data**: the
+models train on `reco_interactions`' train split, and a handful of demo clicks
+changes nothing about eval numbers.
+
+| Interaction | Gorse type | Where |
 |---|---|---|
-| **Like** ❤️ | Saves to PostgreSQL `likes` only | `like_handlers.go` → add `gorseClient.InsertFeedback` call with type `"favorite"` |
-| **Add to Cart** | Dead button — no `onClick` | `ProductCard.tsx` → add handler calling `addFeedback` with type `"add_to_cart"` |
-| **View / impression** | Not tracked | `ProductCard.tsx` → add `IntersectionObserver`; send `"view"` feedback on scroll-into-view |
+| Like ❤️ | `favorite` | `api/like_handlers.go` → `sendFeedback`, best-effort (a Gorse failure must not 500 a like that already persisted) |
+| Add to Cart | `add_to_cart` | `ProductCard.tsx` → `handleAddToCart` |
+| View / impression | `view` | `ProductCard.tsx` → `IntersectionObserver` |
 
-Files: `fashion-recommend/api/like_handlers.go`, `fashion-recommend/frontend/src/components/ProductCard.tsx`
+Three things worth keeping:
 
-### Hardcoded user ID in Discover feed
-`HomePage.tsx` line 27 always fetches recommendations for `user_001` regardless of who
-is logged in. Fix: read username from `localStorage.getItem('username')` and pass it to
-`apiService.getRecommendations()`.
+- **The impression gate is 50% visible for 1 continuous second.** Without an area
+  threshold, scrolling past a screen edge counts as a view; without a dwell time,
+  one flick to the bottom of the feed stamps a view on every card on the page.
+  `view` lands in `read_feedback_types`, so that noise directly dilutes the
+  relative weight of positive feedback.
+- **Unlike has no counterpart.** `GorseClient` has no delete-feedback method, so
+  the `favorite` stays. Deliberate — see the "pipeline only" framing above.
+- **The wire format is PascalCase.** `GorseFeedback` in `services/api.ts` matches
+  Gorse's field names because the Go route just forwards the body. See the user
+  label schema section for what the snake_case version was silently doing.
 
-File: `fashion-recommend/frontend/src/pages/HomePage.tsx`
+### Discover feed user id
+`HomePage.tsx` reads `localStorage.getItem('username')`; the anonymous fallback is
+now `guest`, matching `ProductCard.tsx` and `like_handlers.go`. It used to fall
+back to `user_001` — a real user — which served one person's personalised feed to
+every logged-out visitor.
+
+> `npx tsc --noEmit` reports two pre-existing `TS6133` unused-variable errors in
+> `HomePage.tsx` (`scrollY`, `navigate`). `npm run build` is plain `vite build`
+> and does not typecheck, so the build is unaffected.
 
 ### Product images missing
 `public/images/` contains generic stock photos, not `product_001.jpg` etc. `ProductCard`

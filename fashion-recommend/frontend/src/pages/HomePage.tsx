@@ -24,7 +24,10 @@ export default function HomePage() {
   const loadRecommendations = async () => {
     try {
       setLoading(true)
-      const username = localStorage.getItem('username') || 'user_001'
+      // 未登录时用 guest，和 ProductCard / like_handlers.go 的匿名标识一致。
+      // 原来这里 fallback 到 'user_001'，等于把某个真实用户的个性化推荐
+      // 端给所有访客看。
+      const username = localStorage.getItem('username') || 'guest'
       const data = await apiService.getRecommendations(username, 20)
       setItems(data.items)
     } catch (error) {

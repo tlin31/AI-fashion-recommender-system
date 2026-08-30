@@ -25,6 +25,22 @@ export interface RecommendResponse {
   user_id: string
 }
 
+// config.toml 的 positive_feedback_types = purchase / favorite / add_to_cart，
+// read_feedback_types = view。dislike 存得下但不参与训练。
+export type FeedbackType = 'view' | 'add_to_cart' | 'favorite' | 'purchase' | 'dislike'
+
+// 字段名是 PascalCase，因为 Gorse 的 REST API 认的是 Go 字段名本身
+// （storage/data/database.go 的 Feedback 没有 json tag）。Go 后端只是转发，
+// 不做键名转换，所以这里发什么形状 Gorse 就收到什么形状。
+export interface GorseFeedback {
+  FeedbackType: FeedbackType
+  UserId: string
+  ItemId: string
+  Timestamp: string
+  Value?: number
+  Comment?: string
+}
+
 export const apiService = {
   // 认证相关
   register: async (username: string, password: string, email: string) => {
@@ -125,9 +141,23 @@ export const apiService = {
   },
 
   // 添加反馈
-  addFeedback: async (feedback: any[]) => {
+  addFeedback: async (feedback: GorseFeedback[]) => {
     const response = await api.post('/feedback', feedback)
     return response.data
+  },
+
+  // 发一条反馈给 Gorse。失败只在控制台留痕 —— 埋点不该打断用户操作。
+  sendFeedback: async (feedbackType: FeedbackType, itemId: string) => {
+    try {
+      await apiService.addFeedback([{
+        FeedbackType: feedbackType,
+        UserId: localStorage.getItem('username') || 'guest',
+        ItemId: itemId,
+        Timestamp: new Date().toISOString(),
+      }])
+    } catch (error) {
+      console.error(`Failed to send ${feedbackType} feedback for ${itemId}:`, error)
+    }
   },
 
   // 评论相关
