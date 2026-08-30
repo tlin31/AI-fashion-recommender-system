@@ -32,15 +32,28 @@ positive_feedback_ttl = 0
 item_ttl = 0
 
 # 非个性化推荐配置
+#
+# duration() 是 expr 的内建函数，底层走 Go 的 time.ParseDuration，支持的单位
+# 只有 ns/us/ms/s/m/h —— **没有 d**。原来这里写 '7d' / '30d'，运行时报：
+#   evaluate filter function
+#   error: time: unknown unit "d" in duration "30d" (1:26)
+# 于是 trending 和 new_arrivals 两个非个性化召回对每个 item 都失败。这和
+# item-to-item 的 column = "Labels" 是同一个故事：表达式从来没有真正求值过，
+# 每个 item 刷一行错误日志（也是把 Docker 磁盘写满的共犯之一）。
+#
+# new_arrivals 的 score 原来是 float(now() - item.Timestamp) * -1，同样是编译
+# 通过、求值失败：now() - item.Timestamp 得到的是 time.Duration，而 expr 的
+# float() 不接受 Duration（invalid operation: float(time.Duration)）。所以这个
+# 召回是 score 和 filter 双双失效。改用 Duration 自己的 .Seconds()。
 [[recommend.non-personalized]]
 name = "trending"
-score = "len(filter(feedback, {.FeedbackType == 'purchase' && .Timestamp > now() - duration('7d')}))"
+score = "len(filter(feedback, {.FeedbackType == 'purchase' && .Timestamp > now() - duration('168h')}))"
 filter = ""
 
 [[recommend.non-personalized]]
 name = "new_arrivals"
-score = "float(now() - item.Timestamp) * -1"
-filter = "item.Timestamp > now() - duration('30d')"
+score = "-(now() - item.Timestamp).Seconds()"
+filter = "item.Timestamp > now() - duration('720h')"
 
 [[recommend.non-personalized]]
 name = "popular"
