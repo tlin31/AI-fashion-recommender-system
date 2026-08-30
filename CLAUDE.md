@@ -41,6 +41,20 @@ go test -v ./api/...
 make init-data
 # or: go run data/init_data.go
 
+# Seed Gorse from rag_products (items + demo feedback)
+python3 data/seed_gorse.py
+
+# Audit the item-label schema without writing anything (no Gorse needed).
+# Prints per-prefix cardinality, how many labels Gorse's frequency filter will
+# drop, and style/colour tagging coverage.
+python3 data/seed_gorse.py --dry-run
+
+# Seed a larger catalogue (default 1,000)
+SEED_N_PRODUCTS=5000 python3 data/seed_gorse.py
+
+# Label-schema regression tests (pure units, no DB/network)
+python3 -m pytest data/test_seed_labels.py -v
+
 # Go proxy (China mainland users — set before downloading dependencies)
 export GOPROXY=https://goproxy.cn,direct
 go mod download
@@ -52,6 +66,166 @@ make docker-up
 # Stop infrastructure
 make docker-down
 ```
+
+#### Interaction dataset (`data/build_interactions.py`)
+
+Measures the real interaction graph from the 2.5M-review McAuley Amazon Fashion
+dump. Writes nothing; caches extracted columns to `data/cache/*.parquet`
+(gitignored, ~4s to rebuild) so repeated analysis is instant.
+
+```bash
+# Sparsity analysis: degree distribution, iterative k-core, cohorts, taxonomy
+python3 data/build_interactions.py --stats
+
+# Restrict the join to a catalogue size
+python3 data/build_interactions.py --stats --catalogue-size 5000
+
+# How large must the catalogue be for the warm cohort to be evaluable?
+python3 data/build_interactions.py --sweep-catalogue 1000,5000,20000,50000,all
+
+# Build the eval dataset into Postgres (re-entrant: replaces, never appends)
+python3 data/build_interactions.py --build             # ~24s
+python3 data/build_interactions.py --build --dry-run   # report only
+
+# Load the TRAIN split into Gorse (~67s), then check it landed
+python3 data/build_interactions.py --push-gorse
+python3 data/build_interactions.py --verify-gorse
+
+# Graph-maths regression tests (pure units)
+python3 -m pytest data/test_interactions.py -v
+```
+
+##### The eval dataset (`reco_products` + `reco_interactions`)
+
+`--build` writes **95,335 products / 558,940 interactions**. Two decisions are
+baked in and both are deliberate.
+
+**The eval catalogue is its own table — `rag_products` is not touched.** The
+obvious route (raise `SUBSAMPLE_SIZE` in `rag-service/data/normalize.py` and
+regrow `rag_products` to 95k) was rejected: that table is rag-service's
+**retrieval corpus**, BM25 is built from it at startup (`rag-service/main.py:98`,
+`pipeline/retrieval.py:170`). Growing it 19× would change retrieval for every
+query, require re-embedding 95k products into Milvus, shift the CRAG score
+distribution the 0.45/0.43 thresholds were calibrated on, and — worst — make the
+1,481 locked relevance judgments incomplete, since products entering the corpus
+unjudged count as non-relevant and would depress NDCG/Recall for reasons
+unrelated to retrieval quality. That damage is not repairable by re-running the
+eval; it needs re-adjudication.
+
+**The default split is a single global temporal cutoff, not leave-last-out.**
+
+| protocol | train events | items with training signal | evaluable warm test users |
+|---|---|---|---|
+| `--split temporal` (default, q=0.70) | 391,258 | 62,006 (**65%**) | 859 |
+| `--split leave-last-out` | 30,798 | 17,644 (**18.5%**) | 3,420 |
+
+Leave-last-out is the textbook choice, but on a corpus where 86% of users appear
+once it sends 95% of events to test and leaves 81.5% of the catalogue with *no
+training signal at all*. An item with no training interaction cannot be
+recommended by CF, popularity, or item-to-item, so catalog coverage would be
+structurally capped at 18.5% and Gini computed over a truncated universe — the
+beyond-accuracy metrics would be measuring the protocol, not the recommender.
+
+A global cutoff is also **more** leak-proof, not less: leave-last-out will train
+on a 2022 event while testing a 2015 event of a different user. One cutoff makes
+every training event older than every test event, and `--build` asserts it. The
+plan's prohibition was on a global *random* split, which this is not.
+
+q=0.70 (2020-11-23) is chosen because the evaluable warm cohort peaks there
+(704 → 859 → 843 across q=0.40…0.75) while item coverage keeps rising.
+
+> The warm cohort is ~859 users either way — small, and that is the corpus, not a
+> bug. Cold-start is where the volume is: 156,935 cold test users.
+
+##### Pushing to Gorse
+
+`--push-gorse` loads **only the train split** (391,258 events) plus all 95,335
+items. Sending test events would put held-out interactions inside the model being
+evaluated; `--verify-gorse` samples users and asserts no test event reached Gorse.
+
+**Three gotchas, all of which look like failures but are not:**
+
+1. **`/api/dashboard/stats` lags.** The master recomputes it on a schedule, so
+   right after a push it still reports the old numbers. Verify by sampling
+   entities through the API (what `--verify-gorse` does), not by reading counters.
+2. **There are two Postgres instances.** Gorse's data store is the *Docker*
+   Postgres (`fashion-postgres`, not published on the host); `rag_products` and
+   `reco_*` live in the *host* Postgres. Same credentials, different databases.
+   Check Gorse's side with
+   `docker exec fashion-postgres psql -U gorse -d gorse -c "select count(*) from feedback"`.
+3. **`fit_period = "24h"`** (`config/config.toml:77`), so the CF model does not
+   retrain on newly pushed data for up to a day. `docker restart fashion-gorse-master`
+   forces a reload.
+
+**`dislike` is stored but not trained on.** `config.toml:29-30` sets
+`positive_feedback_types = ["purchase", "favorite", "add_to_cart"]` and
+`read_feedback_types = ["view"]` — `dislike` is in neither. After the push Gorse
+reports 276,194 positive + 51,280 read = 327,474 against 391,258 events sent; the
+~64k difference is exactly the dislikes. The explicit-negative signal is present
+in `reco_interactions` but inert in the model, which is the knob the Day 5
+ablation turns, not a bug to fix silently.
+
+Key measured facts (see `--stats` for the full table):
+
+- 86.18% of users appear exactly once. The **iterative 5-core is empty** — not
+  small, empty. 3-core is 2,223 users out of 2,035,490.
+- k-core is computed on **distinct `(user, item)` edges**, not raw events;
+  26,564 duplicate edges exist and counting them shifts every degree threshold.
+- Under leave-last-out a 2-event user has **one** training event, and 72.7% of
+  the "warm" cohort is exactly that. Report warm metrics stratified by training
+  history or the warm number is measuring near-cold users.
+- At the current 5,000-product catalogue only **370 users** have ≥2 training
+  events. Do not lock an eval baseline there.
+- `--sweep-catalogue` sizes the catalogue at **N ≈ 50,000**, and shows the hard
+  ceiling: normalize.py's quality filters leave only 95,335 candidate products
+  in total, capping the evaluable warm cohort at ~3,420 users.
+
+> The sweep reports curve **shape**, not a predicted catalogue membership. A
+> faithful re-implementation of normalize.py's published filter chain reproduces
+> only 58.6% of the actual 5,000-row catalogue, so the ASIN-level composition of
+> a hypothetical larger catalogue is not claimed. Two selection rules are shown;
+> `dump review count` is selection-on-the-outcome (it picks items *because* they
+> have many interactions, then reports how many interactions they have) and is
+> included only as the optimistic bound. Size from `meta rating_count`.
+
+#### Two catalogue sizes — do not conflate
+
+`rag_products` holds 5,000 normalised Amazon products, but `seed_gorse.py` posts
+only the top `SEED_N_PRODUCTS` (default **1,000**) by `rating_count`. Gorse never
+sees the rest, so **catalog-coverage denominators must use the seeded count, not
+the table size**. Every seed run prints both numbers.
+
+#### Item label schema
+
+Gorse indexes a label only on its **second** occurrence (`master/tasks.go:307-330`);
+singletons are dropped and never reach the CTR model. `--dry-run` reports the drop
+rate per prefix. Current state at N=1,000:
+
+| prefix | distinct | dropped | note |
+|---|---|---|---|
+| `style:` | 6 | 0 | heuristic tags, 68.9% of items covered |
+| `color:` | 10 | 0 | canonical palette, 49.4% covered |
+| `price_range:` | 4 | 0 | includes `unknown` |
+| `occasion:` | 24 | 6 | |
+| `avg_rating:` | 18 | 2 | rounded to 1 dp to bound cardinality |
+| `brand:` | 649 | 538 | long tail — dropping singletons is correct |
+| `material:` | 35 | 27 | free text, known gap |
+| `item_name:`, `price:` | — | ~all | **carriers, not features** — `api/server.go:246` parses them for the API response; removing `price:` would zero out `item.Price` in the frontend |
+
+Two content-tagging assumptions, both heuristic rather than ground truth:
+
+- **`style:`** — `rag_products` has no style column, so labels come from keyword
+  matching over name + description. The six classes mirror `traits/extractor.go`
+  so the user and item sides share a vocabulary; that file's keywords are Chinese
+  and the catalogue is English, so it cannot be reused directly.
+- **`color:`** — the `colour` column is empty for 941/1,000 items and the rest is
+  uncontrolled free text (`cut vines`, `3x`, `smokey quartz`). Labels are mapped
+  onto the same ten-colour palette the user side uses.
+
+`price_range:unknown` exists because `rag-service/data/normalize.py:340` assigns
+`"mid"` to every price-less product. 68% of the catalogue has no price, so 672 of
+803 `mid` items at N=1,000 actually meant "no data". normalize.py belongs to
+rag-service, whose eval baseline is locked, so this is corrected at seed time.
 
 ### Frontend (fashion-recommend/frontend/)
 

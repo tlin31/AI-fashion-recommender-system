@@ -165,3 +165,8 @@ Myntra Fashion Product Dataset/
 # Product images copied out of the dataset by fashion-recommend/data/seed_gorse.py.
 # Regenerate by re-running the seed script rather than committing 32 MB of JPEGs.
 fashion-recommend/public/images/*.jpg
+
+# build_interactions.py Parquet cache of the extracted Amazon review columns.
+# Derived from rag-service/amazon_data/ (itself untracked); regenerate with
+# `python data/build_interactions.py --stats --refresh`.
+fashion-recommend/data/cache/
