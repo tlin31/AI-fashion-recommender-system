@@ -929,6 +929,30 @@ changes nothing about eval numbers.
 | Add to Cart | `add_to_cart` | `ProductCard.tsx` → `handleAddToCart` |
 | View / impression | `view` | `ProductCard.tsx` → `IntersectionObserver` |
 
+**Verified end to end 2026-08-31** against a running stack (`PORT=5001 go run
+main.go` + `npm run dev`, anonymous `guest` identity), reading back from Gorse
+rather than trusting the API response:
+
+| type | count | how |
+|---|---|---|
+| `favorite` | 1 | heart button |
+| `add_to_cart` | 1 | Add button |
+| `view` | 6 | scrolling, by hand |
+
+The `view` timestamps are the useful part: 6 impressions arrived in 3 pairs
+across 25 seconds on a page holding 20 cards. Without the gate a single scroll
+would have stamped all 20 at once, so the batching is evidence the throttle
+itself works, not merely that the request fires.
+
+Two things blocked this and neither was in the feedback code. `product_likes`
+did not exist, so every like 500'd before reaching `InsertFeedback` (see the
+migrations section). And `view` cannot be verified from a headless or hidden
+browser at all: with `document.visibilityState === "hidden"` Chrome stops
+delivering IntersectionObserver callbacks, and emulating a viewport size does
+not help because the page still is not compositing. A hand-rolled observer on
+the same element stays silent too, which is how that was separated from a bug
+in `ProductCard`. Verifying this one needs a real visible window.
+
 Three things worth keeping:
 
 - **The impression gate is 50% visible for 1 continuous second.** Without an area
