@@ -1110,6 +1110,36 @@ def cohort_report() -> None:
           "1.85M keys.\n165K-2M is comfortable.")
 
 
+GORSE_DB_DSN = os.environ.get(
+    "GORSE_DB_DSN",
+    "postgres://gorse:gorse_pass@localhost:5432/gorse?sslmode=disable")
+
+
+def reset_gorse_entities() -> None:
+    """Clear Gorse's users and feedback, keeping items.
+
+    Needed because pushing is an upsert. Shrinking the cohort without this
+    leaves all 371K previously-pushed users in Gorse, every one of them still
+    eligible for a per-user cache -- the flag would silently do nothing.
+
+    Only derived state is destroyed. Gorse's data store is rebuilt from
+    reco_products / reco_interactions on the host, which this never touches.
+
+    Runs through `docker exec` rather than a direct connection because the
+    Docker Postgres deliberately does not publish 5432 -- the host already has
+    one there, and confusing the two is a documented trap in this project.
+    """
+    import subprocess
+    for table in ("feedback", "users"):          # feedback first: it references users
+        r = subprocess.run(
+            ["docker", "exec", "fashion-postgres", "psql", "-U", "gorse",
+             "-d", "gorse", "-c", f"TRUNCATE TABLE {table} CASCADE"],
+            capture_output=True, text=True, timeout=300)
+        if r.returncode != 0:
+            raise SystemExit(f"failed to truncate {table}: {r.stderr.strip()}")
+        print(f"  truncated {table}")
+
+
 def push_gorse(args) -> None:
     """Load reco_products + the TRAIN half of reco_interactions into Gorse.
 
@@ -1226,9 +1256,19 @@ def push_gorse(args) -> None:
     print("        does not currently train on it. That is a modelling decision")
     print("        for the ablation, not something this script should change.")
 
+    if cstats["mode"] == "sampled" and not args.reset_gorse:
+        print("\n  WARNING: --cohort-sample without --reset-gorse.")
+        print("  Pushing is an upsert, so every user from a previous larger push")
+        print("  stays in Gorse and stays eligible for a per-user cache. The")
+        print("  cohort will not actually shrink. Add --reset-gorse.")
+
     if args.dry_run:
         print("\n--dry-run: nothing pushed.")
         return
+
+    if args.reset_gorse:
+        print("\nClearing Gorse users + feedback (items kept)...")
+        reset_gorse_entities()
 
     print(f"\nPushing to Gorse ({GORSE_URL})...")
     _post_batched("/api/items", items, "items")
@@ -1428,6 +1468,13 @@ def main() -> None:
     p.add_argument("--cohort-report", action="store_true",
                    help="print the evaluable-user strata and what each "
                         "--cohort-sample size would cost, then exit")
+    p.add_argument("--reset-gorse", action="store_true",
+                   help="with --push-gorse: clear Gorse's users and feedback "
+                        "first. REQUIRED when shrinking the cohort -- pushing "
+                        "is an upsert, so a smaller cohort otherwise leaves "
+                        "every previously-pushed user in place and still "
+                        "caching. Items are kept: the catalogue is the "
+                        "denominator for coverage and does not shrink")
     p.add_argument("--verify-gorse", action="store_true",
                    help="cross-check Gorse's counters against Postgres")
     p.add_argument("--sweep-catalogue", metavar="N,N,...",
