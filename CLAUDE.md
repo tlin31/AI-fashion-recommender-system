@@ -690,7 +690,7 @@ go test -v ./logics/...
 |---|---|---|
 | `GORSE_ENDPOINT` | `http://localhost:8088` | Gorse master HTTP endpoint |
 | `GORSE_API_KEY` | `` | Gorse API key |
-| `PORT` | `5001` | API server port |
+| `PORT` | `5000` | API server port. **The default is 5000, not 5001** — but `frontend/vite.config.ts` proxies `/api` to **5001**, and on macOS 5000 is usually taken by AirPlay Receiver. Start the API as `PORT=5001 go run main.go` or the frontend cannot reach it. |
 | `DATABASE_URL` | `host=localhost port=5432 user=gorse password=gorse_pass dbname=gorse sslmode=disable` | PostgreSQL connection string |
 | `AI_API_KEY` | (Aliyun DashScope key) | LLM API key |
 | `AI_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI-compatible LLM endpoint |
@@ -803,6 +803,25 @@ GRANT ALL PRIVILEGES ON DATABASE gorse TO gorse;
 psql -h localhost -U gorse -d gorse -W
 # password: gorse_pass
 ```
+
+### Migrations are NOT applied automatically
+
+`fashion-recommend/database/migrations/*.sql` exists but nothing runs it — not
+the API at startup, not `make init-data`. `003_create_product_likes.sql` had
+never been applied, so `product_likes` and `product_like_stats` did not exist,
+and every like returned 500 from `GetProductLikeCount` before reaching the
+Gorse feedback call. The tables the app needs are a superset of the ones listed
+below.
+
+```bash
+for f in fashion-recommend/database/migrations/*.sql; do
+  PGPASSWORD=gorse_pass psql -h localhost -U gorse -d gorse -f "$f"
+done
+```
+
+Same family as the bugs in the label schema section: written, shipped, never
+executed. Check `\dt` against what `database/models.go` actually queries before
+concluding a feature is broken in code.
 
 ### Initialize tables (optional — auto-created on first run)
 ```sql
