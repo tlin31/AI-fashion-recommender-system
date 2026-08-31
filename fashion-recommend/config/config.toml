@@ -19,7 +19,19 @@ default_n = 10
 
 [recommend]
 # 推荐配置
-cache_size = 100
+#
+# cache_size 不只是「每用户推荐缓存的条数」—— 它同时是 item-to-item 邻居数
+# (master/tasks.go:633)、user-to-user 邻居数 (:750)、非个性化榜单长度 (:58)
+# 和 CF 召回数 (worker/pipeline.go:341)。所以它是 Redis 内存的总闸门。
+#
+# 100 → 30 让整个工作集降到约 30%，而且**完全不影响模型训练** —— 全部
+# 391,258 条 interaction 照旧参与计算，只是每个列表存短一点。
+#
+# ⚠️ 下限由评估指标决定，不能随便调。Day 3 要算 Recall@20，而 Recommender
+#    会先用 excludeSet 滤掉用户已交互过的商品，所以缓存必须 > 20 才够。
+#    设成 20 会让 Recall@20 在过滤后不足 20 条、被系统性低估，**且不报错**。
+#    30 是留了 10 条余量的下限；要评估更大的 k 必须同步上调。
+cache_size = 30
 cache_expire = "72h"
 context_size = 20
 active_user_ttl = 30
@@ -83,15 +95,36 @@ column = ""
 #
 # 注意这里是 user.Labels 不是 item.Labels：user-to-user 的 expr 环境绑的是
 # user（logics/user_to_user.go:112,167），照抄 item 侧的值同样编译不过。
-[[recommend.user-to-user]]
-name = "style_match"
-type = "tags"
-column = "user.Labels"
-
-[[recommend.user-to-user]]
-name = "purchase_pattern"
-type = "items"
-column = ""
+# 【2026-08-31 临时停用，不是删除】
+#
+# 停用原因是**任务顺序**，不是这个算法没价值：master/tasks.go:215-218 里
+# updateUserToUser 和 updateItemToItem 是**串行**的，且 user-to-user 在前。
+# 它有 1,484,868 个计算单位，把 item-to-item 死死挡在后面 —— Day 2 的 B3
+# 验收（/neighbors 非空）两天没能跑到，就是被它挡的。
+#
+# 而 user-to-user **不在 Day 3 的任何一条评估臂里**（Random / MostPopular /
+# CF / item-to-item / +trait labels，五条都不需要它）。所以这是 148 万单位的
+# 计算在服务一个我们不报告的东西。
+#
+# 更根本的原因：这个语料每用户平均 1.23 次交互、86% 只出现一次、迭代 5-core
+# 为空。两个用户要"相似"得先有共同交互过的商品，在这种稀疏度下几乎不存在 ——
+# 和 CF 失效是同一个原因。**这不是我们换了路线，是数据不支持 user-based 方法**，
+# 而这正是整个项目的论点。
+#
+# ⚠️ 恢复条件：Day 5 做 trait 消融时，style_match 走的是 user.Labels，
+#    而用户标签在 Day 2 刚修好。届时可能需要重新打开它来评估
+#    "trait 通过 user-to-user 生效" 这条路径。恢复时记得同步把
+#    "user-to-user/style_match" 加回 [recommend.fallback]。
+#
+# [[recommend.user-to-user]]
+# name = "style_match"
+# type = "tags"
+# column = "user.Labels"
+#
+# [[recommend.user-to-user]]
+# name = "purchase_pattern"
+# type = "items"
+# column = ""
 
 # 协同过滤配置
 # type must be "mf" (matrix factorization) or "none". Default is "none",
@@ -121,7 +154,7 @@ recommenders = ["collaborative"]
 recommenders = [
     "collaborative",
     "item-to-item/style_similarity",
-    "user-to-user/style_match",
+    # "user-to-user/style_match",   # 随上面一起停用；恢复时两处要同步
     "non-personalized/popular",
     "non-personalized/new_arrivals",
     "latest"

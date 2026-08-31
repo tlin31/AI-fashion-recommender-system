@@ -69,9 +69,9 @@ services:
     image: redis/redis-stack-server:latest
     container_name: fashion-redis
     logging: *default-logging
-    mem_limit: 4500m
+    mem_limit: 4900m
     environment:
-      REDIS_ARGS: "--maxmemory 3500mb --maxmemory-policy allkeys-lru"
+      REDIS_ARGS: "--maxmemory 2300mb --maxmemory-policy allkeys-lru"
     ports:
       - "6379:6379"
     volumes:
@@ -114,7 +114,7 @@ services:
     image: zhenghaoz/gorse-master:latest
     container_name: fashion-gorse-master
     logging: *default-logging
-    mem_limit: 3g
+    mem_limit: 4g
     ports:
       - "8086:8086"
       - "8088:8088"
