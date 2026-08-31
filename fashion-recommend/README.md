@@ -327,6 +327,30 @@ go test ./config/ -run TestFashion     # from the repo root — config expressio
 python3 -m pytest data/ -v
 ```
 
+### Order matters when resetting Redis
+
+`FLUSHALL` deletes the RediSearch index along with the data, and Gorse only
+issues `FT.CREATE` during `Init()`. Flushing while the master is running leaves
+every index-backed operation failing with `No such index documents` — including
+`POST /api/items`, so a subsequent push returns 500 with no obvious connection
+to the flush.
+
+Flush **before** the master starts, or restart it afterwards:
+
+```bash
+docker compose up -d postgres redis          # master NOT yet
+until docker exec fashion-redis redis-cli INFO persistence | grep -qE '^loading:0'; do sleep 5; done
+docker exec fashion-redis redis-cli FLUSHALL
+docker exec fashion-redis redis-cli CONFIG SET save ""
+docker compose up -d gorse-master gorse-server gorse-worker
+```
+
+Note the wait condition: `redis-cli PING` answers `PONG` while an RDB is still
+loading and every real command is being rejected, so a health check based on
+`PING` reports ready too early. `INFO persistence` anchored to `^loading:` is
+the honest probe — `grep -o 'loading:[01]'` also matches `async_loading:0` and
+returns two lines.
+
 Before any batch run on a memory-constrained host:
 
 ```bash
