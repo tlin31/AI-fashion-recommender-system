@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import random
 import sys
 import time
 from datetime import datetime, timezone
@@ -973,6 +974,142 @@ def _post_batched(path: str, payload: list, label: str, batch: int = 2000) -> in
     return sent
 
 
+# ── Evaluation cohort ────────────────────────────────────────────────────────
+#
+# Pushing every user is not an option on this hardware. Gorse materialises a
+# per-user recommendation cache for every user that has at least one positive
+# feedback -- 265,828 of the 371,207 train users -- and at cache_size=30 that is
+# roughly 8M entries before item-to-item's own 11.5M. Measured: it does not fit,
+# and LRU eviction during a batch build never converges, silently.
+#
+# What the evaluation actually needs is much smaller. Only users with BOTH a
+# train and a test event can be scored at all; there are 5,627 of them, holding
+# 7,333 train events between them.
+#
+# The extra sample exists for one reason only: to leave the collaborative
+# filtering model a graph with realistic density. Without it CF would be fitted
+# on 7,333 events and its (already measured) ineffectiveness would become an
+# artefact of our sampling rather than a property of the corpus.
+#
+# Note that the sampling does NOT affect the primary cold-start arm.
+# `[[recommend.item-to-item]] style_similarity` is `type = "tags"` over
+# `item.Labels`, and `tagsItemToItem.Push(item, _ []int32)` discards the
+# feedback argument outright -- it reads item labels and nothing else.
+#
+# A tempting alternative was rejected after reading the source: pushing every
+# interaction while creating only some user rows. `storage/data/sql.go:1121`
+# gates feedback insertion on `users.Contains(f.UserId)`, and with
+# `Server.AutoInsertUser` off the loop above it removes any user missing from
+# the table. The feedback is silently dropped, not stored user-less.
+
+_EVALUABLE_SQL = """
+    SELECT user_id
+    FROM reco_interactions
+    WHERE split = 'train'
+      AND user_id IN (SELECT user_id FROM reco_interactions WHERE split = 'test')
+    GROUP BY user_id
+"""
+
+
+def _select_cohort(cur, sample: int | None, seed: int) -> tuple[set[str], dict]:
+    """Choose which users' train events to push.
+
+    Returns (user_ids, stats). `sample is None` means push everyone, which is
+    the pre-existing behaviour and is kept so the flag is additive.
+    """
+    cur.execute("SELECT count(DISTINCT user_id) AS n FROM reco_interactions "
+                "WHERE split = 'train'")
+    n_all = cur.fetchone()["n"]
+
+    if sample is None:
+        return set(), {"mode": "all", "n_all": n_all}
+
+    cur.execute(_EVALUABLE_SQL)
+    evaluable = {r["user_id"] for r in cur.fetchall()}
+
+    cur.execute("SELECT DISTINCT user_id FROM reco_interactions WHERE split = 'train'")
+    others = [r["user_id"] for r in cur.fetchall() if r["user_id"] not in evaluable]
+
+    rng = random.Random(seed)
+    extra = set(rng.sample(others, min(sample, len(others))))
+    cohort = evaluable | extra
+
+    return cohort, {
+        "mode": "sampled", "n_all": n_all, "evaluable": len(evaluable),
+        "extra_requested": sample, "extra_taken": len(extra), "total": len(cohort),
+    }
+
+
+def cohort_report() -> None:
+    """Print the evaluable strata and what each sample size would cost.
+
+    Exists because the two numbers that get quoted for "the warm cohort" -- 859
+    and 5,627 -- differ by 6.5x and mean different things, and because 85% of
+    the larger figure holds exactly one training event, which makes an
+    unstratified "warm" metric a measurement of near-cold users.
+    """
+    import psycopg2
+    import psycopg2.extras
+
+    conn = psycopg2.connect(POSTGRES_URL)
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                WITH tr AS (
+                    SELECT user_id, count(*) AS n FROM reco_interactions
+                    WHERE split = 'train' GROUP BY user_id),
+                     te AS (
+                    SELECT DISTINCT user_id FROM reco_interactions WHERE split = 'test')
+                SELECT CASE WHEN n = 1 THEN '1'
+                            WHEN n = 2 THEN '2'
+                            WHEN n <= 4 THEN '3-4'
+                            WHEN n <= 9 THEN '5-9'
+                            ELSE '10+' END AS bucket,
+                       count(*) AS users, sum(n) AS train_events
+                FROM tr JOIN te USING (user_id)
+                GROUP BY bucket ORDER BY min(n)
+            """)
+            strata = cur.fetchall()
+
+            cur.execute("SELECT count(DISTINCT user_id) AS n FROM reco_interactions "
+                        "WHERE split = 'train'")
+            n_all = cur.fetchone()["n"]
+            cur.execute("""SELECT count(DISTINCT user_id) AS n FROM reco_interactions
+                           WHERE split = 'train'
+                             AND feedback_type IN ('purchase','favorite','add_to_cart')""")
+            n_positive = cur.fetchone()["n"]
+    finally:
+        conn.close()
+
+    rule_hdr("evaluable users, by training history")
+    print("Only users with BOTH a train and a test event can be scored.\n")
+    print(f"{'train events':>14}  {'users':>8}  {'share':>7}  {'train events held':>18}")
+    total_u = sum(s["users"] for s in strata)
+    for s in strata:
+        print(f"{s['bucket']:>14}  {s['users']:>8,}  "
+              f"{s['users'] / total_u:>6.1%}  {s['train_events']:>18,}")
+    print(f"{'TOTAL':>14}  {total_u:>8,}")
+
+    ge2 = sum(s["users"] for s in strata if s["bucket"] != "1")
+    print(f"\n  train >= 1 : {total_u:,}")
+    print(f"  train >= 2 : {ge2:,}   <- the figure quoted as 'the warm cohort'")
+    print(f"\n  {total_u - ge2:,} of the {total_u:,} ({(total_u - ge2) / total_u:.0%}) hold "
+          f"exactly one training event.")
+    print("  Report warm metrics stratified by this column, or 'warm' names two "
+          "different populations.")
+
+    rule_hdr("what each --cohort-sample costs")
+    print(f"all train users            : {n_all:,}")
+    print(f"  of which have positive fb: {n_positive:,}  <- these get a per-user cache")
+    print(f"\n{'--cohort-sample':>18}  {'users pushed':>13}  {'cache entries @30':>18}")
+    for n in (0, 10_000, 25_000, 50_000, 100_000, None):
+        pushed = n_all if n is None else min(total_u + n, n_all)
+        label = "(omit flag = all)" if n is None else f"{n:,}"
+        print(f"{label:>18}  {pushed:>13,}  {pushed * 30:>18,}")
+    print("\nMeasured: ~22M entries did not fit in maxmemory 2300mb and evicted "
+          "1.85M keys.\n165K-2M is comfortable.")
+
+
 def push_gorse(args) -> None:
     """Load reco_products + the TRAIN half of reco_interactions into Gorse.
 
@@ -998,11 +1135,28 @@ def push_gorse(args) -> None:
             """)
             products = cur.fetchall()
 
-            cur.execute("""
-                SELECT user_id, product_id, feedback_type, ts
-                FROM reco_interactions
-                WHERE split = 'train'
-            """)
+            cohort, cstats = _select_cohort(cur, args.cohort_sample, args.cohort_seed)
+
+            if cstats["mode"] == "all":
+                cur.execute("""
+                    SELECT user_id, product_id, feedback_type, ts
+                    FROM reco_interactions
+                    WHERE split = 'train'
+                """)
+            else:
+                # A temp table beats an IN (...) list of 55K ids by a wide margin
+                # and keeps the plan stable as the cohort grows.
+                cur.execute("CREATE TEMP TABLE _cohort (user_id TEXT PRIMARY KEY) "
+                            "ON COMMIT DROP")
+                psycopg2.extras.execute_values(
+                    cur, "INSERT INTO _cohort (user_id) VALUES %s",
+                    [(u,) for u in cohort], page_size=5000)
+                cur.execute("""
+                    SELECT i.user_id, i.product_id, i.feedback_type, i.ts
+                    FROM reco_interactions i
+                    JOIN _cohort c USING (user_id)
+                    WHERE i.split = 'train'
+                """)
             feedback = cur.fetchall()
 
             cur.execute("SELECT count(*) AS n FROM reco_interactions WHERE split='test'")
@@ -1010,8 +1164,20 @@ def push_gorse(args) -> None:
     finally:
         conn.close()
 
-    print(f"loaded {len(products):,} products, {len(feedback):,} TRAIN events "
-          f"({n_test:,} test events deliberately withheld)")
+    if cstats["mode"] == "all":
+        print(f"loaded {len(products):,} products, {len(feedback):,} TRAIN events "
+              f"({n_test:,} test events deliberately withheld)")
+        print(f"cohort: ALL {cstats['n_all']:,} train users "
+              f"-- run --cohort-report to see why this may not fit")
+    else:
+        print(f"loaded {len(products):,} products, {len(feedback):,} TRAIN events "
+              f"({n_test:,} test events deliberately withheld)")
+        print(f"cohort: {cstats['total']:,} of {cstats['n_all']:,} train users "
+              f"= {cstats['evaluable']:,} evaluable (train+test) "
+              f"+ {cstats['extra_taken']:,} sampled (seed {args.cohort_seed})")
+        print(f"        the sample exists to leave CF a graph with realistic "
+              f"density; it does not affect tags item-to-item, which reads "
+              f"item labels only")
 
     # ── Item labels ──────────────────────────────────────────────────────────
     items, style_hits, colour_hits = [], 0, 0
@@ -1250,6 +1416,18 @@ def main() -> None:
                         "which peaks the evaluable warm cohort)")
     p.add_argument("--push-gorse", action="store_true",
                    help="load reco_products + the TRAIN split into Gorse")
+    p.add_argument("--cohort-sample", type=int, default=None, metavar="N",
+                   help="with --push-gorse: push every evaluable user (those "
+                        "with both train and test events) plus N randomly "
+                        "sampled other train users, instead of all 371K. "
+                        "Materialising a per-user cache for every user does "
+                        "not fit the memory budget; see --cohort-report")
+    p.add_argument("--cohort-seed", type=int, default=20260831,
+                   help="RNG seed for --cohort-sample, so the pushed cohort is "
+                        "reproducible across runs (default: 20260831)")
+    p.add_argument("--cohort-report", action="store_true",
+                   help="print the evaluable-user strata and what each "
+                        "--cohort-sample size would cost, then exit")
     p.add_argument("--verify-gorse", action="store_true",
                    help="cross-check Gorse's counters against Postgres")
     p.add_argument("--sweep-catalogue", metavar="N,N,...",
@@ -1265,9 +1443,13 @@ def main() -> None:
     args = p.parse_args()
 
     if not (args.stats or args.sweep_catalogue or args.build
-            or args.push_gorse or args.verify_gorse):
+            or args.push_gorse or args.verify_gorse or args.cohort_report):
         p.error("pass at least one of --stats, --sweep-catalogue, --build, "
-                "--push-gorse, --verify-gorse")
+                "--push-gorse, --verify-gorse, --cohort-report")
+
+    if args.cohort_report:
+        cohort_report()
+        return
 
     if args.stats:
         run_stats(args)
