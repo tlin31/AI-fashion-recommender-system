@@ -1271,7 +1271,10 @@ def push_gorse(args) -> None:
         reset_gorse_entities()
 
     print(f"\nPushing to Gorse ({GORSE_URL})...")
-    _post_batched("/api/items", items, "items")
+    if args.skip_items:
+        print(f"  items: skipped ({len(items):,} unchanged, --skip-items)")
+    else:
+        _post_batched("/api/items", items, "items")
     _post_batched("/api/feedback", events, "feedback")
     print("\nPush complete.")
 
@@ -1468,6 +1471,13 @@ def main() -> None:
     p.add_argument("--cohort-report", action="store_true",
                    help="print the evaluable-user strata and what each "
                         "--cohort-sample size would cost, then exit")
+    p.add_argument("--skip-items", action="store_true",
+                   help="with --push-gorse: push feedback only, leaving the "
+                        "catalogue as it is. --reset-gorse keeps items, so a "
+                        "re-push with a different cohort re-sends 95K unchanged "
+                        "items for nothing -- and each one costs a separate "
+                        "Redis round-trip inside Gorse (server/rest.go:1240), "
+                        "so it dominates the run")
     p.add_argument("--reset-gorse", action="store_true",
                    help="with --push-gorse: clear Gorse's users and feedback "
                         "first. REQUIRED when shrinking the cohort -- pushing "
