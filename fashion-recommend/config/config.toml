@@ -19,7 +19,19 @@ default_n = 10
 
 [recommend]
 # 推荐配置
-cache_size = 100
+#
+# cache_size 不只是「每用户推荐缓存的条数」—— 它同时是 item-to-item 邻居数
+# (master/tasks.go:633)、user-to-user 邻居数 (:750)、非个性化榜单长度 (:58)
+# 和 CF 召回数 (worker/pipeline.go:341)。所以它是 Redis 内存的总闸门。
+#
+# 100 → 30 让整个工作集降到约 30%，而且**完全不影响模型训练** —— 全部
+# 391,258 条 interaction 照旧参与计算，只是每个列表存短一点。
+#
+# ⚠️ 下限由评估指标决定，不能随便调。Day 3 要算 Recall@20，而 Recommender
+#    会先用 excludeSet 滤掉用户已交互过的商品，所以缓存必须 > 20 才够。
+#    设成 20 会让 Recall@20 在过滤后不足 20 条、被系统性低估，**且不报错**。
+#    30 是留了 10 条余量的下限；要评估更大的 k 必须同步上调。
+cache_size = 30
 cache_expire = "72h"
 context_size = 20
 active_user_ttl = 30
@@ -32,15 +44,28 @@ positive_feedback_ttl = 0
 item_ttl = 0
 
 # 非个性化推荐配置
+#
+# duration() 是 expr 的内建函数，底层走 Go 的 time.ParseDuration，支持的单位
+# 只有 ns/us/ms/s/m/h —— **没有 d**。原来这里写 '7d' / '30d'，运行时报：
+#   evaluate filter function
+#   error: time: unknown unit "d" in duration "30d" (1:26)
+# 于是 trending 和 new_arrivals 两个非个性化召回对每个 item 都失败。这和
+# item-to-item 的 column = "Labels" 是同一个故事：表达式从来没有真正求值过，
+# 每个 item 刷一行错误日志（也是把 Docker 磁盘写满的共犯之一）。
+#
+# new_arrivals 的 score 原来是 float(now() - item.Timestamp) * -1，同样是编译
+# 通过、求值失败：now() - item.Timestamp 得到的是 time.Duration，而 expr 的
+# float() 不接受 Duration（invalid operation: float(time.Duration)）。所以这个
+# 召回是 score 和 filter 双双失效。改用 Duration 自己的 .Seconds()。
 [[recommend.non-personalized]]
 name = "trending"
-score = "len(filter(feedback, {.FeedbackType == 'purchase' && .Timestamp > now() - duration('7d')}))"
+score = "len(filter(feedback, {.FeedbackType == 'purchase' && .Timestamp > now() - duration('168h')}))"
 filter = ""
 
 [[recommend.non-personalized]]
 name = "new_arrivals"
-score = "float(now() - item.Timestamp) * -1"
-filter = "item.Timestamp > now() - duration('30d')"
+score = "-(now() - item.Timestamp).Seconds()"
+filter = "item.Timestamp > now() - duration('720h')"
 
 [[recommend.non-personalized]]
 name = "popular"
@@ -48,10 +73,18 @@ score = "len(filter(feedback, {.FeedbackType == 'purchase'}))"
 filter = ""
 
 # 物品相似度推荐配置
+#
+# column 是一个 expr 表达式，不是列名。它编译时唯一绑定的环境变量在
+# logics/item_to_item.go:199 是 "item"、在 logics/user_to_user.go:167 是 "user"，
+# 所以裸写 "Labels" 是一个无法解析的标识符，master 日志里是：
+#   failed to update item-to-item recommendation
+#   error: unknown name Labels (1:1)
+# 这两个任务因此从来没有真正跑过 —— 而 dashboard 把它们报成
+# Complete 383,460/383,460、耗时 0.0s。任务状态在这里不是成功的证据。
 [[recommend.item-to-item]]
 name = "style_similarity"
 type = "tags"
-column = "Labels"
+column = "item.Labels"
 
 [[recommend.item-to-item]]
 name = "behavior_similarity"
@@ -59,15 +92,39 @@ type = "users"
 column = ""
 
 # 用户相似度推荐配置
-[[recommend.user-to-user]]
-name = "style_match"
-type = "tags"
-column = "Labels"
-
-[[recommend.user-to-user]]
-name = "purchase_pattern"
-type = "items"
-column = ""
+#
+# 注意这里是 user.Labels 不是 item.Labels：user-to-user 的 expr 环境绑的是
+# user（logics/user_to_user.go:112,167），照抄 item 侧的值同样编译不过。
+# 【2026-08-31 临时停用，不是删除】
+#
+# 停用原因是**任务顺序**，不是这个算法没价值：master/tasks.go:215-218 里
+# updateUserToUser 和 updateItemToItem 是**串行**的，且 user-to-user 在前。
+# 它有 1,484,868 个计算单位，把 item-to-item 死死挡在后面 —— Day 2 的 B3
+# 验收（/neighbors 非空）两天没能跑到，就是被它挡的。
+#
+# 而 user-to-user **不在 Day 3 的任何一条评估臂里**（Random / MostPopular /
+# CF / item-to-item / +trait labels，五条都不需要它）。所以这是 148 万单位的
+# 计算在服务一个我们不报告的东西。
+#
+# 更根本的原因：这个语料每用户平均 1.23 次交互、86% 只出现一次、迭代 5-core
+# 为空。两个用户要"相似"得先有共同交互过的商品，在这种稀疏度下几乎不存在 ——
+# 和 CF 失效是同一个原因。**这不是我们换了路线，是数据不支持 user-based 方法**，
+# 而这正是整个项目的论点。
+#
+# ⚠️ 恢复条件：Day 5 做 trait 消融时，style_match 走的是 user.Labels，
+#    而用户标签在 Day 2 刚修好。届时可能需要重新打开它来评估
+#    "trait 通过 user-to-user 生效" 这条路径。恢复时记得同步把
+#    "user-to-user/style_match" 加回 [recommend.fallback]。
+#
+# [[recommend.user-to-user]]
+# name = "style_match"
+# type = "tags"
+# column = "user.Labels"
+#
+# [[recommend.user-to-user]]
+# name = "purchase_pattern"
+# type = "items"
+# column = ""
 
 # 协同过滤配置
 # type must be "mf" (matrix factorization) or "none". Default is "none",
@@ -97,7 +154,7 @@ recommenders = ["collaborative"]
 recommenders = [
     "collaborative",
     "item-to-item/style_similarity",
-    "user-to-user/style_match",
+    # "user-to-user/style_match",   # 随上面一起停用；恢复时两处要同步
     "non-personalized/popular",
     "non-personalized/new_arrivals",
     "latest"

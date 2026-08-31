@@ -1,7 +1,11 @@
 package api
 
 import (
+	"log"
 	"net/http"
+	"time"
+
+	"fashion-recommend/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,6 +28,13 @@ func (s *Server) likeProduct(c *gin.Context) {
 		return
 	}
 
+	// 点赞同时写一条 favorite 反馈给 Gorse。config.toml 的
+	// positive_feedback_types 包含 favorite，所以这条会进模型。
+	//
+	// 失败不影响响应：点赞本身已经落到 Postgres 了，Gorse 是次要目的地，
+	// 让它把一次成功的点赞变成 500 是不对的。
+	s.sendFeedback("favorite", userID, itemID)
+
 	// 获取最新点赞数
 	count, _ := s.db.GetProductLikeCount(itemID)
 
@@ -31,6 +42,24 @@ func (s *Server) likeProduct(c *gin.Context) {
 		"message":    "Product liked successfully",
 		"like_count": count,
 	})
+}
+
+// sendFeedback 尽力向 Gorse 写一条反馈，失败只记日志。
+//
+// 注意取消点赞没有对应的撤销动作 —— GorseClient 目前没有删除反馈的方法，
+// Gorse 侧的 favorite 会留着。这条链路的定位是打通管道，不是训练信号的来源
+// （模型训练用的是 reco_interactions 的 train split），所以先不补。
+func (s *Server) sendFeedback(feedbackType, userID, itemID string) {
+	err := s.gorseClient.InsertFeedback([]models.Feedback{{
+		FeedbackType: feedbackType,
+		UserId:       userID,
+		ItemId:       itemID,
+		Timestamp:    time.Now(),
+	}})
+	if err != nil {
+		log.Printf("写入 Gorse 反馈失败 (%s, user=%s, item=%s): %v",
+			feedbackType, userID, itemID, err)
+	}
 }
 
 // unlikeProduct 取消点赞商品

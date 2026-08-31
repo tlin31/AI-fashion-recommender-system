@@ -1,10 +1,24 @@
 version: '3'
 
+# 日志轮转上限。Gorse master 在 item-to-item 的 column 表达式写错时，每个任务
+# 周期会给 383,460 个 item 各写一行错误日志，每小时一轮，写了好几天，最后把
+# Docker VM 的磁盘写满 —— 表现是 master 退出码 2、docker logs 直接卡死、
+# 连 docker rmi 都清不动。json-file 驱动默认无上限，所以这不是假想的风险。
+#
+# 注意 docker system df 不把日志算进 Containers 的 SIZE 列，所以磁盘满了以后
+# 从 df 上完全看不出来是日志的问题。
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   # PostgreSQL 数据库
   postgres:
     image: postgres:15
     container_name: fashion-postgres
+    logging: *default-logging
     environment:
       POSTGRES_DB: gorse
       POSTGRES_USER: gorse
@@ -20,9 +34,44 @@ services:
       retries: 5
 
   # Redis 缓存（使用 Redis Stack 支持 RediSearch）
+  #
+  # maxmemory 是这里唯一真正重要的护栏。原来跑的是原厂默认 maxmemory=0，
+  # 也就是**无上限**：master 批量写邻居数据时 Redis 一路涨到被内核 SIGKILL
+  # （退出码 137）。对一个只存派生数据的缓存来说，正确的失败模式是**驱逐**
+  # 而不是死亡 —— 降级，不是宕机。
+  #
+  # 压垮它的是 BGSAVE 的 fork：写时复制的开销趋近于再复制一份数据集，
+  # 实测 CoW 峰值 741 MB → 977 MB 且还在涨，而快照耗时 66s → 180s、
+  # 两次快照间隔却始终是 61s（`save 60 10000` 在持续写入下每分钟必触发）。
+  # 快照变慢的速度超过了间隔 = 死亡螺旋。mem_limit 留了 2g 给这个 fork 峰值。
+  #
+  # ⚠️ 驱逐策略是给**服务**用的，不是给**批量构建**用的。批量任务在写整个缓存
+  #    时，LRU 会把刚写进去的东西淘汰掉 —— 工作集一旦超过 maxmemory，这个构建
+  #    **永远不会收敛**，而且全程不报一个错。第一次设 maxmemory=1gb 就撞上了：
+  #    evicted_keys 直接到 24 万，等于邻居数据写进去多少扔掉多少。
+  #
+  #    所以 allkeys-lru 只是兜底（服务期降级好过宕机），真正的要求是
+  #    **maxmemory 大到装得下整个工作集**，并且构建完必须验证：
+  #      docker exec fashion-redis redis-cli INFO stats | grep evicted_keys
+  #    不为 0 的那次 eval 结果作废 —— 驱逐会安静地压低指标，不报错。
+  #
+  # ⚠️ 批量导入期间临时关掉快照，别永久关（Redis 里的东西虽然都能从 Postgres
+  #    重算，但实测要几十分钟）：
+  #      redis-cli CONFIG SET save ""      # 批量前
+  #      redis-cli CONFIG SET save "900 1" && redis-cli BGSAVE   # 批量后
+  # 实测（2026-08-30，Load Dataset 期间采样）：
+  #   master 峰值 1,110 MiB   ← 注意：曾经看到的 2.4 GiB 是它在 Redis 已死、
+  #                              空转重试时的状态，不是正常工作负载
+  #   redis  顶满当时的 2 GiB 上限，且 evicted_keys 已到 24 万
+  # VM 共 7.75 GiB，停掉 rag 那套后总占用约 4 GiB —— 所以 Redis 的瓶颈是
+  # 上限设小了，不是内存不够。
   redis:
     image: redis/redis-stack-server:latest
     container_name: fashion-redis
+    logging: *default-logging
+    mem_limit: 4900m
+    environment:
+      REDIS_ARGS: "--maxmemory 2300mb --maxmemory-policy allkeys-lru"
     ports:
       - "6379:6379"
     volumes:
@@ -34,9 +83,38 @@ services:
       retries: 5
 
   # Gorse Master 节点
+  #
+  # 实测内存（2026-08-30，健康状态下采样 —— 这点很重要，见下）：
+  #   Load Dataset 峰值          1,110 MiB
+  #   user-to-user 工作区间      2.40 – 2.73 GiB   ← 这才是决定上限的数字
+  #
+  # ⚠️ 3g 对 2.73 GiB 的观测峰值只有约 10% 余量，偏紧。Go 不读 cgroup 限制
+  #    （除非设 GOMEMLIMIT），超限不会先激进 GC，而是直接被 OOM 杀掉。
+  #    观察到 master 出现 137 退出码就往 4g 提。
+  #
+  # 【待决 · 2026-08-30】3g 这个值是**临时的，等 item-to-item 的实测峰值再定**。
+  #    那一阶段要在 95,865 个 item 上建 HNSW 索引，尚未采样过，完全可能比
+  #    user-to-user 更吃内存。等 `Generate item-to-item recommendation` 跑完，
+  #    拿分阶段峰值回来敲定这两个上限。
+  #
+  # ⚠️⚠️ 定值时的硬约束：**所有 mem_limit 之和必须留出余量，不能超过 VM 内存。**
+  #    VM 只有 7.75 GiB。master 4g + redis 4.5g = 8.5 GiB 就已经超了 —— 两边
+  #    都以为自己有余量，实际先撞墙的还是内核，等于白设。要提 master 就得同步
+  #    压 redis：例如 master 4g + redis 3.5g + 其余约 0.5g ≈ 8g，仍然偏紧。
+  #    现在 master 无限制所以这个矛盾没暴露，一旦两边都设限就必须一起算。
+  #
+  # 另外记一条踩过的坑：先前记录的「稳态 2.46 GiB」是 master 在 Redis 已死、
+  # 无退避空转重试时的读数 —— 拿一个 bug 的行为做容量规划。**容量基线必须在
+  # 系统健康时采集。**
+  #
+  # 跑批量任务时仍然要停掉 rag-service 那套来保余量：
+  #   docker compose stop milvus kafka minio etcd     # 约 650 MB + Kafka 的 CPU
+  # 它们的状态都在卷里，来回切换无损。
   gorse-master:
     image: zhenghaoz/gorse-master:latest
     container_name: fashion-gorse-master
+    logging: *default-logging
+    mem_limit: 4g
     ports:
       - "8086:8086"
       - "8088:8088"
@@ -55,6 +133,7 @@ services:
   gorse-server:
     image: zhenghaoz/gorse-server:latest
     container_name: fashion-gorse-server
+    logging: *default-logging
     ports:
       - "8087:8087"
     command: 
@@ -70,6 +149,7 @@ services:
   gorse-worker:
     image: zhenghaoz/gorse-worker:latest
     container_name: fashion-gorse-worker
+    logging: *default-logging
     command:
       - --master-host=gorse-master
       - --master-port=8086
@@ -82,6 +162,7 @@ services:
   etcd:
     image: quay.io/coreos/etcd:v3.5.14
     container_name: fashion-milvus-etcd
+    logging: *default-logging
     environment:
       ETCD_AUTO_COMPACTION_MODE: revision
       ETCD_AUTO_COMPACTION_RETENTION: "1000"
@@ -103,6 +184,7 @@ services:
   minio:
     image: minio/minio:RELEASE.2023-03-13T19-46-17Z
     container_name: fashion-milvus-minio
+    logging: *default-logging
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
@@ -131,6 +213,7 @@ services:
   kafka:
     image: bitnamilegacy/kafka:3.7
     container_name: fashion-kafka
+    logging: *default-logging
     ports:
       - "9092:9092" # EXTERNAL — host processes
       - "9093:9093" # INTERNAL — Docker containers (exposed so host can verify)
@@ -155,6 +238,7 @@ services:
   milvus:
     image: milvusdb/milvus:v2.4.0
     container_name: fashion-milvus
+    logging: *default-logging
     command: ["milvus", "run", "standalone"]
     environment:
       ETCD_ENDPOINTS: etcd:2379

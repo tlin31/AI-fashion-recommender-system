@@ -17,7 +17,7 @@ hand-labelled query set with a regression gate, not by inspection.
 |---|---|---|
 | **[rag-service/](rag-service/)** | FastAPI · Milvus · BM25 · GPT-4o-mini | Natural-language product search: guardrail → hybrid retrieval (BM25 + dense, RRF-fused) → CRAG corrective loop → cross-encoder reranker → grounded answer with citations |
 | **[python-agent/](python-agent/)** | LangGraph · FastAPI · PostgreSQL | ReAct agent with multi-turn memory and human-in-the-loop approval before any user preference is written |
-| **[fashion-recommend/](fashion-recommend/)** | Go · Gin · React · PostgreSQL | Domain API over Gorse — auth, social features, LLM trait extraction, and the customer-facing SPA |
+| **[fashion-recommend/](fashion-recommend/README.md)** | Go · Gin · React · PostgreSQL | Domain API over Gorse — auth, social features, LLM trait extraction, and the customer-facing SPA. **[Read its README](fashion-recommend/README.md)** for the sparsity measurement that determined the architecture, the split protocol and why leave-last-out was rejected, and a written-up account of what does not work |
 
 ```
 React SPA ──┬── fashion-recommend :5001 (Go/Gin) ──┬── Gorse :8088  (CF engine)
