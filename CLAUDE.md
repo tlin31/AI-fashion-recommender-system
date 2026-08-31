@@ -212,6 +212,49 @@ rate per prefix. Current state at N=1,000:
 | `material:` | 35 | 27 | free text, known gap |
 | `item_name:`, `price:` | — | ~all | **carriers, not features** — `api/server.go:246` parses them for the API response; removing `price:` would zero out `item.Price` in the frontend |
 
+##### Measured: the scores are compressed, and it is the vocabulary's fault
+
+item-to-item now returns neighbours (`Generate item-to-item recommendation`
+completes), but the scores cannot rank them. Across 50 random items / 330
+scores: the global range is 0.500689–0.510655, sd 0.002123, and the **median
+spread within a single top-10 is 0.000339**. Every score lives in 1% of [0,1].
+
+The label vocabulary explains it. Sampling 3,000 items (5.49 labels each):
+
+| prefix | occurrences | distinct | consequence |
+|---|---|---|---|
+| `item_name` | 2999 | 2186 | near-unique, so it never matches |
+| `brand` | 2993 | 1492 | near-unique |
+| `price_range` | 2999 | **4** | too coarse, ~80% are `mid` |
+| `avg_rating` | 2999 | 25 | too coarse, **and unrelated to similarity** |
+| `style` | 1533 | 6 | only 51% coverage |
+| `color` | 870 | 14 | only 29% coverage |
+
+**The labels that discriminate never match; the labels that match don't
+discriminate.** Two arbitrary items typically share `price_range:mid` plus
+`avg_rating:4.5` — and two items both rated 4.5 are not similar in any sense
+that matters. So `commonCount` and `commonSum` come out nearly equal for every
+pair, and the scores collapse together.
+
+The `(commonCount+100)` shrinkage above was the first suspect and the data
+argues against it: that term *varies* with commonCount (k=2 → 0.020, k=10 →
+0.091, a 4.6× difference), so it creates spread rather than removing it. The
+carrier dilution is real but secondary. **The primary cause is in
+`data/seed_gorse.py`, not in Gorse.**
+
+> **Decided 2026-08-31: fix this after Day 3, not before.** Lock the baseline,
+> branch, change the labels, re-run, report before/after. The Day 3 harness is
+> the instrument — fixing first means changing blind and still needing Day 3 to
+> find out whether it worked. It does not block Day 3 either: the arm will
+> honestly score low, and "why it scores low" is the analysis worth having.
+> Branch it as `feat/item-label-schema`, since the work is feature engineering
+> (drop `avg_rating` as a similarity signal, move `item_name`/`price` off the
+> similarity path, raise `style`/`color` coverage) rather than a bug fix.
+>
+> ⚠️ Never change labels inside a locked baseline round — item-to-item output
+> shifts and the two numbers stop being comparable, the same trap as changing
+> rag-service's corpus under its locked relevance judgments.
+
 **The carriers are not free once tags item-to-item actually runs.** That arm's
 distance (`logics/item_to_item.go:337`) divides the shared-tag weight by
 `sqrt(weightedSum(a)) · sqrt(weightedSum(b))`, and `weightedSum` runs over *all*
