@@ -142,20 +142,22 @@ column = ""
 # 协同过滤配置
 # type must be "mf" (matrix factorization) or "none". Default is "none",
 # which causes Gorse to reject any ranker that lists "collaborative".
-# 【评估期设置】master 的任务 ticker 是 min(collaborative.fit_period,
-# ranker.fit_period)（master/master.go:125）。ranker 原本没设 fit_period，
-# 默认 60 分钟 —— 于是整条链路每小时重算一次全部用户的离线推荐缓存。
+# master 的任务 ticker 是 min(collaborative.fit_period, ranker.fit_period)
+# （master/master.go:125）—— 所以这两个值是一起生效的，单独调一个没有意义。
 #
-# 对评估这是致命的：harness 读缓存读到一半，数据就在脚下变了，而且不会有任何
-# 报错。两个周期都设成 8760h（一年），master 启动时仍会被 RunTasksLoop 预热
-# 触发**一次**完整计算，此后不再自动重跑 —— 正好是评估需要的：先建一次，然后
-# 冻住。
+# ranker 原本**没设** fit_period，会退回 60 分钟默认值，于是整条链路每小时重算
+# 一次全部用户的离线推荐缓存。这不只是浪费：评估 harness 读缓存读到一半，数据
+# 就在脚下变了，而且不会有任何报错。
 #
-# ⚠️ 这个值适合评估，不适合线上。合并回主干前改回 24h / 60m，或者在评估跑完
-#    之后直接停掉 master 容器（server 从 Redis 读，照常提供服务）。
+# 所以这里的还原不是回到「冻结之前」——那个状态本身带着上面这个缺陷。ranker
+# 现在**显式**写成和 collaborative 一样的 24h，恢复的是原本就该有的行为。
+#
+# 评估期间两个值都临时设成 8760h（一年）：master 启动时仍会被 RunTasksLoop
+# 预热触发一次完整计算，此后不再自动重跑 —— 先建一次，然后冻住。要重现某轮
+# 评估就临时改回 8760h，跑完再改回来。
 [recommend.collaborative]
 type = "mf"
-fit_period = "8760h"
+fit_period = "24h"
 fit_epoch = 50
 optimize_period = "168h"
 optimize_trials = 100
@@ -172,7 +174,9 @@ read_replacement_decay = 0.5
 # 推荐排序配置
 [recommend.ranker]
 recommenders = ["collaborative"]
-fit_period = "8760h"   # 见上方 collaborative 的说明；不显式设会退回 60 分钟
+# 必须显式写。不设不是「用 collaborative 的值」，是退回 60 分钟，
+# 而 ticker 取两者的 min —— 所以漏掉这一行会让上面的 24h 完全失效。
+fit_period = "24h"
 
 # 降级推荐配置
 [recommend.fallback]

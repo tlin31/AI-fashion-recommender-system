@@ -153,9 +153,19 @@ evaluated; `--verify-gorse` samples users and asserts no test event reached Gors
    `reco_*` live in the *host* Postgres. Same credentials, different databases.
    Check Gorse's side with
    `docker exec fashion-postgres psql -U gorse -d gorse -c "select count(*) from feedback"`.
-3. **`fit_period = "24h"`** (`config/config.toml:77`), so the CF model does not
+3. **`fit_period = "24h"`** (`fashion-recommend/config/config.toml`, set in *both*
+   `[recommend.collaborative]` and `[recommend.ranker]`), so the CF model does not
    retrain on newly pushed data for up to a day. `docker restart fashion-gorse-master`
    forces a reload.
+
+   The master's task ticker is `min(collaborative.fit_period, ranker.fit_period)`
+   (`master/master.go:125`), so the two values only mean anything together.
+   Omitting the `ranker` one is not "inherit the other" — it falls back to **60
+   minutes**, which silently overrides the 24h next to it and regenerates every
+   user's offline cache hourly. An eval harness reading those caches can then have
+   them change mid-run, with no error. Set both to `8760h` to freeze the loop for
+   an evaluation (`RunTasksLoop` still primes once at startup, so caches are built
+   exactly once), and set both back afterwards.
 
 **`dislike` is stored but not trained on.** `config.toml:29-30` sets
 `positive_feedback_types = ["purchase", "favorite", "add_to_cart"]` and
