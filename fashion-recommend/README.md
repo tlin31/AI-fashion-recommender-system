@@ -161,22 +161,110 @@ regenerate hourly.
 
 ## 4. Evaluation
 
-**Not yet run.** The harness is designed and its disciplines are fixed; the numbers are not
-in yet. What is decided:
+Two rounds, both over the same locked cohort of **162,562 evaluable users** (156,935 cold,
+5,627 warm) and the same 95,335-item catalogue. Round 1 locked the baseline; round 2
+measured a deliberate change to the item label schema (§5.2).
 
-- Metrics: NDCG@10, Recall@10/20, HitRate@10, MRR, plus catalog coverage, Gini,
-  intra-list diversity, novelty
-- Arms: Random, MostPopular, Gorse CF, Gorse item-to-item, and item-to-item with trait labels
-- Every metric reported for warm and cold cohorts **separately** — no single average
-- **Random and MostPopular are computed by the harness from the full interaction table,
-  not from Gorse.** The evaluation cohort has to be sampled to fit a memory ceiling
-  (§5), and a popularity baseline computed from a sampled recommender would move with
-  the sampling — a baseline whose value depends on the independent variable is not a baseline
-- `evicted_keys == 0` is a hard precondition, not a log line: cache eviction silently
-  depresses retrieval metrics without raising an error
+### 4.1 The headline: no personalized arm beats popularity
+
+NDCG@10, cold and warm reported separately — never averaged, because a single number over
+a population that is 96.5% cold is a report about cold-start with a personalization label
+on it.
+
+| arm | cold (156,935) | warm (5,627) |
+|---|---|---|
+| Random | 0.0000 | 0.0000 |
+| **MostPopular** | **0.0192** | **0.0142** |
+| Gorse CF (`/api/recommend`) | 0.0183 | 0.0046 |
+| Gorse item-to-item | 0.0000 | 0.0015 |
+
+Popularity wins in both cohorts. That is the result, not a placeholder for a better one.
+
+Two things make it interpretable rather than merely disappointing:
+
+**On cold users, Gorse CF *is* the fallback.** Its coverage (0.0002), Gini (0.0000) and
+novelty (8.250 vs 8.237) match MostPopular digit-for-digit — it is serving the popularity
+list through `[recommend.fallback]`. It then scores *below* our MostPopular, which is
+precisely the contamination that motivated computing the baselines outside Gorse: a
+popularity baseline read back from a sampled recommender measures the sampling.
+
+**Recall is not ceiling-limited here.** Unlike the sibling rag-service, where Recall@10 is
+structurally capped at 0.7615, this cohort averages 1.02–1.20 relevant items per user, so
+`recall@10_ceiling` is 0.9995+. Nothing about the protocol is holding these numbers down.
+
+### 4.2 What the label restructure moved, and what it did not
+
+§5.2 rebuilt the item label schema. The comparison is trustworthy for one specific reason:
+**Random and MostPopular reproduced bit-for-bit** across the two rounds. They are computed
+in-harness from the host tables, so their invariance proves the cohort, exclude sets,
+relevance data and scoring code did not shift — any movement elsewhere is attributable.
+
+Warm cohort, before → after:
+
+| arm | NDCG@10 | catalog coverage | users with ≥1 hit |
+|---|---|---|---|
+| Gorse CF | 0.0034 → **0.0046** | 0.2636 → **0.3341** | **38 → 55** |
+| Gorse item-to-item | 0.0011 → 0.0015 | 0.3294 → **0.4154** | 14 → 17 |
+
+Cold users did not move at all — every arm identical to four decimal places.
+
+**The effect landed on the endpoint that serves users, not on the arm that was changed.**
+`/api/recommend` gained 17 warm users with a hit (38 → 55, +45%); the item-to-item arm
+itself gained 3 (14 → 17). The path is `[recommend.fallback]`, which lists
+`item-to-item/style_similarity`: better labels reach the main endpoint through the fallback
+chain. Coverage corroborates it — both arms rose by almost exactly the same proportion
+(+26.8% and +26.1%), which is what a shared cause looks like.
+
+**This is not cleanly attributable to labels alone, and is not claimed to be.** Redis lost
+its cache before round 2 (§5.5), so the CF model retrained from scratch — two variables
+moved on the warm cohort. One piece of evidence favours the label contribution: cold users
+are identical digit-for-digit, meaning they never reach CF at all, so the retrain is a
+no-op for them. On warm users the two causes cannot be separated by this experiment.
+
+**item-to-item itself remains unusable, and now we know why it is not the labels.**
+157,473 of 162,562 users get an empty list: they are cold, so there is no seed item whose
+neighbours could be returned. Content similarity answers *"what resembles this item"*; the
+task asks *"what will this person buy next"*. On a corpus where 86% of users appear exactly
+once there is almost no bridge between the two questions. The value of the label work is
+that it eliminates "the labels were broken" as an explanation — the representation is now
+provably sound (§5.2) and the arm is still weak.
+
+### 4.3 Reading numbers this small
+
+The whole item-to-item arm rests on **14 users with a hit before and 17 after**, out of
+162,562. Percentages over counts like that are theatre, so the harness reports the implied
+user count alongside the rate and refuses to gate on strata that cannot support a
+comparison.
+
+That rule exists because this round exposed the gap. The gate initially FAILED on five
+metrics in `warm/train=3-4` — NDCG −68.9%, Recall@20 −84.8% — which at n=212 is **three
+users hitting becoming one**. `ABS_FLOOR = 1e-4` could not catch it: it floors the metric's
+*value*, and 0.0142 is far above 1e-4 while representing three people. The missing guard
+was on the metric's *support*. Strata below 30 hits are now reported in their own section
+with their user counts, and never silenced — a genuine collapse looks identical at that
+size and still needs a human read.
+
+### 4.4 The disciplines, and what each one caught
+
+| discipline | what it caught here |
+|---|---|
+| Baselines computed **outside** Gorse | Cold-user CF is the popularity fallback, scoring below our own MostPopular |
+| Warm cohort **stratified** by training history | 4,768 of 5,627 "warm" users have ONE training event — near-cold, and aggregating them hides it |
+| Denominators from the **source of truth** | Coverage is over the 95,335 seeded items, never Gorse's own count |
+| `evicted_keys == 0` as a **precondition** | Eviction depresses retrieval silently, with no error |
+| Metrics whose **definition changed** get no verdict | `FEATURE_LABEL_PREFIXES` gained `type:`/`cat:`, so ILD moved 0.4028 → 0.3475 over a different feature space. Reported without a direction; the comparable fact is `ild_item_coverage` 88.4% → **100%** |
+| Minimum **support** before gating | The five false failures above |
+
+`recall@10_ceiling` is reported every run for the same reason it mattered in rag-service:
+a target above the ceiling is unreachable, and discovering that after the fact looks like a
+quality problem rather than a measurement one.
 
 For comparison, the sibling rag-service is fully evaluated and locked: NDCG@10 0.8468,
 Recall@10 0.6993 against a structural ceiling of 0.7615, faithfulness 0.9580.
+
+> The baseline is locked at `eval/baseline_metrics.json` (2026-08-31) and is **cohort-bound**.
+> Day 5 changes the cohort for the trait ablation, which requires a fresh lock — the two
+> re-locks are deliberately merged rather than done twice.
 
 ---
 
@@ -273,16 +361,37 @@ Replaying Gorse's own distance offline over all 95,335 eval products:
 | median item's class size | 1,585 items | **4 items** |
 | distinct scores in a top-10 (median) | **1** of 10 | **7** of 10 |
 
-Two notes on honesty:
+That table is an offline replay of Gorse's scoring code, not Gorse's output — the distance
+function is 20 lines and the IDF formula is one, so the whole arm can be simulated on the
+real catalogue before touching the cluster. It found the tie problem in seconds instead of
+after a two-hour run, and that is the habit worth keeping.
 
-- **These are offline replays of Gorse's scoring code, not Gorse's output.** The
-  distance function is 20 lines and the IDF formula is one; simulating them on the real
-  catalogue found the tie problem in seconds instead of after a two-hour cluster run. The
-  end-to-end NDCG before/after is a separate number and is reported separately.
+Confirmed afterwards against the live index, same 50-anchor protocol as the original
+measurement:
+
+| | before | after |
+|---|---|---|
+| anchors with ≥1 neighbour | 33 / 50 | **46 / 50** |
+| global score range | 0.500689–0.510655 | 0.502549–0.523777 |
+| median within-list spread | 0.000339 | **0.002044** |
+| distinct scores in a top-10 (median) | **1** of 10 | **5** of 10 |
+
+Three notes on honesty:
+
+- **The offline replay was optimistic.** It predicted 7 distinct scores; live gives 5. The
+  simulation brute-forced a 20,000-item pool while the real HNSW index holds 95,335, so
+  equivalence classes are ~4.8× larger there and ties are correspondingly more common.
+- **The absolute band is still ~[0.50, 0.52], and that is not a leftover defect.**
+  `Score = 1/(1+d)` with the `(commonCount+100)` shrinkage puts even a strong match near
+  d ≈ 0.96. Ranking ability, not absolute range, was the thing to fix.
 - **Earlier drafts of this section quoted `style` 51% / `color` 29% coverage.** Those came
   from an unordered `LIMIT 3000` against Gorse's items table, which returns the
   first-inserted batch rather than a random sample. Measured over the full catalogue the
   figures are **48.7%** and **62.1%**.
+
+The end-to-end effect is in §4.2, and it did not land where this section was aiming: the
+arm's own NDCG stayed at noise level (14 → 17 users with a hit), while `/api/recommend`
+gained 38 → 55 on the warm cohort through the fallback chain.
 
 What was measured and rejected, since "why not also add X" is the obvious question:
 
@@ -297,7 +406,7 @@ rather than a blind change. Changing labels inside a locked baseline round would
 two numbers incomparable — the same trap as changing rag-service's corpus under its locked
 relevance judgments. One metric does not survive the change and is called out rather than
 quietly re-reported: ILD is now computed over a different feature space, so
-`ild_item_coverage` (79% → 100%) is the comparable fact, not ILD itself.
+`ild_item_coverage` (88.4% → 100%) is the comparable fact, not ILD itself.
 
 ### 5.3 A single machine bounds the evaluation cohort
 
@@ -343,6 +452,53 @@ the relative weight of positive signal.
 
 **The models train on the 391,258 train-split events. A handful of demo clicks changes
 nothing**, and the loop is presented as a wired pipeline, not as a data source.
+
+---
+
+### 5.5 The cache is not the database, until you need it to be
+
+Redis came back empty after a Docker restart, several times. The obvious diagnosis is
+wrong, and the wrong one is expensive: it sends you to raise memory limits.
+
+Snapshotting was never broken. Measured on a healthy container:
+
+```
+Background saving started ... Fork CoW for RDB: peak 37-69 MB ... terminated with success
+total_forks:10   latest_fork_usec:7046   rdb_last_bgsave_status:ok
+/data/dump.rdb   203 MB   dbsize 1,019,868
+```
+
+Saves fire every ~60s, take about a second, and copy-on-write peaks in the tens of MB —
+nowhere near a memory ceiling. What actually happened is that `CONFIG SET save ""` had been
+issued at runtime, to suppress the RediSearch fork GC. **A runtime `CONFIG SET` is not
+written back to the config file**, so the running container silently persisted nothing for
+13 hours while a freshly started one reports a perfectly healthy `save 3600 1 300 100 60
+10000`. That asymmetry is the whole reason it survived several restarts undiagnosed: every
+post-mortem inspection happens on a *new* container, which looks fine.
+
+Nothing unrecoverable is lost — Redis is a cache and Postgres holds items, feedback and
+users — but the rebuild (Load Dataset → train CF → item-to-item → per-user recommendations)
+costs hours, and it silently invalidated a control in the evaluation above (§4.2).
+
+Three needs, three different tools, which are easy to conflate:
+
+| need | tool |
+|---|---|
+| planned restart | `redis-cli SAVE` — blocking, forks nothing, cannot hit the CoW path |
+| unplanned death | periodic RDB gives ≤60s exposure; `appendonly yes` closes it further |
+| a restorable known-good state | `SAVE` then `docker cp fashion-redis:/data/dump.rdb ./snapshot.rdb` |
+
+The third is the one worth adopting before locking an evaluation baseline: it turns
+"reproduce the locked state" from a multi-hour recompute into a file copy.
+
+A diagnostic footnote, because it cost more than the bug did: `docker logs --since
+2026-09-01T11:13:49` interprets a timestamp **without a timezone as local time**. On a
+UTC+1 host that silently widened the window by an hour and swept in the pre-restart period,
+which made a clean migration look like 89,865 broken items. The corrected filter
+(`...11:13:49Z`) showed 530 — exactly the legacy items, all of them outside the eval
+catalogue. Same failure shape as `grep -o 'loading:[01]'` matching `async_loading:0`
+earlier in the project: **a filter looser than the thing it is meant to catch does not fail
+loudly, it returns a confident wrong answer.**
 
 ---
 
