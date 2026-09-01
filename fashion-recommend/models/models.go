@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // User 用户模型。
 //
@@ -21,14 +24,99 @@ type User struct {
 	Subscribe []string `json:"Subscribe,omitempty"`
 }
 
+// ItemLabels 是 Gorse item 标签的 map 形式。
+//
+// Gorse 的 Labels 字段类型是 any，扁平数组和嵌套 map 都收，但两种形式到达的
+// 消费者不同：
+//
+//	tags item-to-item 只读一个分支，由 expr 表达式指名
+//	  （config.toml 里 column = "item.Labels.f"）。logics 的 flatten
+//	  （item_to_item.go:379）接受 []dataset.ID，所以 f 下的字符串数组原样到达，
+//	  而 f 之外的任何东西它都看不见。
+//	CTR 模型读整张 map（ctr.ConvertLabels，model/ctr/data.go:39），
+//	  把 {"brand": "Nike"} 摊平成特征名 brand.Nike。
+//
+// 这个分叉就是全部的修复。扁平 schema 下实测 item-to-item 的分数落在
+// 0.500689–0.510655，单个 top-10 内跨度中位数 0.000339 —— 全部挤在 [0,1] 的
+// 1% 里。原因不在相似度函数：能区分的标签（item_name、brand，近乎唯一）
+// 从不匹配，能匹配的标签（price_range 有 80% 是 mid、avg_rating 25 个粗桶）
+// 不区分。两件任意商品共享的就是 price_range:mid 加 avg_rating:4.5，
+// 而两件都被打 4.5 分的商品在任何购物者认得的意义上都不相似。
+//
+// Brand / PriceRange / AvgRating 没有被删掉，只是移出了 f。它们是合法的 CTR
+// 特征（FM 能学 brand 的 embedding），只是从来就不该当相似度信号用。
+// 「移出相似度路径」和「删除」是两句不同的话。
+type ItemLabels struct {
+	// Features 是唯一走相似度路径的分支：type: / cat: / style: / color: /
+	// occasion: / material:
+	Features   []string `json:"f"`
+	Brand      string   `json:"brand,omitempty"`
+	PriceRange string   `json:"price_range,omitempty"`
+	// AvgRating 是字符串而不是数字，这是刻意的。map 键下的 JSON 数值两个模型
+	// 都读不到 —— ctr.convertLabels 没有 float64 分支（gorm 的 json
+	// serializer 解成 float64，不是 json.Number），flatten 也直接忽略数值叶子。
+	// 写成数字会得到一个看起来像特征、实际完全惰性的字段。
+	AvgRating string `json:"avg_rating,omitempty"`
+}
+
+// UnmarshalJSON 同时接受扁平数组和 map 两种形式。
+//
+// 重新 seed 目录要跑几十分钟，期间 Gorse 里两种形式的 item 会共存；解码器只认
+// 一种的话，API 会在这段时间里对着一半的商品报错。扁平数组按它历史上的语义
+// 处理：全部当作特征。
+func (l *ItemLabels) UnmarshalJSON(b []byte) error {
+	if len(b) > 0 && b[0] == '[' {
+		var flat []string
+		if err := json.Unmarshal(b, &flat); err != nil {
+			return err
+		}
+		l.Features = flat
+		return nil
+	}
+	type alias ItemLabels // 避免递归调用自己
+	var a alias
+	if err := json.Unmarshal(b, &a); err != nil {
+		return err
+	}
+	*l = ItemLabels(a)
+	return nil
+}
+
+// ItemCarrier 是随 Item.Comment 走的载体数据：前端要、但任何模型都不该看见的东西。
+//
+// item_name 和 price 原本是标签，那是放错了字段。它们不是特征 —— 存在的理由是
+// api/server.go 的 enrichment 要给前端填名字和价格 —— 但待在 Labels 里就会被
+// 当特征计费。在 tags 路径上它们还是最坏的一类：两者都近乎唯一，IDF 各约
+// log(95335) ≈ 11.5，而一个真正共享的 style 标签只有约 1.5；而距离函数
+// （item_to_item.go:337）除以的是该商品**全部**标签权重和的平方根。两个载体
+// 给分母加了约 23，真特征几乎推不动它。
+//
+// 选 Comment 是因为它被证实是惰性的：在 logics/ master/ model/ dataset/ 里
+// grep `.Comment` 没有任何结果。没有任何推荐器会读的存储，正是载体想要的。
+type ItemCarrier struct {
+	Name  string   `json:"name"`
+	Price *float64 `json:"price"`
+	Desc  string   `json:"desc"`
+}
+
+// ParseItemCarrier 解析 Comment。解析失败不是错误：Comment 历史上存的是纯
+// 描述文本，而且它本来就是自由字段。这种情况把整段当描述，名字和价格留空。
+func ParseItemCarrier(comment string) ItemCarrier {
+	var c ItemCarrier
+	if err := json.Unmarshal([]byte(comment), &c); err != nil {
+		return ItemCarrier{Desc: comment}
+	}
+	return c
+}
+
 // Item 商品模型
 type Item struct {
-	ItemId     string    `json:"ItemId"`
-	IsHidden   bool      `json:"IsHidden"`
-	Categories []string  `json:"Categories"`
-	Labels     []string  `json:"Labels"`
-	Comment    string    `json:"Comment,omitempty"`
-	Timestamp  time.Time `json:"Timestamp"`
+	ItemId     string     `json:"ItemId"`
+	IsHidden   bool       `json:"IsHidden"`
+	Categories []string   `json:"Categories"`
+	Labels     ItemLabels `json:"Labels"`
+	Comment    string     `json:"Comment,omitempty"`
+	Timestamp  time.Time  `json:"Timestamp"`
 }
 
 // Feedback 反馈模型。
@@ -48,10 +136,10 @@ type Feedback struct {
 
 // RecommendRequest 推荐请求
 type RecommendRequest struct {
-	UserId   string   `json:"user_id"`
-	N        int      `json:"n"`
-	Category string   `json:"category,omitempty"`
-	Offset   int      `json:"offset,omitempty"`
+	UserId   string `json:"user_id"`
+	N        int    `json:"n"`
+	Category string `json:"category,omitempty"`
+	Offset   int    `json:"offset,omitempty"`
 }
 
 // RecommendResponse 推荐响应
@@ -135,7 +223,7 @@ func NewFashionItem(itemId string) *FashionItemBuilder {
 			ItemId:     itemId,
 			IsHidden:   false,
 			Categories: make([]string, 0),
-			Labels:     make([]string, 0),
+			Labels:     ItemLabels{Features: make([]string, 0)},
 			Timestamp:  time.Now(),
 		},
 	}
@@ -147,42 +235,42 @@ func (b *FashionItemBuilder) WithCategories(categories ...string) *FashionItemBu
 }
 
 func (b *FashionItemBuilder) WithBrand(brand string) *FashionItemBuilder {
-	b.item.Labels = append(b.item.Labels, "brand:"+brand)
+	b.item.Labels.Brand = brand
 	return b
 }
 
 func (b *FashionItemBuilder) WithSeason(season string) *FashionItemBuilder {
-	b.item.Labels = append(b.item.Labels, "season:"+season)
+	b.item.Labels.Features = append(b.item.Labels.Features, "season:"+season)
 	return b
 }
 
 func (b *FashionItemBuilder) WithStyle(styles ...string) *FashionItemBuilder {
 	for _, style := range styles {
-		b.item.Labels = append(b.item.Labels, "style:"+style)
+		b.item.Labels.Features = append(b.item.Labels.Features, "style:"+style)
 	}
 	return b
 }
 
 func (b *FashionItemBuilder) WithColor(colors ...string) *FashionItemBuilder {
 	for _, color := range colors {
-		b.item.Labels = append(b.item.Labels, "color:"+color)
+		b.item.Labels.Features = append(b.item.Labels.Features, "color:"+color)
 	}
 	return b
 }
 
 func (b *FashionItemBuilder) WithMaterial(material string) *FashionItemBuilder {
-	b.item.Labels = append(b.item.Labels, "material:"+material)
+	b.item.Labels.Features = append(b.item.Labels.Features, "material:"+material)
 	return b
 }
 
 func (b *FashionItemBuilder) WithPriceRange(priceRange string) *FashionItemBuilder {
-	b.item.Labels = append(b.item.Labels, "price_range:"+priceRange)
+	b.item.Labels.PriceRange = priceRange
 	return b
 }
 
 func (b *FashionItemBuilder) WithOccasion(occasions ...string) *FashionItemBuilder {
 	for _, occasion := range occasions {
-		b.item.Labels = append(b.item.Labels, "occasion:"+occasion)
+		b.item.Labels.Features = append(b.item.Labels.Features, "occasion:"+occasion)
 	}
 	return b
 }

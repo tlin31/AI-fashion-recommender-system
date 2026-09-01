@@ -25,13 +25,33 @@ import (
 // dashboard 依然把任务报成 Complete —— 静默到把 Docker 磁盘写满才被发现。
 const fashionConfigPath = "../fashion-recommend/config/config.toml"
 
+// fashionSampleItem 的 Labels 用的是 map 形式，因为 data.Item.Labels 的类型
+// 是 any，而 seeder 现在写进去的就是 map（见 models.ItemLabels）。
+//
+// 这里刻意用 []any 而不是 []string：Labels 从 Postgres 出来要经过
+// gorm 的 json serializer 反序列化进一个 any，结果必然是
+// map[string]any{"f": []any{...}}。写成 []string 会让测试跑在一个生产中
+// 不存在的类型上。
 func fashionSampleItem() data.Item {
 	return data.Item{
-		ItemId:     "B00006XXGO",
-		Timestamp:  time.Now().Add(-24 * time.Hour),
-		Labels:     []string{"style:minimalist", "color:white"},
+		ItemId:    "B00006XXGO",
+		Timestamp: time.Now().Add(-24 * time.Hour),
+		Labels: map[string]any{
+			"f":           []any{"type:t-shirt", "cat:tops", "style:minimalist", "color:white"},
+			"brand":       "uniqlo",
+			"price_range": "mid",
+			"avg_rating":  "4.5",
+		},
 		Categories: []string{"fashion"},
 	}
+}
+
+// fashionLegacyFlatItem 是重新 seed 之前的形状。留着不是为了兼容，而是为了
+// 把「seed 没跑完」这个故障形态钉在测试里 —— 见 TestFashionColumnRejectsFlatLabels。
+func fashionLegacyFlatItem() data.Item {
+	item := fashionSampleItem()
+	item.Labels = []any{"style:minimalist", "color:white"}
+	return item
 }
 
 func fashionSampleFeedback() []data.Feedback {
@@ -85,6 +105,26 @@ func TestFashionNonPersonalizedExpressions(t *testing.T) {
 // user-to-user 绑 user（logics/user_to_user.go:112,167）。把 item 侧的
 // "item.Labels" 照抄到 user-to-user 编译不过，反之亦然 —— 这正是原来两处
 // 都写成裸 "Labels" 时没人发现的原因：错得一样，所以看起来一致。
+// TestFashionColumnRejectsFlatLabels 断言 column = "item.Labels.f" 碰上扁平
+// 标签时是**运行时**失败，不是编译失败。
+//
+// 这个区别是 Day 2 那三个 bug 的核心教训在标签重构上的重演：编译期检查在这里
+// 什么都抓不到（表达式本身合法，item.Labels 的静态类型是 any），错误只在每个
+// item 求值时才出现 —— 而那种错误 Gorse 会一个 item 刷一行日志，把任务照常
+// 报成 Complete。所以重新 seed 只完成一半的后果不是「一半商品没有邻居」，
+// 而是整个任务在日志里安静地失败。
+func TestFashionColumnRejectsFlatLabels(t *testing.T) {
+	program, err := expr.Compile(`item.Labels.f`,
+		expr.Env(map[string]any{"item": data.Item{}}))
+	require.NoError(t, err, "编译期看不出问题 —— 这正是重点")
+
+	_, err = expr.Run(program, map[string]any{"item": fashionLegacyFlatItem()})
+	require.Error(t, err, "扁平标签必须在求值时失败，否则这条保护形同虚设")
+
+	_, err = expr.Run(program, map[string]any{"item": fashionSampleItem()})
+	require.NoError(t, err)
+}
+
 func TestFashionSimilarityColumns(t *testing.T) {
 	cfg, err := LoadConfig(fashionConfigPath)
 	require.NoError(t, err)

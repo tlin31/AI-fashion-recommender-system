@@ -153,9 +153,19 @@ evaluated; `--verify-gorse` samples users and asserts no test event reached Gors
    `reco_*` live in the *host* Postgres. Same credentials, different databases.
    Check Gorse's side with
    `docker exec fashion-postgres psql -U gorse -d gorse -c "select count(*) from feedback"`.
-3. **`fit_period = "24h"`** (`config/config.toml:77`), so the CF model does not
+3. **`fit_period = "24h"`** (`fashion-recommend/config/config.toml`, set in *both*
+   `[recommend.collaborative]` and `[recommend.ranker]`), so the CF model does not
    retrain on newly pushed data for up to a day. `docker restart fashion-gorse-master`
    forces a reload.
+
+   The master's task ticker is `min(collaborative.fit_period, ranker.fit_period)`
+   (`master/master.go:125`), so the two values only mean anything together.
+   Omitting the `ranker` one is not "inherit the other" — it falls back to **60
+   minutes**, which silently overrides the 24h next to it and regenerates every
+   user's offline cache hourly. An eval harness reading those caches can then have
+   them change mid-run, with no error. Set both to `8760h` to freeze the loop for
+   an evaluation (`RunTasksLoop` still primes once at startup, so caches are built
+   exactly once), and set both back afterwards.
 
 **`dislike` is stored but not trained on.** `config.toml:29-30` sets
 `positive_feedback_types = ["purchase", "favorite", "add_to_cart"]` and
@@ -197,82 +207,114 @@ the table size**. Every seed run prints both numbers.
 
 #### Item label schema
 
-Gorse indexes a label only on its **second** occurrence (`master/tasks.go:307-330`);
-singletons are dropped and never reach the CTR model. `--dry-run` reports the drop
-rate per prefix. Current state at N=1,000:
+Item labels are a **map**, not a flat array, and the shape is the whole point.
+Gorse's `Labels` field is `any` and the two consumers read different parts:
 
-| prefix | distinct | dropped | note |
-|---|---|---|---|
-| `style:` | 6 | 0 | heuristic tags, 68.9% of items covered |
-| `color:` | 10 | 0 | canonical palette, 49.4% covered |
-| `price_range:` | 4 | 0 | includes `unknown` |
-| `occasion:` | 24 | 6 | |
-| `avg_rating:` | 18 | 2 | rounded to 1 dp to bound cardinality |
-| `brand:` | 649 | 538 | long tail — dropping singletons is correct |
-| `material:` | 35 | 27 | free text, known gap |
-| `item_name:`, `price:` | — | ~all | **carriers, not features** — `api/server.go:246` parses them for the API response; removing `price:` would zero out `item.Price` in the frontend |
+| written to | read by | how |
+|---|---|---|
+| `Labels.f` | tags item-to-item **only** | `column = "item.Labels.f"`; `flatten` (`logics/item_to_item.go:379`) takes `[]dataset.ID` |
+| the whole map | the CTR model | `ctr.ConvertLabels` (`model/ctr/data.go:39`) flattens `{"brand":"Nike"}` to the feature `brand.Nike` |
+| `Comment` | nothing | grep `.Comment` across `logics/ master/ model/ dataset/` returns zero hits |
 
-##### Measured: the scores are compressed, and it is the vocabulary's fault
+```json
+Labels  = {"f": ["type:t-shirt", "cat:tops", "style:casual", "color:black",
+                 "audience:women", "sleeve:short"],
+           "brand": "zara", "price_range": "mid", "avg_rating": "4.5"}
+Comment = "{\"name\": \"...\", \"price\": 12.34, \"desc\": \"...\"}"
+```
 
-item-to-item now returns neighbours (`Generate item-to-item recommendation`
-completes), but the scores cannot rank them. Across 50 random items / 330
-scores: the global range is 0.500689–0.510655, sd 0.002123, and the **median
-spread within a single top-10 is 0.000339**. Every score lives in 1% of [0,1].
+**Off the similarity path is not the same as deleted.** `brand` and
+`price_range` are legitimate CTR features — an FM can learn a brand embedding —
+they were only ever wrong as *similarity* signals.
 
-The label vocabulary explains it. Sampling 3,000 items (5.49 labels each):
+##### Why: the flat schema fed similarity 99.94% noise
 
-| prefix | occurrences | distinct | consequence |
-|---|---|---|---|
-| `item_name` | 2999 | 2186 | near-unique, so it never matches |
-| `brand` | 2993 | 1492 | near-unique |
-| `price_range` | 2999 | **4** | too coarse, ~80% are `mid` |
-| `avg_rating` | 2999 | 25 | too coarse, **and unrelated to similarity** |
-| `style` | 1533 | 6 | only 51% coverage |
-| `color` | 870 | 14 | only 29% coverage |
+Of the **107,747** distinct label strings the flat schema put on the similarity
+path, **107,686 were `item_name` / `brand` / `price`** — near-unique carriers.
+Sixty-one strings were actual features. Carriers have IDF ≈ `log(95335)` ≈ 11.5
+each against ≈ 1.9 for `cat:`, and the distance function
+(`logics/item_to_item.go:337`) divides by `sqrt` of the weighted sum over *all*
+of an item's tags, so two carriers dominated a norm the real features could not
+move. Result: every live score in **0.500689–0.510655**, within-list spread
+0.000339.
 
-**The labels that discriminate never match; the labels that match don't
-discriminate.** Two arbitrary items typically share `price_range:mid` plus
-`avg_rating:4.5` — and two items both rated 4.5 are not similar in any sense
-that matters. So `commonCount` and `commonSum` come out nearly equal for every
-pair, and the scores collapse together.
+> `Score = 1/(1+distance)` (`item_to_item.go:127`), so 0.5007 means distance
+> 0.997 — as close to "no shared signal at all" as the function goes. That
+> conversion is what makes the live numbers legible; without it 0.50 looks like
+> a middling similarity rather than a floor.
 
-The `(commonCount+100)` shrinkage above was the first suspect and the data
-argues against it: that term *varies* with commonCount (k=2 → 0.020, k=10 →
-0.091, a 4.6× difference), so it creates spread rather than removing it. The
-carrier dilution is real but secondary. **The primary cause is in
-`data/seed_gorse.py`, not in Gorse.**
+##### Measured before/after, over all 95,335 eval products
 
-> **Decided 2026-08-31: fix this after Day 3, not before.** Lock the baseline,
-> branch, change the labels, re-run, report before/after. The Day 3 harness is
-> the instrument — fixing first means changing blind and still needing Day 3 to
-> find out whether it worked. It does not block Day 3 either: the arm will
-> honestly score low, and "why it scores low" is the analysis worth having.
-> Branch it as `feat/item-label-schema`, since the work is feature engineering
-> (drop `avg_rating` as a similarity signal, move `item_name`/`price` off the
-> similarity path, raise `style`/`color` coverage) rather than a bug fix.
->
-> ⚠️ Never change labels inside a locked baseline round — item-to-item output
-> shifts and the two numbers stop being comparable, the same trap as changing
-> rag-service's corpus under its locked relevance judgments.
+Replaying Gorse's own distance offline (same IDF formula as
+`dataset.GetItemColumnValuesIDF`, `dataset/dataset.go:196`):
 
-**The carriers are not free once tags item-to-item actually runs.** That arm's
-distance (`logics/item_to_item.go:337`) divides the shared-tag weight by
-`sqrt(weightedSum(a)) · sqrt(weightedSum(b))`, and `weightedSum` runs over *all*
-of an item's tags. `item_name:` and `price:` are near-unique per item, so their
-IDF is ≈ `log(95335) ≈ 11.5` each, against ≈ 1.5 for a genuinely shared
-`style:` tag. Two carriers therefore contribute ~23 to a norm that the real
-features barely move, pushing every pair's similarity toward the maximum
-distance. Expect non-empty neighbours with compressed, weakly-separated scores;
-report "neighbours exist" and "scores are usable" as two separate findings.
+| | flat schema | map schema |
+|---|---|---|
+| items with an empty feature set | 21.0% | **0.0%** |
+| distinct feature strings | 16 | **182** |
+| equivalence classes | 1,564 | **39,915** |
+| median item's class size | 1,585 items | **4 items** |
+| distinct scores in a top-10 (median) | **1** of 10 | **7** of 10 |
 
-Fixing it properly means restructuring item labels into map form so the
-features and the carriers sit on different paths (`column = "item.Labels.f"`),
-which requires re-seeding the catalogue — deliberately out of Day 2's scope.
-Note that the map form is not free either: `dataset.processLabels` turns a
-numeric leaf into a value that `logics`' `flatten` does not handle, so anything
-placed under a numeric key disappears from tags similarity entirely.
+##### Two findings that changed the design mid-way
 
-Two content-tagging assumptions, both heuristic rather than ground truth:
+**1. The raw `category` column was being thrown away.** It has 106 values, 100%
+coverage and 2 singletons — by far the best feature in the catalogue — and
+`_normalise_category` collapsed it to 12 buckets for Gorse's `Categories` field
+and then discarded the detail. Both levels are now labels (`type:` and `cat:`),
+and keeping both is what lets Jaccard express "somewhat alike" at all: a shared
+label is binary, so a flat vocabulary has two rungs and a two-level taxonomy has
+three — same type > same category > unrelated.
+
+**2. `type`+`cat`+`style`+`color` alone swapped one failure for another.** It
+removed the compression and produced **exact ties**: the median item landed in an
+equivalence class of 66 byte-identical feature sets, 80.5% of the catalogue sat
+in a class of ≥10, so a top-10 was one class at distance 0 ordered arbitrarily by
+the ANN index. Six attribute dimensions read out of the product title
+(`audience` 82%, `sleeve` 29%, `pattern` 21%, `fit` 18%, `neck` 12%,
+`length` 10% — see `ATTRIBUTE_KEYWORDS`) cut the median class to 4 and took a
+top-10 from 1 distinct score to 7.
+
+> This was found by replaying the distance function offline, not by a two-hour
+> Gorse run. Worth keeping as a habit: the scoring code is 20 lines and the IDF
+> formula is one line, so the whole arm can be simulated on the real catalogue
+> before touching the cluster.
+
+##### Rejected, with the measurement
+
+| candidate | measured | why not |
+|---|---|---|
+| `brand`, floored at ≥10 items | 55.3% coverage, 1,733 values; median class 3→2, +1 distinct score | IDF ≈ 7.5 reproduces the carrier dynamic for almost nothing |
+| price deciles | **11.9%** of the eval catalogue has a price at all | not viable |
+| `avg_rating` | 100% coverage | **coverage is not relevance** — two items rated 4.5 are not similar |
+
+##### Things that will silently break this
+
+- **`"f"` is a literal string in three places** — `config.toml`'s `column`,
+  `models.ItemLabels`'s json tag, and `seed_gorse.build_item_labels`. Renaming
+  one makes item-to-item fail on every item while the dashboard reports
+  `Complete`. `models_wire_test.go` asserts the key.
+- **`avg_rating` must stay a string.** A JSON number under a map key reaches
+  *neither* model: `ctr.convertLabels` has no `float64` branch (gorm's json
+  serializer decodes into `float64`, not `json.Number`) and `flatten` ignores
+  numeric leaves. It would look like a feature and be inert.
+- **Flat labels fail at *runtime*, not compile time.** `item.Labels.f` against a
+  `[]string` compiles fine and then errors per item — the Day 2 failure mode
+  exactly. `config/fashion_config_test.go`'s `TestFashionColumnRejectsFlatLabels`
+  pins this, which is what makes an incomplete re-seed loud instead of silent.
+- **`_feature_labels` on a dict must not iterate keys.** `frozenset(l for l in
+  some_dict)` yields `"f"`, `"brand"`, … — none match a prefix, so ILD returns a
+  clean **0.0 at full-looking coverage**. Pinned in `eval/test_metrics.py`.
+
+##### The two seeders had already drifted
+
+`seed_gorse.py` emitted `occasion:` and `material:`; `build_interactions.py`
+never did. Since the 95,335-product eval catalogue is built by the latter, the
+harness's `FEATURE_LABEL_PREFIXES` named two prefixes that appeared on **zero**
+of the items it scored. `build_interactions.py` now imports the schema rather
+than restating it.
+
+Two content-tagging assumptions remain heuristic rather than ground truth:
 
 - **`style:`** — `rag_products` has no style column, so labels come from keyword
   matching over name + description. The six classes mirror `traits/extractor.go`
@@ -286,6 +328,28 @@ Two content-tagging assumptions, both heuristic rather than ground truth:
 `"mid"` to every price-less product. 68% of the catalogue has no price, so 672 of
 803 `mid` items at N=1,000 actually meant "no data". normalize.py belongs to
 rag-service, whose eval baseline is locked, so this is corrected at seed time.
+
+##### Re-seeding after a label change
+
+Items only — the train events are unchanged and re-posting costs one Redis
+round-trip each (`server/rest.go:1240`):
+
+```bash
+python3 data/build_interactions.py --push-gorse --skip-feedback
+docker restart fashion-gorse-master     # forces a dataset reload
+```
+
+`--skip-feedback` refuses to run with `--reset-gorse`: that pair deletes the
+feedback it then declines to restore, and the failure is silent — the push
+reports success, every recommender falls back, and the eval reads it as a model
+quality collapse rather than as missing data.
+
+⚠️ **ILD is not comparable across this change.** `FEATURE_LABEL_PREFIXES` gained
+`type:`/`cat:`, so the metric is computed over a different feature space. The
+comparable fact is `ild_item_coverage` going 79% → 100%. Same rule as always:
+never change labels inside a locked baseline round without saying which numbers
+stopped being comparable.
+
 
 #### User label schema — three bugs, not one
 
@@ -418,15 +482,29 @@ failed to update item-to-item recommendation
 error: unknown name Labels (1:1)
 ```
 
-Correct values are `item.Labels` for `[[recommend.item-to-item]] style_similarity`
+The Day 2 fix was `item.Labels` for `[[recommend.item-to-item]] style_similarity`
 and **`user.Labels`** for `[[recommend.user-to-user]] style_match` — the two envs
 bind different variables, so copying the item-to-item value across does not
 compile either.
 
+> The item side has since moved on to `item.Labels.f` (see the item label schema
+> section). The user side is still `user.Labels`, because user labels are still a
+> flat array.
+
 Flat `[]string` labels do work here: `dataset.processLabels`
 (`dataset/dataset.go:366`) converts a string array to `[]ID`, which is one of the
-three types `logics`' `flatten` accepts. No re-seeding is needed for the fix
-itself.
+three types `logics`' `flatten` accepts. No re-seeding was needed for the Day 2
+fix itself — the later `.f` change is what required one.
+
+**The failure mode changes with the depth of the expression, and this is the
+part worth remembering.** A bare `Labels` fails at *compile* time, so it is
+caught by any check that merely compiles. `item.Labels.f` against flat labels
+compiles cleanly — `data.Item.Labels` is `any`, so expr defers the member access
+to runtime — and then errors on every single item, which is the quiet variant:
+one log line per item, task reported `Complete`.
+`config/fashion_config_test.go` therefore *evaluates* rather than compiles, and
+`TestFashionColumnRejectsFlatLabels` asserts that specific runtime failure so an
+incomplete re-seed is loud.
 
 > **The dashboard reported these failing tasks as `Complete 383,460/383,460` in
 > `0.0s`.** Task status is not evidence here; the error existed only in

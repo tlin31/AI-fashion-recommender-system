@@ -81,10 +81,23 @@ filter = ""
 #   error: unknown name Labels (1:1)
 # 这两个任务因此从来没有真正跑过 —— 而 dashboard 把它们报成
 # Complete 383,460/383,460、耗时 0.0s。任务状态在这里不是成功的证据。
+#
+# 指到 .f 这一个分支，而不是整张 Labels。这是标签重构的落点：
+# item labels 现在是 map 形式，f 下只放真正的相似度特征
+# （type: / cat: / style: / color:），brand / price_range / avg_rating 留在
+# f 之外，还能被 CTR 模型读到，但相似度看不见它们。
+#
+# 为什么这样切：扁平 schema 下实测 330 个相似度分数全部落在
+# 0.500689–0.510655，单个 top-10 内的跨度中位数只有 0.000339。原因不是
+# 相似度函数，是词表 —— 能区分的标签（item_name / brand，近乎唯一）从不匹配，
+# 能匹配的标签（price_range 80% 是 mid、avg_rating 25 个粗桶）不区分。
+#
+# ⚠️ "f" 是字面量，和 models.ItemLabels 的 json tag 必须一致。
+# models_wire_test.go 的 TestItemWireFormat 断言了这个 key。
 [[recommend.item-to-item]]
 name = "style_similarity"
 type = "tags"
-column = "item.Labels"
+column = "item.Labels.f"
 
 [[recommend.item-to-item]]
 name = "behavior_similarity"
@@ -129,6 +142,19 @@ column = ""
 # 协同过滤配置
 # type must be "mf" (matrix factorization) or "none". Default is "none",
 # which causes Gorse to reject any ranker that lists "collaborative".
+# master 的任务 ticker 是 min(collaborative.fit_period, ranker.fit_period)
+# （master/master.go:125）—— 所以这两个值是一起生效的，单独调一个没有意义。
+#
+# ranker 原本**没设** fit_period，会退回 60 分钟默认值，于是整条链路每小时重算
+# 一次全部用户的离线推荐缓存。这不只是浪费：评估 harness 读缓存读到一半，数据
+# 就在脚下变了，而且不会有任何报错。
+#
+# 所以这里的还原不是回到「冻结之前」——那个状态本身带着上面这个缺陷。ranker
+# 现在**显式**写成和 collaborative 一样的 24h，恢复的是原本就该有的行为。
+#
+# 评估期间两个值都临时设成 8760h（一年）：master 启动时仍会被 RunTasksLoop
+# 预热触发一次完整计算，此后不再自动重跑 —— 先建一次，然后冻住。要重现某轮
+# 评估就临时改回 8760h，跑完再改回来。
 [recommend.collaborative]
 type = "mf"
 fit_period = "24h"
@@ -148,6 +174,9 @@ read_replacement_decay = 0.5
 # 推荐排序配置
 [recommend.ranker]
 recommenders = ["collaborative"]
+# 必须显式写。不设不是「用 collaborative 的值」，是退回 60 分钟，
+# 而 ticker 取两者的 min —— 所以漏掉这一行会让上面的 24h 完全失效。
+fit_period = "24h"
 
 # 降级推荐配置
 [recommend.fallback]
