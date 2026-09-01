@@ -1149,6 +1149,17 @@ def push_gorse(args) -> None:
     numbers would look good and mean nothing. The WHERE clause below is the
     single most important line in this function.
     """
+    # Validated before anything is read, so --dry-run reports it too. A guard
+    # that only fires on the real run is a guard you find out about at the worst
+    # possible moment.
+    if args.reset_gorse and args.skip_feedback:
+        raise SystemExit(
+            "--reset-gorse deletes the feedback that --skip-feedback then "
+            "declines to restore. That combination empties Gorse silently: the "
+            "push reports success, every recommender falls back to "
+            "non-personalized, and the eval reads it as a model quality "
+            "collapse rather than as missing data.")
+
     import psycopg2
     import psycopg2.extras
 
@@ -1275,6 +1286,13 @@ def push_gorse(args) -> None:
         print("\n--dry-run: nothing pushed.")
         return
 
+    if args.reset_gorse and args.skip_feedback:
+        raise SystemExit(
+            "--reset-gorse deletes the feedback that --skip-feedback then "
+            "declines to restore. That combination empties Gorse silently: the "
+            "push reports success, every recommender falls back, and the eval "
+            "reads it as a model quality collapse.")
+
     if args.reset_gorse:
         print("\nClearing Gorse users + feedback (items kept)...")
         reset_gorse_entities()
@@ -1284,7 +1302,10 @@ def push_gorse(args) -> None:
         print(f"  items: skipped ({len(items):,} unchanged, --skip-items)")
     else:
         _post_batched("/api/items", items, "items")
-    _post_batched("/api/feedback", events, "feedback")
+    if args.skip_feedback:
+        print(f"  feedback: skipped ({len(events):,} unchanged, --skip-feedback)")
+    else:
+        _post_batched("/api/feedback", events, "feedback")
     print("\nPush complete.")
 
 
@@ -1480,6 +1501,14 @@ def main() -> None:
     p.add_argument("--cohort-report", action="store_true",
                    help="print the evaluable-user strata and what each "
                         "--cohort-sample size would cost, then exit")
+    p.add_argument("--skip-feedback", action="store_true",
+                   help="push items but not feedback. The mirror of "
+                        "--skip-items, for a label-schema change: the item "
+                        "payloads are new but the 391,258 train events are "
+                        "byte-identical, and re-posting them costs one Redis "
+                        "round-trip each for no change. NOT safe with "
+                        "--reset-gorse, which deletes the feedback this would "
+                        "then decline to restore.")
     p.add_argument("--skip-items", action="store_true",
                    help="with --push-gorse: push feedback only, leaving the "
                         "catalogue as it is. --reset-gorse keeps items, so a "
