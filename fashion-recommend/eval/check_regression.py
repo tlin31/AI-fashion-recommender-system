@@ -68,6 +68,38 @@ NEVER_COMPARED = (
 # signal. Absolute movements smaller than this are reported but never failed.
 ABS_FLOOR = 1e-4
 
+# A relative drop is only meaningful if enough users actually succeeded. This
+# floor is on the SUPPORT behind the metric, not on the metric's value, and the
+# two are not the same guard -- ABS_FLOOR does not catch this case.
+#
+# Measured on the label-schema round: GorseItemToItem/warm/train=3-4 reported
+# hit_rate@10 falling 0.0142 -> 0.0047, a 67% drop that the gate failed on. With
+# n_users = 212 those rates are THREE users hitting versus ONE. Every other
+# gated metric in that stratum is driven by the same three users, so all five
+# "failures" were one phenomenon: a couple of people moving.
+#
+# 30 is the usual rule-of-thumb floor for treating a proportion as anything but
+# anecdote. Strata below it are still reported -- loudly, in their own section --
+# because silencing them would hide a real collapse just as effectively as
+# failing on noise reports a fake one.
+MIN_SUPPORT_HITS = 30
+SUPPORT_METRIC = "hit_rate@10"
+
+
+def _support(metrics: dict) -> float | None:
+    """Approximate number of users who got at least one hit.
+
+    hit_rate@10 is a plain proportion of users, so multiplying by n_users
+    recovers the count. Returns None when the payload cannot support the
+    estimate, and callers then fall back to gating normally rather than
+    silently skipping the comparison.
+    """
+    n = metrics.get("n_users")
+    rate = metrics.get(SUPPORT_METRIC)
+    if not isinstance(n, (int, float)) or not isinstance(rate, (int, float)):
+        return None
+    return n * rate
+
 
 def _load(path: Path) -> dict:
     if not path.exists():
@@ -137,21 +169,34 @@ def check(threshold: float, latest_path: Path, baseline_path: Path,
     failures: list[str] = []
     movements: list[str] = []
     withheld: list[str] = []
+    underpowered: list[str] = []
     compared = 0
 
     for key in shared:
         arm, group = key
         b, l = b_groups[key], l_groups[key]
 
+        support = _support(b)
+        thin = support is not None and support < MIN_SUPPORT_HITS
+
         for metric in GATED_HIGHER_IS_BETTER:
             if metric not in b or metric not in l or l[metric] is None:
                 continue
             compared += 1
             drop = _relative_drop(metric, b[metric], l[metric])
-            if drop > threshold and abs(b[metric] - l[metric]) > ABS_FLOOR:
-                failures.append(
-                    f"{arm}/{group} {metric}: {b[metric]:.4f} -> {l[metric]:.4f} "
+            if drop <= threshold or abs(b[metric] - l[metric]) <= ABS_FLOOR:
+                continue
+            line = (f"{arm}/{group} {metric}: {b[metric]:.4f} -> {l[metric]:.4f} "
                     f"({drop:+.1%})")
+            if thin:
+                l_support = _support(l)
+                underpowered.append(
+                    f"{line}  [support {support:.0f} -> "
+                    f"{l_support:.0f} users, below {MIN_SUPPORT_HITS}]"
+                    if l_support is not None else
+                    f"{line}  [support {support:.0f}, below {MIN_SUPPORT_HITS}]")
+            else:
+                failures.append(line)
 
         for metric in REPORTED_NOT_GATED:
             if metric not in b or metric not in l or l[metric] is None:
@@ -194,6 +239,17 @@ def check(threshold: float, latest_path: Path, baseline_path: Path,
         print("  These metrics are computed over a different definition than the "
               "baseline's.\n  Read the companion coverage numbers instead of the "
               "delta.")
+
+    if underpowered:
+        print(f"\nMovements too thin to gate ({len(underpowered)}), reported not failed:")
+        for u in underpowered[:20]:
+            print(f"  {u}")
+        if len(underpowered) > 20:
+            print(f"  ... {len(underpowered) - 20} more")
+        print(f"  A stratum where fewer than {MIN_SUPPORT_HITS} users ever hit cannot "
+              f"support a relative\n  comparison -- these are a handful of individual "
+              f"users moving. Reported, never\n  silenced: a genuine collapse looks "
+              f"identical here and still needs a human read.")
 
     if failures:
         print(f"\nRegression gate FAILED ({len(failures)} of {compared} comparisons):")

@@ -186,3 +186,67 @@ def test_comparable_metrics_still_get_a_direction(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "Not comparable this round" not in out
     assert "ild" in out and ("better" in out or "worse" in out)
+
+
+# ── Minimum support: a stratum too thin to gate ──────────────────────────────
+
+def _stratum(ndcg: float, hit: float, n: int) -> dict:
+    return {"arms": [{"arm": "A", "groups": {"warm/train=3-4": {
+        "ndcg@10": ndcg, "hit_rate@10": hit, "n_users": n,
+    }}}]}
+
+
+def test_thin_stratum_is_reported_not_failed(tmp_path, capsys):
+    """The real case: 3 users hitting became 1, and the gate failed the run.
+
+    n_users=212 with hit_rate 0.0142 -> 0.0047 is three users versus one. Every
+    gated metric in that stratum is driven by the same three people.
+    """
+    base = tmp_path / "b.json"; latest = tmp_path / "l.json"
+    base.write_text(json.dumps(_stratum(ndcg=0.0036, hit=0.0142, n=212)))
+    latest.write_text(json.dumps(_stratum(ndcg=0.0011, hit=0.0047, n=212)))
+
+    rc = check(0.05, latest, base)
+    out = capsys.readouterr().out
+    assert rc == 0, "a 3-users-to-1 move must not fail the gate"
+    assert "too thin to gate" in out
+    assert "support 3 -> 1 users" in out
+    assert "Regression gate FAILED" not in out
+
+
+def test_thin_stratum_is_never_silenced(tmp_path, capsys):
+    """Reported loudly, because a genuine collapse looks identical at this size."""
+    base = tmp_path / "b.json"; latest = tmp_path / "l.json"
+    base.write_text(json.dumps(_stratum(ndcg=0.0036, hit=0.0142, n=212)))
+    latest.write_text(json.dumps(_stratum(ndcg=0.0000, hit=0.0000, n=212)))
+
+    check(0.05, latest, base)
+    out = capsys.readouterr().out
+    assert "ndcg@10" in out and "too thin to gate" in out
+
+
+def test_well_supported_stratum_still_fails(tmp_path, capsys):
+    """The floor is on support, not on the metric -- a real regression must fail.
+
+    Same rates, but n_users large enough that they represent hundreds of users.
+    """
+    base = tmp_path / "b.json"; latest = tmp_path / "l.json"
+    base.write_text(json.dumps(_stratum(ndcg=0.0036, hit=0.0142, n=100_000)))
+    latest.write_text(json.dumps(_stratum(ndcg=0.0011, hit=0.0047, n=100_000)))
+
+    rc = check(0.05, latest, base)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "Regression gate FAILED" in out
+    assert "too thin to gate" not in out
+
+
+def test_missing_support_fields_fall_back_to_gating(tmp_path, capsys):
+    """Absent n_users must not become an accidental way to skip the gate."""
+    payload = lambda nd: {"arms": [{"arm": "A", "groups": {"all": {"ndcg@10": nd}}}]}
+    base = tmp_path / "b.json"; latest = tmp_path / "l.json"
+    base.write_text(json.dumps(payload(0.02)))
+    latest.write_text(json.dumps(payload(0.001)))
+
+    rc = check(0.05, latest, base)
+    assert rc == 1, "unknown support must gate normally, not silently pass"
