@@ -116,8 +116,10 @@ def _relative_drop(metric: str, base: float, new: float) -> float:
     return (base - new) / abs(base)
 
 
-def check(threshold: float, latest_path: Path, baseline_path: Path) -> int:
+def check(threshold: float, latest_path: Path, baseline_path: Path,
+          incomparable: tuple[str, ...] = ()) -> int:
     latest, baseline = _load(latest_path), _load(baseline_path)
+    incomparable = frozenset(incomparable or ())
 
     blockers = _comparable(baseline, latest)
     if blockers:
@@ -134,6 +136,7 @@ def check(threshold: float, latest_path: Path, baseline_path: Path) -> int:
 
     failures: list[str] = []
     movements: list[str] = []
+    withheld: list[str] = []
     compared = 0
 
     for key in shared:
@@ -154,6 +157,14 @@ def check(threshold: float, latest_path: Path, baseline_path: Path) -> int:
             if metric not in b or metric not in l or l[metric] is None:
                 continue
             delta = l[metric] - b[metric]
+            if metric in incomparable:
+                # Printed with the two values but WITHOUT a direction, because
+                # calling a delta better or worse asserts the two numbers measure
+                # the same thing -- which is exactly what --incomparable denies.
+                withheld.append(
+                    f"{arm}/{group} {metric}: {b[metric]:.4f} -> {l[metric]:.4f} "
+                    f"(delta withheld -- not the same measurement)")
+                continue
             if abs(delta) > ABS_FLOOR:
                 arrow = "better" if _relative_drop(metric, b[metric], l[metric]) < 0 else "worse"
                 movements.append(
@@ -173,6 +184,16 @@ def check(threshold: float, latest_path: Path, baseline_path: Path) -> int:
             print(f"  {m}")
         if len(movements) > 20:
             print(f"  ... {len(movements) - 20} more")
+
+    if withheld:
+        print(f"\nNot comparable this round ({len(withheld)}), reported without a verdict:")
+        for w in withheld[:20]:
+            print(f"  {w}")
+        if len(withheld) > 20:
+            print(f"  ... {len(withheld) - 20} more")
+        print("  These metrics are computed over a different definition than the "
+              "baseline's.\n  Read the companion coverage numbers instead of the "
+              "delta.")
 
     if failures:
         print(f"\nRegression gate FAILED ({len(failures)} of {compared} comparisons):")
@@ -225,15 +246,37 @@ def main() -> None:
                         "(default 0.05)")
     p.add_argument("--latest", type=Path, default=LATEST)
     p.add_argument("--baseline", type=Path, default=BASELINE)
+    p.add_argument("--incomparable", default="",
+                   help="comma-separated metrics whose DEFINITION changed this "
+                        "round, e.g. --incomparable ild after a label-schema "
+                        "change. They are printed with both values and no "
+                        "verdict: calling a delta better or worse asserts the "
+                        "two numbers measure the same thing. Gated metrics are "
+                        "refused here -- if a gated metric stopped being "
+                        "comparable, the baseline needs re-locking, not a flag.")
     p.add_argument("--lock", action="store_true",
                    help="promote the latest run to the baseline")
     p.add_argument("--force", action="store_true",
                    help="with --lock: lock even a degraded run")
     args = p.parse_args()
 
+    incomparable = tuple(m.strip() for m in args.incomparable.split(",") if m.strip())
+    # A gated metric that stopped being comparable is not something a flag may
+    # wave through: it would silence the gate for the one round where the gate
+    # is least able to detect a real regression. Re-lock the baseline instead.
+    gated_named = sorted(set(incomparable) & set(GATED_HIGHER_IS_BETTER))
+    if gated_named:
+        sys.exit(f"--incomparable refuses gated metrics: {', '.join(gated_named)}. "
+                 f"If a gated metric's definition changed, re-lock the baseline "
+                 f"rather than suppressing the comparison.")
+    unknown = sorted(set(incomparable) - set(REPORTED_NOT_GATED))
+    if unknown:
+        sys.exit(f"--incomparable: unknown metric(s) {', '.join(unknown)}. "
+                 f"Choose from: {', '.join(REPORTED_NOT_GATED)}")
+
     if args.lock:
         sys.exit(lock(args.latest, args.baseline, args.force))
-    sys.exit(check(args.threshold, args.latest, args.baseline))
+    sys.exit(check(args.threshold, args.latest, args.baseline, incomparable))
 
 
 if __name__ == "__main__":

@@ -151,3 +151,38 @@ def test_lock_force_overrides_but_keeps_the_degraded_flag(tmp_path):
     b = tmp_path / "b.json"
     assert lock(l, b, force=True) == PASS
     assert json.loads(b.read_text())["degraded"] is True
+
+
+# ── --incomparable: a metric whose definition changed this round ─────────────
+
+def _payload(ild: float, coverage: float = 0.30, ndcg: float = 0.02) -> dict:
+    return {"arms": [{"arm": "A", "groups": {"all": {
+        "ndcg@10": ndcg, "ild": ild, "catalog_coverage": coverage,
+    }}}]}
+
+
+def test_incomparable_metric_is_reported_without_a_verdict(tmp_path, capsys):
+    base = tmp_path / "b.json"; latest = tmp_path / "l.json"
+    base.write_text(json.dumps(_payload(ild=0.44, coverage=0.30)))
+    latest.write_text(json.dumps(_payload(ild=0.71, coverage=0.42)))
+
+    rc = check(0.05, latest, base, incomparable=("ild",))
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "Not comparable this round" in out
+    assert "0.4400 -> 0.7100" in out
+    # The whole point: no direction is asserted for a metric that changed
+    # definition, while a genuinely comparable one still gets one.
+    assert "better" not in out.split("Not comparable")[1]
+    assert "catalog_coverage" in out.split("Beyond-accuracy")[1]
+
+
+def test_comparable_metrics_still_get_a_direction(tmp_path, capsys):
+    base = tmp_path / "b.json"; latest = tmp_path / "l.json"
+    base.write_text(json.dumps(_payload(ild=0.44)))
+    latest.write_text(json.dumps(_payload(ild=0.71)))
+
+    check(0.05, latest, base)
+    out = capsys.readouterr().out
+    assert "Not comparable this round" not in out
+    assert "ild" in out and ("better" in out or "worse" in out)
