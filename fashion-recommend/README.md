@@ -215,9 +215,10 @@ Four disciplines came out of this, and they are enforced in tests:
    at 98% CPU. Redis answers `PING` with `PONG` while loading an RDB and rejecting every
    real command.
 
-### 5.2 item-to-item returns neighbours, but its scores cannot rank them
+### 5.2 item-to-item's scores could not rank, and the cause was the vocabulary
 
-Two separate findings, reported separately:
+Two separate findings, reported separately, because "it returns something" and
+"what it returns is usable" are different claims:
 
 | | |
 |---|---|
@@ -227,31 +228,76 @@ Two separate findings, reported separately:
 Across 330 scores: global range 0.500689–0.510655 (span 0.00997), sd 0.002123, and the
 **median spread inside a single top-10 is 0.000339**. Every score lives in 1% of [0,1].
 
-The label vocabulary explains it. Sampling 3,000 items (5.49 labels each):
-
-| prefix | occurrences | distinct | consequence |
-|---|---|---|---|
-| `item_name` | 2,999 | 2,186 | near-unique — never matches |
-| `brand` | 2,993 | 1,492 | near-unique |
-| `price_range` | 2,999 | **4** | ~80% are `mid` |
-| `avg_rating` | 2,999 | 25 | coarse, **and semantically unrelated to similarity** |
-| `style` | 1,533 | 6 | 51% coverage |
-| `color` | 870 | 14 | 29% coverage |
+`Score = 1/(1+distance)` (`logics/item_to_item.go:127`), so 0.5007 means a distance of
+0.997 — as close to "these two items share nothing" as the function goes. Reading the
+conversion is what makes 0.50 legible as a floor rather than as a middling similarity.
 
 **The labels that discriminate never match; the labels that match do not discriminate.**
-Two arbitrary items typically share `price_range:mid` and `avg_rating:4.5`, and two items
-both rated 4.5 are not similar in any sense that matters — so `commonCount` and `commonSum`
-come out nearly equal for every pair.
+Of the **107,747** distinct label strings the flat schema put on the similarity path,
+**107,686 were `item_name` / `brand` / `price`** — near-unique per item, so they entered
+the union of every pair and the intersection of none. Sixty-one strings were features.
+Meanwhile the labels that *did* match were `price_range` (4 values, ~80% `mid`) and
+`avg_rating` (25 coarse buckets) — and two items both rated 4.5 are not similar in any
+sense a shopper would recognise.
+
+The carriers were not merely inert. `item_to_item.go:337` divides the shared-tag weight
+by `sqrt` of the weighted sum over *all* of an item's tags, and a near-unique label's IDF
+is `log(95335)` ≈ 11.5 against ≈ 1.9 for a genuinely shared `cat:`. Two carriers therefore
+dominated a norm the real features could not move.
 
 The first hypothesis was the `(commonCount+100)` shrinkage term in Gorse's distance
 function. **The data overturned it**: that term varies with overlap (k=2 → 0.020, k=10 →
-0.091), so it creates spread rather than removing it. The cause is in this repo's label
+0.091), so it creates spread rather than removing it. The cause was in this repo's label
 generation, not upstream.
 
-**Deliberately not fixed yet.** The fix is scheduled after the evaluation baseline is
-locked, so the change can be reported as a before/after rather than made blind. Changing
-labels inside a locked baseline round would make the two numbers incomparable — the same
-trap as changing rag-service's corpus under its locked judgments.
+#### The fix, and the second failure it exposed
+
+Labels moved from a flat array to Gorse's map form, so the two consumers can be
+separated: `Labels.f` is the only branch tags item-to-item sees
+(`column = "item.Labels.f"`), the rest of the map still reaches the CTR model, and the
+carriers moved to `Comment` — the one field that `logics/`, `master/`, `model/` and
+`dataset/` provably never read.
+
+The first attempt (`type` + `cat` + `style` + `color`) removed the compression and
+produced **exact ties** instead: the median item landed in an equivalence class of 66
+byte-identical feature sets, so a top-10 was one class at distance 0, ordered arbitrarily
+by the ANN index. Six attribute dimensions read out of the product title fixed that.
+
+Replaying Gorse's own distance offline over all 95,335 eval products:
+
+| | flat schema | map schema |
+|---|---|---|
+| items with an empty feature set | 21.0% | **0.0%** |
+| distinct feature strings on the similarity path | 16 | **182** |
+| equivalence classes | 1,564 | **39,915** |
+| median item's class size | 1,585 items | **4 items** |
+| distinct scores in a top-10 (median) | **1** of 10 | **7** of 10 |
+
+Two notes on honesty:
+
+- **These are offline replays of Gorse's scoring code, not Gorse's output.** The
+  distance function is 20 lines and the IDF formula is one; simulating them on the real
+  catalogue found the tie problem in seconds instead of after a two-hour cluster run. The
+  end-to-end NDCG before/after is a separate number and is reported separately.
+- **Earlier drafts of this section quoted `style` 51% / `color` 29% coverage.** Those came
+  from an unordered `LIMIT 3000` against Gorse's items table, which returns the
+  first-inserted batch rather than a random sample. Measured over the full catalogue the
+  figures are **48.7%** and **62.1%**.
+
+What was measured and rejected, since "why not also add X" is the obvious question:
+
+| candidate | measured | why not |
+|---|---|---|
+| `brand`, floored at ≥10 items | 55.3% coverage, 1,733 values; median class 3→2 | IDF ≈ 7.5 reproduces the carrier dynamic, for one extra distinct score |
+| price deciles | **11.9%** of the catalogue has a price at all | not viable |
+| `avg_rating` | 100% coverage | **coverage is not relevance** |
+
+Sequencing was deliberate: the baseline was locked *first*, so this is a before/after
+rather than a blind change. Changing labels inside a locked baseline round would make the
+two numbers incomparable — the same trap as changing rag-service's corpus under its locked
+relevance judgments. One metric does not survive the change and is called out rather than
+quietly re-reported: ILD is now computed over a different feature space, so
+`ild_item_coverage` (79% → 100%) is the comparable fact, not ILD itself.
 
 ### 5.3 A single machine bounds the evaluation cohort
 
