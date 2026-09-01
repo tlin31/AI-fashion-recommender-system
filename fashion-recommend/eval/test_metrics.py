@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+import metrics  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).parent))
 from metrics import (catalog_coverage, gini, hit_rate_at_k,  # noqa: E402
                      intra_list_diversity, mrr, ndcg_at_k, novelty,
@@ -162,3 +164,63 @@ def test_ild_reports_its_own_validity_data():
 def test_ild_unknown_item_is_not_a_crash():
     out = intra_list_diversity([["ghost", "a"]], {"a": ["style:minimalist"]})
     assert out["ild_pairs_scored"] == 0.0
+
+
+# ── Label schema: the map form is what item-to-item actually ranks on ────────
+
+def test_feature_labels_reads_the_map_form():
+    """`Labels.f` is exactly the branch column = "item.Labels.f" hands to Gorse.
+
+    Reading it directly means ILD is computed over the recommender's own feature
+    space instead of a prefix list kept in sync by hand.
+    """
+    got = metrics._feature_labels({
+        "f": ["type:t-shirt", "cat:tops", "style:casual"],
+        "brand": "zara",
+        "price_range": "mid",
+        "avg_rating": "4.5",
+    })
+    assert got == frozenset({"type:t-shirt", "cat:tops", "style:casual"})
+
+
+def test_feature_labels_does_not_silently_score_dict_keys():
+    """The failure this guards against returns 0.0, not an exception.
+
+    Iterating a dict yields its KEYS -- "f", "brand", "price_range" -- and none
+    of them start with a feature prefix, so a naive implementation reports ILD
+    0.0 at full-looking coverage: a schema that never landed would read as a
+    diversity collapse.
+    """
+    labels = {"f": ["style:casual", "color:black"], "brand": "zara"}
+    assert "brand" not in metrics._feature_labels(labels)
+    assert "f" not in metrics._feature_labels(labels)
+
+    out = metrics.intra_list_diversity([["a", "b"]], {
+        "a": labels,
+        "b": {"f": ["style:formal", "color:white"], "brand": "cos"},
+    })
+    assert out["ild"] == 1.0, "disjoint feature sets are maximally distant"
+    assert out["ild_item_coverage"] == 1.0
+    assert out["ild_pairs_scored"] == 1.0
+
+
+def test_feature_labels_still_reads_the_flat_schema():
+    """So a pre-restructure run can be re-scored for the before/after."""
+    got = metrics._feature_labels(
+        ["style:casual", "brand:zara", "item_name:Plain Tee", "price:29"])
+    assert got == frozenset({"style:casual"})
+
+
+def test_empty_feature_branch_is_uncovered_not_zero_distance():
+    """An item with no features must be skipped, never scored as maximally distant.
+
+    Scoring it would make the metric reward missing labels -- the exact failure
+    ILD is meant to detect. Adding type:/cat: took this population from 21.0% of
+    the eval catalogue to zero, but the guard stays.
+    """
+    out = metrics.intra_list_diversity([["a", "b"]], {
+        "a": {"f": []},
+        "b": {"f": ["style:formal"]},
+    })
+    assert out["ild_pairs_scored"] == 0.0
+    assert out["ild_item_coverage"] == 0.5

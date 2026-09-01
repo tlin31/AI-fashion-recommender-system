@@ -73,7 +73,7 @@ func MockGorseServer() *httptest.Server {
 		item := models.Item{
 			ItemId:     "test_item",
 			Categories: []string{"women", "tops"},
-			Labels:     []string{"brand:zara", "style:casual"},
+			Labels:     models.ItemLabels{Features: []string{"style:casual"}, Brand: "zara"},
 			Timestamp:  time.Now(),
 		}
 		json.NewEncoder(w).Encode(item)

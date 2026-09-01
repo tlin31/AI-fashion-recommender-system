@@ -1153,7 +1153,8 @@ def push_gorse(args) -> None:
     import psycopg2.extras
 
     sys.path.insert(0, str(Path(__file__).parent))
-    from seed_gorse import _colour_labels, _normalise_category, _style_labels
+    from seed_gorse import (_normalise_category, build_item_comment,
+                            build_item_labels, flatten_labels)
 
     conn = psycopg2.connect(POSTGRES_URL)
     try:
@@ -1209,35 +1210,43 @@ def push_gorse(args) -> None:
               f"density; it does not affect tags item-to-item, which reads "
               f"item labels only")
 
-    # ── Item labels ──────────────────────────────────────────────────────────
+    # ── Item labels ───────────────────────────────────────────────────────────
+    #
+    # The schema lives in seed_gorse.build_item_labels and is imported rather
+    # than restated. It used to be restated, and the two copies had already
+    # drifted: this file never emitted `occasion:` or `material:`, so the eval
+    # harness's FEATURE_LABEL_PREFIXES listed two prefixes that did not exist on
+    # a single one of the 95,335 items it was scoring.
     items, style_hits, colour_hits = [], 0, 0
     for p in products:
-        labels = []
-        if p["brand"]:
-            labels.append(f"brand:{p['brand']}")
-        colours = _colour_labels(None, p["name"], p["description"])
-        styles = _style_labels(p["name"], p["description"])
-        labels.extend(f"color:{c}" for c in colours)
-        labels.extend(f"style:{s}" for s in styles)
-        labels.append(f"price_range:{p['price_range'] or 'unknown'}")
-        if p["name"]:
-            labels.append(f"item_name:{p['name']}")
-        if p["price"] is not None:
-            labels.append(f"price:{int(p['price'])}")
-        if p["avg_rating"] is not None:
-            labels.append(f"avg_rating:{round(float(p['avg_rating']), 1)}")
+        labels, styles, colours = build_item_labels(p)
         style_hits += bool(styles)
         colour_hits += bool(colours)
         items.append({
             "ItemId":     p["product_id"],
             "Categories": [_normalise_category(p["category"])],
             "Labels":     labels,
-            "Comment":    (p["description"] or "")[:500],
+            "Comment":    build_item_comment(p),
             "Timestamp":  datetime.now(timezone.utc).isoformat() + "Z",
         })
 
     n = len(products)
     print(f"label coverage: style {style_hits / n:.1%}, colour {colour_hits / n:.1%}")
+
+    # ── What the similarity path can actually resolve ────────────────────────
+    #
+    # Printed on every push because it is the number the label restructure was
+    # for. Before: 21.0% of items had an empty feature set once carriers were
+    # excluded, and the surviving vocabulary partitioned the catalogue into
+    # ~336 classes -- so most pairs were mutually indistinguishable to Jaccard
+    # and all 330 sampled scores landed inside 1% of [0,1].
+    feature_sets = [frozenset(l for _, l, sim in flatten_labels(it["Labels"]) if sim)
+                    for it in items]
+    empty = sum(1 for fs in feature_sets if not fs)
+    classes = len(set(feature_sets))
+    print(f"similarity path: {empty:,}/{n:,} = {empty/n:.1%} items with an empty "
+          f"feature set, {classes:,} equivalence classes "
+          f"({n/max(classes,1):.1f} items each)")
 
     events = [{
         "FeedbackType": f["feedback_type"],

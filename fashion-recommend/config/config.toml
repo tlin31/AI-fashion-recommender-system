@@ -81,10 +81,23 @@ filter = ""
 #   error: unknown name Labels (1:1)
 # 这两个任务因此从来没有真正跑过 —— 而 dashboard 把它们报成
 # Complete 383,460/383,460、耗时 0.0s。任务状态在这里不是成功的证据。
+#
+# 指到 .f 这一个分支，而不是整张 Labels。这是标签重构的落点：
+# item labels 现在是 map 形式，f 下只放真正的相似度特征
+# （type: / cat: / style: / color:），brand / price_range / avg_rating 留在
+# f 之外，还能被 CTR 模型读到，但相似度看不见它们。
+#
+# 为什么这样切：扁平 schema 下实测 330 个相似度分数全部落在
+# 0.500689–0.510655，单个 top-10 内的跨度中位数只有 0.000339。原因不是
+# 相似度函数，是词表 —— 能区分的标签（item_name / brand，近乎唯一）从不匹配，
+# 能匹配的标签（price_range 80% 是 mid、avg_rating 25 个粗桶）不区分。
+#
+# ⚠️ "f" 是字面量，和 models.ItemLabels 的 json tag 必须一致。
+# models_wire_test.go 的 TestItemWireFormat 断言了这个 key。
 [[recommend.item-to-item]]
 name = "style_similarity"
 type = "tags"
-column = "item.Labels"
+column = "item.Labels.f"
 
 [[recommend.item-to-item]]
 name = "behavior_similarity"

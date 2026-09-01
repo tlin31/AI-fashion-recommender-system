@@ -303,6 +303,9 @@ def load_item_labels() -> dict[str, list[str]]:
             r.raise_for_status()
             body = r.json()
             for it in body.get("Items", []):
+                # 原样保留：map 或扁平数组都交给 metrics._feature_labels 判断。
+                # 在这里提前取 ["f"] 会把「schema 没换成功」变成一个
+                # 静默的 0.0 ILD，而不是一个能看见的覆盖率下降。
                 labels[it["ItemId"]] = it.get("Labels") or []
             cursor = body.get("Cursor") or ""
             if not cursor:

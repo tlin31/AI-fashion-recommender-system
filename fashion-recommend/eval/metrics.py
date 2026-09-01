@@ -182,11 +182,34 @@ def novelty(all_recommendations: Iterable[Sequence[str]],
 # on "mid" make it a near-constant shared element, deflating every distance by
 # about the same amount. `avg_rating` is excluded because two items rated 4.5 are
 # not similar in any sense a user would recognise.
-FEATURE_LABEL_PREFIXES = ("style:", "color:", "occasion:", "material:")
+#
+# Since the label restructure the item side draws exactly this distinction
+# itself: features live under `Labels.f` and carriers do not. This list is the
+# fallback for the OLD flat schema, and it is kept honest about what that schema
+# actually contained -- `occasion:` and `material:` are listed because
+# seed_gorse.py emits them, but the 95,335-product eval catalogue is built by
+# build_interactions.py, which never did. Against that catalogue those two
+# prefixes matched nothing, which is why style/color coverage alone decided the
+# ILD denominator.
+FEATURE_LABEL_PREFIXES = ("type:", "cat:", "style:", "color:",
+                          "occasion:", "material:")
 
 
-def _feature_labels(labels: Iterable[str]) -> frozenset[str]:
-    return frozenset(l for l in labels
+def _feature_labels(labels) -> frozenset[str]:
+    """Extract an item's similarity features from either label schema.
+
+    The map form is authoritative: `Labels.f` is exactly the branch
+    `column = "item.Labels.f"` gives to tags item-to-item, so reading it here
+    means ILD is computed over the same feature space the recommender ranks on
+    rather than a prefix list maintained in parallel.
+
+    Getting this wrong would not raise. `frozenset(l for l in some_dict ...)`
+    iterates KEYS -- "f", "brand", "price_range" -- none of which match a
+    prefix, so ILD would come back a clean 0.0 with full-looking coverage.
+    """
+    if isinstance(labels, Mapping):
+        return frozenset(labels.get("f") or ())
+    return frozenset(l for l in (labels or ())
                      if l.startswith(FEATURE_LABEL_PREFIXES))
 
 

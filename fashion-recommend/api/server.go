@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 
 	"fashion-recommend/ai"
 	"fashion-recommend/auth"
@@ -21,20 +20,20 @@ import (
 
 // Server API 服务器
 type Server struct {
-	gorseClient     *client.GorseClient
-	authService     *auth.AuthService
-	aiService       *ai.Service
-	db              *database.DB
-	traitExtractor  *traits.Extractor
-	gorseSync       *traits.GorseSync
-	router          *gin.Engine
+	gorseClient    *client.GorseClient
+	authService    *auth.AuthService
+	aiService      *ai.Service
+	db             *database.DB
+	traitExtractor *traits.Extractor
+	gorseSync      *traits.GorseSync
+	router         *gin.Engine
 }
 
 // NewServer 创建 API 服务器
 func NewServer(gorseEndpoint, gorseAPIKey string, aiConfig ai.Config, db *database.DB) *Server {
 	gorseClient := client.NewGorseClient(gorseEndpoint, gorseAPIKey)
 	aiService := ai.NewService(aiConfig)
-	
+
 	s := &Server{
 		gorseClient:    gorseClient,
 		authService:    auth.NewAuthService(),
@@ -104,7 +103,7 @@ func (s *Server) setupRoutes() {
 	s.router.Static("/assets", "./frontend/dist/assets")
 	s.router.Static("/images", "./public/images")
 	s.router.StaticFile("/", "./frontend/dist/index.html")
-	
+
 	// 所有未匹配的路由都返回 index.html（支持前端路由）
 	s.router.NoRoute(func(c *gin.Context) {
 		c.File("./frontend/dist/index.html")
@@ -229,8 +228,9 @@ func (s *Server) getRecommend(c *gin.Context) {
 		return
 	}
 
-	// Enrich each item with name, price, and price_range from Gorse labels.
-	// Labels set at seed time: "item_name:...", "price:...", "price_range:..."
+	// Enrich each item for the frontend. Name and price come from the item's
+	// Comment carrier (models.ItemCarrier); price_range and avg_rating are still
+	// labels, just no longer under the similarity branch.
 	type EnrichedItem struct {
 		ItemId     string  `json:"item_id"`
 		Score      float64 `json:"score"`
@@ -246,20 +246,19 @@ func (s *Server) getRecommend(c *gin.Context) {
 		}
 		item := EnrichedItem{ItemId: rec.ItemId, Score: rec.Score}
 		if full, err := s.gorseClient.GetItem(rec.ItemId); err == nil {
-			for _, label := range full.Labels {
-				if strings.HasPrefix(label, "item_name:") {
-					item.Name = strings.TrimPrefix(label, "item_name:")
-				} else if strings.HasPrefix(label, "price:") {
-					if p, err := strconv.ParseFloat(strings.TrimPrefix(label, "price:"), 64); err == nil {
-						item.Price = p
-					}
-				} else if strings.HasPrefix(label, "price_range:") {
-					item.PriceRange = strings.TrimPrefix(label, "price_range:")
-				} else if strings.HasPrefix(label, "avg_rating:") {
-					if r, err := strconv.ParseFloat(strings.TrimPrefix(label, "avg_rating:"), 64); err == nil {
-						item.AvgRating = r
-					}
-				}
+			// 名字和价格来自 Comment 载体，不再来自标签。它们不是特征，放在
+			// Labels 里会被两个模型都当特征计费 —— 而且是最坏的一类，因为两者
+			// 都近乎唯一。详见 models.ItemCarrier。
+			carrier := models.ParseItemCarrier(full.Comment)
+			item.Name = carrier.Name
+			if carrier.Price != nil {
+				item.Price = *carrier.Price
+			}
+			// 这两个仍然是标签，只是移出了相似度分支（f）——它们是合法的 CTR
+			// 特征，只是不该当相似度信号。
+			item.PriceRange = full.Labels.PriceRange
+			if r, err := strconv.ParseFloat(full.Labels.AvgRating, 64); err == nil {
+				item.AvgRating = r
 			}
 		}
 		enriched = append(enriched, item)
