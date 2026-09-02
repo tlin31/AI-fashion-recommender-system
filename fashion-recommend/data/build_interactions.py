@@ -1171,6 +1171,68 @@ def reset_gorse_entities() -> None:
             raise SystemExit(f"failed to truncate {table}: {r.stderr.strip()}")
         print(f"  truncated {table}")
 
+    _clear_stale_recommendation_cache()
+
+
+# Redis key patterns holding state DERIVED FROM USER FEEDBACK. Truncating the
+# Postgres tables does not touch these, so each one survives a --reset-gorse and
+# keeps answering with the previous cohort's data.
+#
+# item-to-item is deliberately absent: it is derived from item labels, not from
+# feedback, so it stays valid across a cohort change and rebuilding it costs
+# ~12 minutes for nothing.
+_USER_DERIVED_CACHE_PATTERNS = (
+    "documents:recommend:*",                # offline per-user recommendations
+    "documents:collaborative-filtering:*",  # CF recall candidates, per user
+    "documents:user-to-user:*",             # user neighbours, keyed by user
+)
+
+
+def _clear_stale_recommendation_cache() -> None:
+    """Delete Gorse's per-user derived caches from Redis.
+
+    Truncating the Postgres tables is not enough, and the gap is a leak rather
+    than an inefficiency. `/api/recommend/{user}` serves a cache Gorse derived
+    from the PREVIOUS cohort, so after a reset it keeps answering with
+    recommendations computed from feedback that has since been withheld. The
+    eval harness reads exactly that endpoint.
+
+    Measured 2026-09-02: after --reset-gorse --exclude-users, 12 of 12 sampled
+    "cold" users still received 12 distinct personalised lists (mean pairwise
+    Jaccard 0.043 -- genuinely different, not one list reordered), backed by
+    22,350 surviving `documents:recommend:*` entries. Clearing only those was not
+    enough: `documents:collaborative-filtering:*` holds per-user CF recall
+    candidates from the previous training run and kept the same users
+    personalised. Nothing errors; the `none` arm simply looks good.
+
+    Waiting for the worker to overwrite them does not fix it either: a user with
+    no feedback may be skipped entirely, so the stale entry survives every
+    subsequent run.
+
+    Deletes by key pattern rather than FLUSHALL, which would also destroy the
+    RediSearch index that Gorse only creates in Init() -- a documented trap that
+    has cost this project two rebuilds.
+    """
+    import subprocess
+    script = (
+        "local n=0 local c='0' "
+        "repeat local r=redis.call('SCAN',c,'MATCH',ARGV[1],'COUNT',1000) "
+        "c=r[1] for _,k in ipairs(r[2]) do redis.call('DEL',k) n=n+1 end "
+        "until c=='0' return n"
+    )
+    total = 0
+    for pattern in _USER_DERIVED_CACHE_PATTERNS:
+        r = subprocess.run(
+            ["docker", "exec", "fashion-redis", "redis-cli",
+             "EVAL", script, "0", pattern],
+            capture_output=True, text=True, timeout=900)
+        if r.returncode != 0:
+            raise SystemExit(f"failed to clear {pattern}: {r.stderr.strip()}")
+        n = int(r.stdout.strip() or 0)
+        total += n
+        print(f"  cleared {n:,} keys matching {pattern}")
+    print(f"  {total:,} stale user-derived cache entries removed")
+
 
 def push_gorse(args) -> None:
     """Load reco_products + the TRAIN half of reco_interactions into Gorse.
