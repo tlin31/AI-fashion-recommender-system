@@ -240,8 +240,19 @@ def _stratum(n_train: int) -> str:
 
 
 def score_arm(arm, users: list[EvalUser], signals: TrainSignals,
-              item_labels: dict[str, list[str]], k: int) -> dict:
-    """Run one arm over every user and roll the results up by cohort/stratum."""
+              item_labels: dict[str, list[str]], k: int,
+              per_user_out=None) -> dict:
+    """Run one arm over every user and roll the results up by cohort/stratum.
+
+    `per_user_out`, when given, receives one JSON line per user BEFORE any
+    aggregation. The ablation compares arms on the same users, and a paired
+    comparison needs each user's own score -- a mean cannot be un-averaged.
+
+    The rows carry `arm`; the caller stamps the run. Without that, two arms'
+    files are indistinguishable once they leave this process, and pairing the
+    wrong user against the wrong arm is a silent error: it produces a clean
+    number computed from mismatched rows.
+    """
     per_group: dict[str, list[dict]] = defaultdict(list)
     per_group_lists: dict[str, list[list[str]]] = defaultdict(list)
     empty_lists = 0
@@ -258,6 +269,20 @@ def score_arm(arm, users: list[EvalUser], signals: TrainSignals,
         }
         for kk in K_RECALL:
             row[f"recall@{kk}"] = recall_at_k(ranked, u.relevant, kk)
+
+        if per_user_out is not None:
+            per_user_out.write(json.dumps({
+                "arm": arm.name,
+                "user_id": u.user_id,
+                "cohort": u.cohort,
+                "n_train": u.n_train,
+                "n_relevant": len(u.relevant),
+                "n_returned": len(ranked),
+                "ndcg@10": row["ndcg"],
+                "hit@10": row["hit"],
+                "mrr": row["mrr"],
+                **{f"recall@{kk}": row[f"recall@{kk}"] for kk in K_RECALL},
+            }) + "\n")
 
         groups = [u.cohort]
         if u.cohort == "warm":
@@ -325,6 +350,14 @@ def main() -> None:
                         "largest k any metric needs)")
     p.add_argument("--limit", type=int, default=None,
                    help="score only the first N users (smoke test)")
+    p.add_argument("--per-user", type=Path, default=None, metavar="FILE",
+                   help="write one JSON row per (arm, user) BEFORE aggregation. "
+                        "Required for the Day 5 ablation: the arms are compared "
+                        "PAIRED on the same users, and a mean cannot be "
+                        "un-averaged. Rows carry the arm name and the file is "
+                        "stamped with the run time, because pairing rows from "
+                        "two different runs is a silent error -- it yields a "
+                        "clean number computed from mismatched users.")
     p.add_argument("--seed", type=int, default=20260831)
     p.add_argument("--out", type=Path, default=OUT_PATH)
     p.add_argument("--allow-degraded", action="store_true",
@@ -364,12 +397,26 @@ def main() -> None:
     }
 
     results = []
+    pu = None
+    if args.per_user:
+        args.per_user.parent.mkdir(parents=True, exist_ok=True)
+        pu = args.per_user.open("w")
+        # Stamp the run once, at the top. Two arms' files are otherwise
+        # indistinguishable, and the ablation pairs users ACROSS files.
+        pu.write(json.dumps({
+            "_run": datetime.now(timezone.utc).isoformat(),
+            "_cohort_users": len(users),
+            "_k": args.k,
+            "_note": "one row per (arm, user) BEFORE aggregation; pair on user_id",
+        }) + "\n")
+
     for name in ("Random", "MostPopular", "GorseCF", "GorseItemToItem"):
         if name not in wanted:
             continue
         print(f"scoring {name}...", flush=True)
         t0 = time.time()
-        res = score_arm(registry[name](), users, signals, item_labels, k=args.k)
+        res = score_arm(registry[name](), users, signals, item_labels, k=args.k,
+                        per_user_out=pu)
         res["seconds"] = round(time.time() - t0, 1)
         results.append(res)
         a = res["groups"].get("all", {})
@@ -377,6 +424,10 @@ def main() -> None:
               f"recall@10={a.get('recall@10', 0):.4f}  "
               f"coverage={a.get('catalog_coverage', 0):.4f}  "
               f"empty_lists={res['empty_lists']:,}  ({res['seconds']}s)")
+
+    if pu:
+        pu.close()
+        print(f"  per-user rows -> {args.per_user}")
 
     if client:
         client.close()
