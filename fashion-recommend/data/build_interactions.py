@@ -1011,6 +1011,38 @@ _EVALUABLE_SQL = """
 """
 
 
+def _load_excluded_users(path: str | None) -> set[str]:
+    """User ids whose TRAIN feedback is withheld to simulate cold start.
+
+    The Day 5 ablation asks whether a profile helps a user the recommender knows
+    nothing about. Real cold users cannot answer it: under a global temporal
+    split a cold user has no data before the cutoff, so any profile assigned to
+    them either comes from outside the interaction graph or is leakage. The
+    design instead TAKES warm users, withholds their training events, and keeps
+    a profile derived from exactly those withheld events -- so the profile is
+    real, the cold start is manufactured, and nothing from the test half is
+    used. It must always be reported as simulated.
+
+    Accepts a JSON list, a JSON object with a "users" key, or one id per line,
+    because the file is produced by hand as often as by script.
+    """
+    if not path:
+        return set()
+    raw = Path(path).read_text().strip()
+    if not raw:
+        raise SystemExit(f"--exclude-users: {path} is empty")
+    if raw[0] in "[{":
+        import json as _json
+        doc = _json.loads(raw)
+        ids = doc["users"] if isinstance(doc, dict) else doc
+    else:
+        ids = [line.strip() for line in raw.splitlines() if line.strip()]
+    out = {str(i) for i in ids}
+    if not out:
+        raise SystemExit(f"--exclude-users: {path} parsed to zero ids")
+    return out
+
+
 def _select_cohort(cur, sample: int | None, seed: int) -> tuple[set[str], dict]:
     """Choose which users' train events to push.
 
@@ -1152,6 +1184,14 @@ def push_gorse(args) -> None:
     # Validated before anything is read, so --dry-run reports it too. A guard
     # that only fires on the real run is a guard you find out about at the worst
     # possible moment.
+    if args.exclude_users and args.skip_feedback:
+        raise SystemExit(
+            "--exclude-users has nothing to do when --skip-feedback is set: the "
+            "withholding happens in the feedback push that --skip-feedback "
+            "declines to run. Gorse would keep the feedback already loaded, so "
+            "the cohort would not be cold at all -- and the run would report "
+            "success. Drop one of the two.")
+
     if args.reset_gorse and args.skip_feedback:
         raise SystemExit(
             "--reset-gorse deletes the feedback that --skip-feedback then "
@@ -1178,6 +1218,17 @@ def push_gorse(args) -> None:
             products = cur.fetchall()
 
             cohort, cstats = _select_cohort(cur, args.cohort_sample, args.cohort_seed)
+
+            excluded = _load_excluded_users(args.exclude_users)
+            if excluded and cstats["mode"] != "all":
+                missing = excluded - cohort
+                if missing:
+                    raise SystemExit(
+                        f"--exclude-users names {len(missing):,} users that are "
+                        f"not in the cohort, so withholding their feedback would "
+                        f"be a no-op and the 'simulated cold start' would be "
+                        f"simulated only in the filename. Either widen "
+                        f"--cohort-sample or regenerate the list.")
 
             if cstats["mode"] == "all":
                 cur.execute("""
@@ -1266,6 +1317,17 @@ def push_gorse(args) -> None:
         "Timestamp":    f["ts"].isoformat(),
     } for f in feedback]
 
+    withheld_events = 0
+    if excluded:
+        before = len(events)
+        events = [e for e in events if e["UserId"] not in excluded]
+        withheld_events = before - len(events)
+        print(f"\nsimulated cold start: withheld {withheld_events:,} train events "
+              f"from {len(excluded):,} users ({before:,} -> {len(events):,})")
+        print("  those users keep their TEST events, which is what makes them "
+              "evaluable;\n  only the training signal is removed, so CF knows "
+              "nothing about them.")
+
     by_type: dict[str, int] = {}
     for e in events:
         by_type[e["FeedbackType"]] = by_type.get(e["FeedbackType"], 0) + 1
@@ -1302,6 +1364,15 @@ def push_gorse(args) -> None:
         print(f"  items: skipped ({len(items):,} unchanged, --skip-items)")
     else:
         _post_batched("/api/items", items, "items")
+    if excluded:
+        # Create the rows explicitly. Gorse creates users implicitly from
+        # feedback, so a user whose feedback was withheld would otherwise not
+        # exist at all -- and then the ablation's three arms would differ in
+        # whether the user row exists, not only in what labels it carries.
+        # That is a second variable, and it is avoidable for one API call.
+        _post_batched("/api/users",
+                      [{"UserId": u, "Labels": []} for u in sorted(excluded)],
+                      "cold-start users")
     if args.skip_feedback:
         print(f"  feedback: skipped ({len(events):,} unchanged, --skip-feedback)")
     else:
@@ -1501,6 +1572,17 @@ def main() -> None:
     p.add_argument("--cohort-report", action="store_true",
                    help="print the evaluable-user strata and what each "
                         "--cohort-sample size would cost, then exit")
+    p.add_argument("--exclude-users", metavar="FILE", default=None,
+                   help="with --push-gorse: withhold these users' TRAIN feedback "
+                        "so Gorse knows nothing about them, while their TEST "
+                        "events stay available for scoring. This manufactures "
+                        "the cold-start cohort the Day 5 trait ablation needs. "
+                        "The users are still created in Gorse with empty labels, "
+                        "so the ablation's arms differ only in the labels they "
+                        "carry. Accepts JSON list, {\"users\": [...]}, or one id "
+                        "per line. ALWAYS report results from this as SIMULATED "
+                        "cold start -- these are warm users with their history "
+                        "hidden, not users who were actually new.")
     p.add_argument("--skip-feedback", action="store_true",
                    help="push items but not feedback. The mirror of "
                         "--skip-items, for a label-schema change: the item "
