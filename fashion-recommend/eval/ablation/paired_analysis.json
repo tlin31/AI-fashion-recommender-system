@@ -1,0 +1,61 @@
+{
+ "design": "simulated cold start; profiles derived from WITHHELD train events only",
+ "warning": "SIMULATED cold start -- warm users with their history hidden, NOT actually-new users",
+ "n_users": 859,
+ "min_support_discordant": 30,
+ "runs": {
+  "none": "2026-09-02T18:05:37.110433+00:00",
+  "aggregated": "2026-09-02T19:39:28.995580+00:00"
+ },
+ "arms": {
+  "MostPopular": {
+   "ndcg@10_none": 0.01256,
+   "ndcg@10_aggregated": 0.01256,
+   "hits_none": 22,
+   "hits_aggregated": 22,
+   "mcnemar_b_lost": 0,
+   "mcnemar_c_gained": 0,
+   "discordant_pairs": 0,
+   "paired_mean_diff": 0.0,
+   "bootstrap_ci95_seed1": [
+    0.0,
+    0.0
+   ],
+   "bootstrap_ci_straddles_zero_in": "0/20 seeds",
+   "verdict": "no effect possible -- this arm does not read user labels"
+  },
+  "GorseCF": {
+   "ndcg@10_none": 0.005007,
+   "ndcg@10_aggregated": 0.000873,
+   "hits_none": 5,
+   "hits_aggregated": 3,
+   "mcnemar_b_lost": 5,
+   "mcnemar_c_gained": 3,
+   "discordant_pairs": 8,
+   "paired_mean_diff": -0.004134,
+   "bootstrap_ci95_seed1": [
+    -0.009319,
+    6e-05
+   ],
+   "bootstrap_ci_straddles_zero_in": "16/20 seeds",
+   "verdict": "UNDERPOWERED -- only 8 discordant pairs (floor 30); CI straddles zero under 16/20 bootstrap seeds and not under 4, so its boundary is not resolvable at this support"
+  },
+  "GorseItemToItem": {
+   "ndcg@10_none": 0.000911,
+   "ndcg@10_aggregated": 0.000911,
+   "hits_none": 3,
+   "hits_aggregated": 3,
+   "mcnemar_b_lost": 0,
+   "mcnemar_c_gained": 0,
+   "discordant_pairs": 0,
+   "paired_mean_diff": 0.0,
+   "bootstrap_ci95_seed1": [
+    0.0,
+    0.0
+   ],
+   "bootstrap_ci_straddles_zero_in": "0/20 seeds",
+   "verdict": "no effect possible -- this arm does not read user labels"
+  }
+ },
+ "conclusion": "Underpowered by construction, established BEFORE paying for the LLM arm. Swapping a zero-cost aggregated profile in for no profile moved 8 of 859 users' hit status (5 lost, 3 gained). That is below the harness's own 30-discordant-pair floor, and the instability is measurable rather than asserted: across 20 bootstrap seeds the 95% CI straddles zero under 16 and excludes it under 4, with every upper bound pinned between 0.000000 and 0.000172. The interval has no resolution at this support. The two arms that do not read user labels moved exactly 0 users, which is the internal check confirming the pipeline works and the population is the binding constraint. The LLM arm was deliberately NOT run: it traverses the same path, whose total leverage on this cohort is those 8 users, so it could only produce another unresolvable interval at real API cost."
+}

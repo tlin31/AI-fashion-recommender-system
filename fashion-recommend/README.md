@@ -144,9 +144,13 @@ Trained on this data:
   recall source
 - **Non-personalized** — trending / popular / new arrivals, the fallback when nothing else applies
 
-`user-to-user` is currently disabled. It sits sequentially ahead of item-to-item in the
-master's task chain, carries 1,484,868 units of work, and appears in none of the evaluation
-arms — and per §1, user-based similarity has almost no signal to find here.
+`user-to-user` (tags, `column = "user.Labels"`) was disabled for most of this work: it sits
+sequentially ahead of item-to-item in the master's task chain and carries 1,484,868 units of
+work, while appearing in none of the accuracy arms. It was **re-enabled for the trait
+ablation** (§4.5), because it is the only path by which a user profile reaches a
+recommendation — a fact worth checking before designing an experiment around producing
+profiles. `ranker.type` defaults to `"none"`, so the CTR model is never trained and the
+other consumer of user labels does not exist.
 
 ### The online path does no inference
 
@@ -161,9 +165,10 @@ regenerate hourly.
 
 ## 4. Evaluation
 
-Two rounds, both over the same locked cohort of **162,562 evaluable users** (156,935 cold,
+Three rounds over the same locked cohort of **162,562 evaluable users** (156,935 cold,
 5,627 warm) and the same 95,335-item catalogue. Round 1 locked the baseline; round 2
-measured a deliberate change to the item label schema (§5.2).
+measured a deliberate change to the item label schema (§5.2); round 3 ran a trait ablation
+on a simulated cold-start cohort and stopped at a negative result (§4.5).
 
 ### 4.1 The headline: no personalized arm beats popularity
 
@@ -265,6 +270,91 @@ Recall@10 0.6993 against a structural ceiling of 0.7615, faithfulness 0.9580.
 > The baseline is locked at `eval/baseline_metrics.json` (2026-08-31) and is **cohort-bound**.
 > Day 5 changes the cohort for the trait ablation, which requires a fresh lock — the two
 > re-locks are deliberately merged rather than done twice.
+
+---
+
+### 4.5 The trait ablation: a negative result, and the decision not to pay for the next arm
+
+The question worth asking was never "traits on versus off" — off is obviously
+worse, so that comparison carries no information. It was: **does an LLM-extracted
+profile beat a zero-cost aggregation of item labels?** Only that has a cost
+denominator.
+
+**Real cold users cannot answer it.** Under a global temporal split a cold user
+has no pre-cutoff data at all, so any profile assigned to them is either external
+to the interaction graph or leakage. So the cohort is manufactured: take the 859
+warm users with ≥2 training events, **withhold their training feedback from
+Gorse**, keep a profile derived from exactly those withheld events, and score
+them on their real held-out events. The profile is real behaviour, the cold start
+is simulated, and nothing from the test half is touched. It is reported as
+**simulated** everywhere it appears.
+
+**Result: 8 of 859 users changed hit status.**
+
+| arm | NDCG@10 `none` → `aggregated` | users with a hit | discordant pairs |
+|---|---|---|---|
+| MostPopular | 0.01256 → 0.01256 | 22 → 22 | **0** |
+| Gorse CF | 0.00501 → 0.00087 | 5 → 3 | **8** |
+| Gorse item-to-item | 0.00091 → 0.00091 | 3 → 3 | **0** |
+
+Discordant pairs — users whose hit status *changed* — are the support behind a
+paired comparison, the same way `n_users × hit_rate` is for a rate (§4.3). Eight
+is below the harness's own floor of 30. The McNemar table is 5 lost, 3 gained:
+statistically that is eight coin flips landing 5–3.
+
+**The instability is measured, not asserted.** Across 20 bootstrap seeds the 95%
+CI straddles zero under **16** and excludes it under **4**, with every upper
+bound pinned between 0.000000 and 0.000172. A conclusion that flips with the RNG
+seed is not a conclusion — the interval has no resolution at this support, which
+is a stronger and more useful statement than "the difference is small".
+
+#### Two checks that separate "underpowered" from "broken"
+
+**The arms that cannot be affected were not affected.** MostPopular and
+item-to-item read no user labels, and both moved exactly 0 users. If either had
+moved, the experiment would have been measuring something other than the
+profiles.
+
+**The arms are materially different.** Under `none`, 100% of the cold users'
+user-to-user neighbour scores are exactly 0.5 — `Score = 1/(1+distance)` with
+distance 1, meaning no match — and their recommendations collapse onto one list
+(mean pairwise Jaccard 0.576). Under `aggregated`, 0% are 0.5 and the lists
+re-personalise (Jaccard 0.006). **The profiles are read. There is simply almost
+nothing for them to move.**
+
+#### Why the LLM arm was not run
+
+It traverses the same path — user labels → user-to-user → the fallback chain →
+`/api/recommend` — and that path's total leverage on this cohort is those 8
+users. A better profile cannot move users the mechanism never reaches, so the
+LLM arm could only produce another unresolvable interval, at real API cost.
+
+**Running the free arm first is what made this a decision rather than a
+post-hoc excuse.** The ordering was chosen in advance for exactly this outcome.
+
+#### What would have to change
+
+Not the metric, and not the cohort. Both are available and both would be
+[p-hacking](https://en.wikipedia.org/wiki/Data_dredging) after seeing this
+result: NDCG@20 would raise the hit count, and folding in the 4,768 warm users
+who *still have their training data* would multiply the sample — but those users
+are not cold, so that measures a different question.
+
+The honest levers are structural:
+
+| lever | why it might help | cost |
+|---|---|---|
+| `ranker.type = "fm"` | the CTR model reads user labels **directly**, crossing them with item labels, instead of via the user-similarity fallback | retrain + full re-run |
+| a denser corpus | 86% of users appear exactly once; the test set has a **median of 1 relevant item per user** | not available here |
+| pre-register NDCG@20 | legitimate *before* seeing results, not after | one round |
+
+The first is the real future work: it changes the **mechanism** rather than the
+scoring, so it could move the 8 without redefining success.
+
+> ⚠️ Every number in this section is **simulated** cold-start. These are warm
+> users with their history hidden, not users who were actually new. The
+> distinction is recorded in the flag's help text, in
+> `eval/cold_sim_users.json`'s own metadata, and here.
 
 ---
 

@@ -530,6 +530,67 @@ Desktop's disk image size. `docker-compose.yml` now caps `json-file` logging on
 every service (50m × 3), but **that only applies to containers created after the
 change** — `docker compose up -d` must actually recreate them.
 
+##### Rebuilding the cache: RDB snapshots and RediSearch GC fight over one fork
+
+A 25,627-user rebuild ran for 90 minutes without finishing, while the same task
+had taken **138 seconds** on 55,627 users. Redis sat at 248% CPU writing about
+2,000 keys/minute — pathological for Redis. The cause is in its log:
+
+```
+# Can't fork for module: File exists
+# <search> fork failed - got errno 17, aborting fork GC     <- repeatedly
+* Fork CoW for RDB: current 1692 MB, peak 1692 MB           <- same window
+```
+
+`errno 17` is `EEXIST` — `redisFork()` returns it when a child process is already
+active. The obvious reading is that RDB bgsave holds the slot, since a heavy
+rebuild keeps `save 60 10000` firing.
+
+**That reading is wrong, and the controlled test is what showed it.** Disabling
+snapshots entirely changed nothing:
+
+```
+write rate    1,817 -> 1,800 keys/60s   (unchanged)
+fork failures 12 in the following 3 minutes
+FT.SEARCH     1,559 -> 1,777 us/call    (worse, not better)
+```
+
+So something other than RDB holds the slot — most likely the GC fork itself,
+with a backlog too large to finish before the next tick collides with it. **The
+root cause is not established.** Do not reach for `CONFIG SET save ""` as a cure;
+it costs persistence and buys nothing.
+
+What is established:
+
+```
+cmdstat_FT.SEARCH  usec_per_call=1559 -> 1777, degrading   failed_calls=254,825
+cmdstat_hset       usec_per_call=602    slowest 478,779us  (479 ms)
+slowlog:  FT.SEARCH documents @collection:{recommend} @subset:{<user>}
+          SORTBY score DESC LIMIT 0 10000        <- note the limit
+```
+
+Redis sat at 268% CPU while the master idled at 57% — the bottleneck is Redis,
+not Gorse. A 25,627-user rebuild ran 90 minutes without finishing; the same task
+took **138 seconds** on 55,627 users when the index already existed.
+
+**So: do not `FLUSHALL` between ablation arms.** The slow runs are the ones that
+rebuild the index from empty, and `FLUSHALL` also deletes the index itself, which
+Gorse only creates in `Init()`. Re-push the labels and restart the master
+instead.
+
+##### Two memory limits watch two different numbers
+
+```
+used_memory       511.73M   <- what maxmemory enforces  (eviction risk)
+used_memory_rss   2.48G     <- what the container mem_limit enforces (OOM risk)
+mem_fragmentation_ratio 4.97
+```
+
+After a `FLUSHALL`, jemalloc does not return pages to the OS and the two can
+differ five-fold. **Size eviction headroom from `used_memory`; size OOM headroom
+from RSS.** Both `Exited (137)` incidents were RSS hitting `mem_limit`, not
+eviction — `evicted_keys` was 0 through both.
+
 ##### The other resource wall: Redis gets OOM-killed and the master keeps "working"
 
 The Docker VM has ~7.75 GiB. `Load Dataset` on this corpus spikes the master well

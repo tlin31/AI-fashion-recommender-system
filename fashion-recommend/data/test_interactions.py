@@ -12,7 +12,8 @@
 import numpy as np
 import pytest
 
-from build_interactions import (
+from build_interactions import (  # noqa: F401
+    _load_excluded_users,
     assign_feedback_type,
     dedupe_edges,
     global_temporal_split,
@@ -270,3 +271,51 @@ def test_every_event_gets_exactly_one_feedback_type():
     got = assign_feedback_type(rating, verified)
     assert set(got) <= {"purchase", "dislike", "view"}
     assert len(got) == len(rating)
+
+
+# ── --exclude-users: the simulated cold-start cohort ─────────────────────────
+#
+# Every test here pins a failure that returns a wrong answer rather than an
+# error. A silently empty or silently ignored exclusion list produces a run that
+# reports success while the "cold" users still have all their training data --
+# and the ablation then measures nothing, with no way to tell from the output.
+
+def test_exclude_users_reads_a_plain_id_per_line(tmp_path):
+    f = tmp_path / "cold.txt"
+    f.write_text("AAA\nBBB\n\n  CCC  \n")
+    assert _load_excluded_users(str(f)) == {"AAA", "BBB", "CCC"}
+
+
+def test_exclude_users_reads_json_list_and_object(tmp_path):
+    a = tmp_path / "a.json"; a.write_text('["AAA", "BBB"]')
+    b = tmp_path / "b.json"; b.write_text('{"users": ["AAA", "BBB"], "note": "x"}')
+    assert _load_excluded_users(str(a)) == {"AAA", "BBB"}
+    assert _load_excluded_users(str(b)) == {"AAA", "BBB"}
+
+
+def test_no_flag_means_no_exclusion():
+    assert _load_excluded_users(None) == set()
+
+
+def test_empty_file_is_an_error_not_an_empty_set(tmp_path):
+    """An empty list must not read as "exclude nobody".
+
+    That is the dangerous direction: the push succeeds, every user keeps their
+    training events, and the simulated cold-start cohort is not cold. The run
+    looks fine and the ablation silently compares three identical arms.
+    """
+    f = tmp_path / "empty.txt"; f.write_text("   \n")
+    with pytest.raises(SystemExit):
+        _load_excluded_users(str(f))
+
+
+def test_json_that_parses_to_nothing_is_also_an_error(tmp_path):
+    f = tmp_path / "empty.json"; f.write_text("[]")
+    with pytest.raises(SystemExit):
+        _load_excluded_users(str(f))
+
+
+def test_ids_are_coerced_to_str(tmp_path):
+    """A JSON list of numbers must not silently fail to match string user ids."""
+    f = tmp_path / "n.json"; f.write_text("[1, 2]")
+    assert _load_excluded_users(str(f)) == {"1", "2"}

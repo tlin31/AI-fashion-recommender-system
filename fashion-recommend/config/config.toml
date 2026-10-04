@@ -129,11 +129,15 @@ column = ""
 #    "trait 通过 user-to-user 生效" 这条路径。恢复时记得同步把
 #    "user-to-user/style_match" 加回 [recommend.fallback]。
 #
-# [[recommend.user-to-user]]
-# name = "style_match"
-# type = "tags"
-# column = "user.Labels"
-#
+# 【2026-09-01 重开 style_match，用于 Day 5 trait 消融的成本测量】
+# 只开这一条。purchase_pattern（type = "items"）不服务这个实验 —— 消融比的是
+# user label 的来源，而 items 型 user-to-user 根本不读 label。多开一条就是多
+# 一份 148 万单位的计算换不到任何对照信息。
+[[recommend.user-to-user]]
+name = "style_match"
+type = "tags"
+column = "user.Labels"
+
 # [[recommend.user-to-user]]
 # name = "purchase_pattern"
 # type = "items"
@@ -183,7 +187,7 @@ fit_period = "24h"
 recommenders = [
     "collaborative",
     "item-to-item/style_similarity",
-    # "user-to-user/style_match",   # 随上面一起停用；恢复时两处要同步
+    "user-to-user/style_match",   # 与上面的 [[recommend.user-to-user]] 同步开启
     "non-personalized/popular",
     "non-personalized/new_arrivals",
     "latest"
